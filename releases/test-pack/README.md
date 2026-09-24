@@ -1,5 +1,21 @@
 # Test pack releases
 
+## 0.7.0 — GUI, sound, vegetation, and optimization candidate
+
+Minecraft `26.2`, Fabric Loader `0.19.5`. Based on `0.6.0`, with Smooth Swapping `0.9.10` removed after the user reported that it did not work in game. Its cause was not investigated. All other `0.6.0` components remain. Five pinned files were added:
+
+| Component | Modrinth project / version | Filename |
+| --- | --- | --- |
+| [Os' Colorful Grasses (Mix)](https://modrinth.com/resourcepack/os-colorful-grasses/version/9KieAB5z) Mix-26.3 (also tagged 26.2) | `O2zhH8n8` / `9KieAB5z` | `Os' Colorful Grasses (Mix).zip` |
+| [GUI Retextures](https://modrinth.com/resourcepack/gui-retextures/version/e91P9kR5) 2.1, dark variant | `ZM5PH9W6` / `e91P9kR5` | `GUIRetextures-Dark-2.1.zip` |
+| [Better Click Sounds](https://modrinth.com/resourcepack/better-click-sounds/version/IgkvU58S) 1.3 | `XWQ6jMjk` / `IgkvU58S` | `better_click_sounds_1.3.zip` |
+| [ImmediatelyFast](https://modrinth.com/mod/immediatelyfast/version/pMWERcSu) 1.16.5+26.2-fabric | `5ZwdcRci` / `pMWERcSu` | `ImmediatelyFast-Fabric-1.16.5+26.2.jar` |
+| [FerriteCore](https://modrinth.com/mod/ferrite-core/version/d5ddUdiB) 9.0.0-fabric | `uXXizFIs` / `d5ddUdiB` | `ferritecore-9.0.0-fabric.jar` |
+
+Modrinth metadata and SHA-512-verified downloads support Minecraft `26.2`. ImmediatelyFast's JAR requires Fabric Loader `>=0.19.0` and Java `>=25`; FerriteCore requires Minecraft `>=26.1 <27` and breaks only old Hydrogen, which is absent. Neither new mod declares extra dependencies. ImmediatelyFast's `1.16.5` changelog fixes an Iris shader rendering issue. The three ZIPs include resource format `88`, and their files do not overwrite the five earlier packs' grass, GUI texture, or sound assets. GUI Retextures and two earlier packs define different glyphs in `assets/minecraft/font/default.json`; their combined appearance still needs an in-game check. The eight packs are selected automatically in a new instance; user changes remain unmanaged. Os' Colorful Grasses is fetched from the author's Modrinth CDN, not embedded or redistributed in the installer. Effects on FPS and RAM depend on the player's system and scene.
+
+The installer downloaded and hash-verified all 34 files in a clean temporary instance, then verified Repair and Uninstall. Gameplay, shader visuals, sound, resource-pack glyphs, and actual performance remain for user testing. Release SHA-512: `60F0913CDCF2F9FFD61E6A6759C554AEF0D59D27C18BFAEE35067380D17B56BDA1495E0388FC45503FB393CA5DE0D885CD026EBFBBFD086A1E7DFB86A36650DF`.
+
 ## 0.6.0 — inventory, audio, vegetation, and performance candidate
 
 Minecraft `26.2`, Fabric Loader `0.19.5`; retains all 18 files from the gameplay-tested `0.5.0` pack. The 12 new pinned files are:
@@ -23,7 +39,7 @@ Modrinth metadata and the SHA-512-verified JARs confirm Fabric `26.2` support. I
 
 Fresh Animations: Extensions includes custom chest and shulker-box models. BBE can interfere with EMF/ETF models for those blocks, so a fresh instance starts with `optimize.chest=false` and `optimize.shulker=false` in BBE's verified `config/BBEConfig.json` format. Other BBE optimizations remain enabled. This initial config is unmanaged: Repair and Uninstall preserve later user changes. EMF's author recommends Entity Culling for animation-heavy packs; BBE lists C2ME support. Cool Rain generates material-specific rain sounds, while Sound Physics Remastered processes sound attenuation and reverb; no declared conflict was found. Clumps works on the integrated server in singleplayer; multiplayer XP grouping needs the server to have Clumps. Inventory Sorting's server-side functionality similarly depends on the server in multiplayer, though its client interface is available locally.
 
-Smooth Swapping and Inventory Sorting both touch inventory screens. Upstream reports crashes with **other** sorting mods, but no confirmed issue with this exact pair was found. The in-game test must include sorting a player inventory and a chest while Smooth Swapping is active. Also inspect chest/shulker animations, entity visibility, rain and indoor audio, and FPS. This is a gameplay candidate: successful archive checks are not proof of Minecraft runtime compatibility. The installer downloaded and hash-verified all 30 files in a clean temporary instance, then verified Repair and Uninstall. Release SHA-512: `0BFC3915A9F1856770536202449C3936A29BD2AD1FE1E090BD525FCF0E10307F9C1C2DCAEA69DD66C24F036663307C9034745D42559BFF23F2DBA9EE00B684E5`.
+Smooth Swapping and Inventory Sorting both touch inventory screens. Upstream reports crashes with **other** sorting mods, but no confirmed issue with this exact pair was found during preflight. The user later confirmed that all other `0.6.0` additions worked but Smooth Swapping did not. Its cause was left uninvestigated at the user's request, and `0.7.0` removes it. The installer downloaded and hash-verified all 30 files in a clean temporary instance, then verified Repair and Uninstall. Release SHA-512: `0BFC3915A9F1856770536202449C3936A29BD2AD1FE1E090BD525FCF0E10307F9C1C2DCAEA69DD66C24F036663307C9034745D42559BFF23F2DBA9EE00B684E5`.
 
 ## 0.5.0 — gameplay-tested visual mods and resource packs
 

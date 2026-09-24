@@ -2,9 +2,11 @@ namespace MinePack.Core;
 
 public static class TestPackRelease
 {
-    public const string ArtifactFileName = "test-pack-0.6.0.mrpack";
+    public const string ArtifactFileName = "test-pack-0.7.0.mrpack";
     public const string ArtifactRelativePath = "releases/test-pack/" + ArtifactFileName;
-    public const string ArtifactSha512 = "0BFC3915A9F1856770536202449C3936A29BD2AD1FE1E090BD525FCF0E10307F9C1C2DCAEA69DD66C24F036663307C9034745D42559BFF23F2DBA9EE00B684E5";
+    public const string ArtifactSha512 = "60F0913CDCF2F9FFD61E6A6759C554AEF0D59D27C18BFAEE35067380D17B56BDA1495E0388FC45503FB393CA5DE0D885CD026EBFBBFD086A1E7DFB86A36650DF";
+    public const string InventoryArtifactFileName = "test-pack-0.6.0.mrpack";
+    public const string InventoryArtifactSha512 = "0BFC3915A9F1856770536202449C3936A29BD2AD1FE1E090BD525FCF0E10307F9C1C2DCAEA69DD66C24F036663307C9034745D42559BFF23F2DBA9EE00B684E5";
     public const string VisualArtifactFileName = "test-pack-0.5.0.mrpack";
     public const string VisualArtifactSha512 = "0B94017C6C392AB05B17102C72A9A3207AE5F52BA7175F17C7FF5F764FEC06EA62397183DC3B0F32AF6309600DE87F82E66DE1C77ED51384ED528E04FC8E23F6";
     public const string C2meArtifactFileName = "test-pack-0.4.0.mrpack";
@@ -15,16 +17,19 @@ public static class TestPackRelease
     public const string PreviousArtifactSha512 = "76320C3EBB6B32D53EB0E58B8E4DD3FF721CEB2F718E2D18CB976A020DC2C4104F2E586277314DCC24227DC0DEA18CF6661835F01E04F61AEB51D22F88A8FF83";
     public const string LegacyArtifactFileName = "test-pack-0.1.0.mrpack";
     public const string LegacyArtifactSha512 = "453fc54446e6d7b379c7c07ca6f995998d6cba01791b0749d6929fce98bce59561aaa598b255344b342396251877a0e7aceccc3100ea179484d0a967ceba0ff5";
-    public const string PackVersion = "0.6.0";
+    public const string PackVersion = "0.7.0";
     public const string MinecraftVersion = "26.2";
     public const string FabricLoaderVersion = "0.19.5";
     public const string FabricApiVersion = "0.161.0+26.2";
     public static string[] InitialResourcePacks =>
     [
+        "better_click_sounds_1.3.zip",
+        "Os' Colorful Grasses (Mix).zip",
         "better_flame_particles-v3.1-mc1.21.9+-resourcepack.zip",
         "Fancy Crops v1.3.zip",
         "LowOnFire v26.2§8.zip",
         "FreshAnimations_v1.10.5.zip",
-        "FA+All_Extensions-v1.9.2.zip"
+        "FA+All_Extensions-v1.9.2.zip",
+        "GUIRetextures-Dark-2.1.zip"
     ];
 }

@@ -110,13 +110,15 @@ internal static class Smoke
         var addedMods = new[]
         {
             "InventoryParticles-3.2.0+26.2+fabric.jar", "dense-flowers-0.3.1+mc26.2.jar",
-            "inventorysorter-fabric-3.0.1+mc26.2.jar", "smoothswapping-0.9.10-26.2-fabric.jar",
+            "inventorysorter-fabric-3.0.1+mc26.2.jar", "ImmediatelyFast-Fabric-1.16.5+26.2.jar",
             "coolrain-1.4.0-26.2.jar", "sound-physics-remastered-fabric-1.5.1+26.2.jar",
             "held-item-info-1.9.2.jar", "bbe-fabric-1.3.7+mc26.2.jar",
             "Clumps-fabric-26.2-26.2.1.jar", "entityculling-fabric-1.11.2-mc26.2.jar",
-            "MossyLib-1.6.0+26.2+fabric.jar", "cloth-config-26.2.155.jar"
+            "MossyLib-1.6.0+26.2+fabric.jar", "cloth-config-26.2.155.jar",
+            "ferritecore-9.0.0-fabric.jar"
         };
-        True(pack.Files.Count == 30 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
+        True(pack.Files.Count == 34 && !pack.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
+             pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
              pack.Files.Any(file => file.Path == "mods/voxy-0.2.19-beta.jar") &&
              pack.Files.Any(file => file.Path == "mods/Chunky-Fabric-1.5.3.jar") &&
              pack.Files.Any(file => file.Path == "mods/c2me-fabric-mc26.2-0.4.2-alpha.0.52.jar") &&

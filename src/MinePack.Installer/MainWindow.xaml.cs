@@ -151,6 +151,7 @@ public partial class MainWindow : Window
                 var (installedPackPath, installedPackHash) = installedVersion switch
                 {
                     TestPackRelease.PackVersion => (PackPath, TestPackRelease.ArtifactSha512),
+                    "0.6.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.InventoryArtifactFileName), TestPackRelease.InventoryArtifactSha512),
                     "0.5.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VisualArtifactFileName), TestPackRelease.VisualArtifactSha512),
                     "0.4.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.C2meArtifactFileName), TestPackRelease.C2meArtifactSha512),
                     "0.3.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VoxyArtifactFileName), TestPackRelease.VoxyArtifactSha512),
@@ -268,7 +269,9 @@ public partial class MainWindow : Window
         StateHeading.Text = "Сборка готова";
         ProgressLabel.Text = "Установка завершена";
         StatusBox.Text = version == TestPackRelease.PackVersion
-            ? "Тестовая сборка 0.6.0 с десятью новыми модами готова. Откройте официальный Minecraft Launcher, выберите MinePack Test Pack и нажмите «Играть»."
+            ? "Тестовая сборка 0.7.0 готова: Smooth Swapping удалён, добавлены три ресурспака и два мода оптимизации. Откройте официальный Minecraft Launcher, выберите MinePack Test Pack и нажмите «Играть»."
+            : version == "0.6.0"
+                ? "Сборка 0.6.0 готова. Smooth Swapping в ней остаётся; для теста без него нажмите «Установить сборку»."
             : version == "0.5.0"
                 ? "Проверенная сборка с визуальными модами готова. Для следующего теста нажмите «Установить сборку»."
             : version == "0.4.0"
@@ -277,7 +280,7 @@ public partial class MainWindow : Window
                 ? "Проверенная сборка с Voxy и Chunky готова. Для отдельного теста C2ME нажмите «Установить сборку»."
                 : "Прежняя тестовая сборка и её профиль готовы. Для Voxy нажмите «Установить сборку».";
         InstructionsBox.Text = version == TestPackRelease.PackVersion
-            ? $"Папка игры: {gameDirectory}\nПроверьте сортировку инвентаря и сундука вместе с Smooth Swapping, звуки дождя и помещений, анимации сундуков и шалкеров, отображение мобов и FPS. Для совместимости с Fresh Animations оптимизация сундуков и шалкеров в BBE изначально выключена. Предыдущие сборки и миры сохранены отдельно."
+            ? $"Папка игры: {gameDirectory}\nПроверьте траву, внешний вид меню и сундуков, звук кликов, работу шейдера и FPS. ImmediatelyFast ускоряет отрисовку, FerriteCore снижает расход памяти; их эффект зависит от ситуации и компьютера. Предыдущие сборки и миры сохранены отдельно."
             : $"Папка игры: {gameDirectory}\nПри первом запуске Launcher сам загрузит необходимые файлы Minecraft и библиотеки Fabric.";
     }
 

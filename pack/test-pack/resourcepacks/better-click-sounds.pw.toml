@@ -1,0 +1,13 @@
+name = "Better Click Sounds"
+filename = "better_click_sounds_1.3.zip"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/XWQ6jMjk/versions/IgkvU58S/better_click_sounds_1.3.zip"
+hash-format = "sha512"
+hash = "f5ab1b8c97d92d8a2ce76d3a4654a886ddb663f7356896afe2513402b630642fe37b447e805482134104026460cf70b461c9cc60bdcedd75a3c8c2e732219a26"
+
+[update]
+[update.modrinth]
+mod-id = "XWQ6jMjk"
+version = "IgkvU58S"

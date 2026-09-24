@@ -1,0 +1,13 @@
+name = "GUI Retextures"
+filename = "GUIRetextures-Dark-2.1.zip"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/ZM5PH9W6/versions/e91P9kR5/GUIRetextures-Dark-2.1.zip"
+hash-format = "sha512"
+hash = "968c7dd6376d17198966a6cf284be656bda1a00c8fb6681a41c861ae3bd37dafe3639cad468bcbb8df90ccc5395232b9cfafc3fd4be6c1c99ddd7bad0fc2f68f"
+
+[update]
+[update.modrinth]
+mod-id = "ZM5PH9W6"
+version = "e91P9kR5"
