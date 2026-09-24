@@ -1,4 +1,19 @@
-# Test pack release 0.1.0
+# Test pack releases
+
+## 0.2.0 — Complementary Reimagined test
+
+Pinned Minecraft `26.3`, Fabric Loader `0.19.5`, and the following Modrinth files. The `.mrpack` downloads them from Modrinth CDN and verifies SHA-512; it does not bundle their binaries.
+
+| Component | Modrinth project / version | Filename |
+| --- | --- | --- |
+| Fabric API | `P7dR8mSH` / `hHj6EvFZ` | `fabric-api-0.160.7+26.3.jar` |
+| Iris 1.11.6 | `YL57xq9U` / `bAdKrpw8` | `iris-fabric-1.11.6+mc26.3.jar` |
+| Sodium 0.9.2 | `AANobbMI` / `bAZQdGpg` | `sodium-fabric-0.9.2+mc26.3.jar` |
+| Complementary Reimagined r5.9.3 | `HVnmMxH1` / `Bqen1mJX` | `ComplementaryReimagined_r5.9.3.zip` |
+
+Iris requires exactly Sodium version `bAZQdGpg` in Modrinth metadata. Reimagined supports `26.3` and Iris. `config/iris.properties` selects and enables the shader on first launch. Release SHA-512: `76320C3EBB6B32D53EB0E58B8E4DD3FF721CEB2F718E2D18CB976A020DC2C4104F2E586277314DCC24227DC0DEA18CF6661835F01E04F61AEB51D22F88A8FF83`. Minecraft gameplay and shader rendering still require a user acceptance run.
+
+## 0.1.0 — initial Fabric API test
 
 This is a small, pinned validation pack. It is not a gameplay-tested public release.
 
@@ -14,4 +29,4 @@ This is a small, pinned validation pack. It is not a gameplay-tested public rele
 
 The exported `modrinth.index.json` contains one required client-and-server file and dependencies `minecraft=26.3` and `fabric-loader=0.19.5`. Modrinth reports no additional dependencies for this Fabric API version. A second Packwiz export produced the same pinned versions, download URL, and SHA-512.
 
-The Fabric Installer CLI is available as version `1.1.2` from the official Fabric Maven repository, SHA-256 `61E035BF7BF70153E127440CE34DE47C9036F0A2D0C65D1529454BD35CEEFE4F`. The app does not edit Launcher files: the installed CLI's documented help exposes no Game Directory option, and the live Launcher could not be safely inspected on this machine. After the app installs the files, follow **Инструкция Launcher** to create a new dedicated MinePack profile for the pinned Fabric version and set the dedicated Game Directory manually; do not modify an existing profile. The live Launcher profile and Minecraft gameplay have not been tested on this machine.
+The `0.1.0` artifact remains bundled so the current installer can repair or uninstall an existing `0.1.0` instance. The installer now creates its own isolated official Launcher profile automatically. A live `0.1.0` profile and game launch were confirmed by the user; this does not validate `0.2.0` shader rendering.

@@ -1,12 +1,12 @@
 name = "MinePack Test Pack"
 author = "yarinka-yyy"
-version = "0.1.0"
+version = "0.2.0"
 pack-format = "packwiz:1.1.0"
 
 [index]
 file = "index.toml"
 hash-format = "sha256"
-hash = "7756eae0acc4dfbf3132105b3da89ef669cbe880e0fbe35eefe021123fb80675"
+hash = "e324ba291a5fdb3d01f0cbe8396f56062795dea3e2bb8417ffd0674701cb32df"
 
 [versions]
 fabric = "0.19.5"

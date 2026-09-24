@@ -107,7 +107,9 @@ internal static class Smoke
         Equal(TestPackRelease.PackVersion, pack.VersionId, "pinned release version");
         Equal(TestPackRelease.MinecraftVersion, pack.MinecraftVersion, "pinned Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, pack.FabricLoaderVersion, "pinned Fabric Loader version");
-        True(pack.Files.Count > 0, "pinned release contains downloadable files");
+        True(pack.Files.Count == 4 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
+             pack.Overrides.Any(file => file.Path == "config/iris.properties"),
+            "pinned release includes Fabric API, Iris, Sodium, Reimagined, and Iris selection");
         True(pack.Files.All(file => file.Sha512.Length == 128 && file.Sha512.All(Uri.IsHexDigit) &&
                                    file.Downloads.All(uri => uri.Scheme == Uri.UriSchemeHttps && uri.Host == "cdn.modrinth.com")),
             "pinned release hashes and URLs are valid");
@@ -187,6 +189,23 @@ internal static class Smoke
         File.WriteAllText(worldPath, "keep world");
         File.WriteAllText(screenshotPath, "keep screenshot");
         File.WriteAllText(unknownPath, "keep user file");
+        var sourceSaves = Path.Combine(tempRoot, "source-profile", "saves");
+        var sourceCollision = Path.Combine(sourceSaves, "world", "level.dat");
+        var sourceNewWorld = Path.Combine(sourceSaves, "new-world", "level.dat");
+        var sourceRegion = Path.Combine(sourceSaves, "new-world", "region", "r.0.0.mca");
+        Directory.CreateDirectory(Path.GetDirectoryName(sourceCollision)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(sourceRegion)!);
+        File.WriteAllText(sourceCollision, "do not overwrite");
+        File.WriteAllText(sourceNewWorld, "copy world");
+        File.WriteAllText(sourceRegion, "copy region");
+        var imported = await WorldImportService.ImportAsync(sourceSaves, instance);
+        Equal(1, imported.Imported, "world import copies a new world");
+        Equal(1, imported.Skipped, "world import skips an existing world name");
+        Equal("keep world", File.ReadAllText(worldPath), "existing world is not overwritten");
+        Equal("copy region", File.ReadAllText(Path.Combine(instance, "saves", "new-world", "region", "r.0.0.mca")), "world subdirectories are copied");
+        Equal("copy world", File.ReadAllText(sourceNewWorld), "world source is unchanged");
+        True(!Directory.EnumerateDirectories(Path.Combine(instance, "saves"), ".minepack-import-*").Any(), "no import staging directories remain");
+        Pass("world import copies complete new worlds and preserves originals and name collisions");
         File.WriteAllText(managedPath, "corrupted");
 
         var repair = await installer.RepairAsync(instance, packPath, packHash);
@@ -224,7 +243,8 @@ internal static class Smoke
         var uninstall = await installer.UninstallAsync(instance, packPath, packHash);
         True(uninstall.Success, "uninstall succeeds");
         True(!File.Exists(managedPath), "uninstall removes managed file");
-        True(File.Exists(worldPath) && File.Exists(screenshotPath) && File.Exists(unknownPath), "uninstall preserves worlds, screenshots, and unknown files");
+        True(File.Exists(worldPath) && File.Exists(Path.Combine(instance, "saves", "new-world", "level.dat")) &&
+             File.Exists(screenshotPath) && File.Exists(unknownPath), "uninstall preserves worlds, screenshots, and unknown files");
         True(installer.GetActiveInstancePath(installRoot) is null, "uninstall clears its active marker");
         Pass("uninstall removes only managed files and preserves user data");
 

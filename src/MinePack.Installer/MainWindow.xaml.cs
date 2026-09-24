@@ -29,6 +29,18 @@ public partial class MainWindow : Window
 
     private async void Configure_Click(object sender, RoutedEventArgs e) => await RunOperationAsync(Operation.ConfigureLauncher);
 
+    private async void ImportWorlds_Click(object sender, RoutedEventArgs e)
+    {
+        var vanillaSaves = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft", "saves");
+        var picker = new OpenFolderDialog
+        {
+            Title = "Выберите папку saves профиля, из которого скопировать миры",
+            InitialDirectory = Directory.Exists(vanillaSaves) ? vanillaSaves : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+        };
+        if (picker.ShowDialog(this) == true)
+            await RunOperationAsync(Operation.ImportWorlds, picker.FolderName);
+    }
+
     private async void Uninstall_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(this,
@@ -48,7 +60,7 @@ public partial class MainWindow : Window
         if (picker.ShowDialog(this) == true) InstallRootBox.Text = picker.FolderName;
     }
 
-    private async Task RunOperationAsync(Operation operation)
+    private async Task RunOperationAsync(Operation operation, string? sourceWorlds = null)
     {
         if (_operationCancellation is not null) return;
         var cancellation = new CancellationTokenSource();
@@ -63,14 +75,28 @@ public partial class MainWindow : Window
             Operation.Install => "Проверка закреплённого релиза…",
             Operation.Repair => "Поиск установленной сборки…",
             Operation.ConfigureLauncher => "Настройка Fabric и Launcher…",
+            Operation.ImportWorlds => "Копирование миров…",
             _ => "Подготовка удаления…"
         };
 
         try
         {
             var root = Path.GetFullPath(InstallRootBox.Text);
-            if (operation != Operation.ConfigureLauncher && !File.Exists(PackPath))
+            if (operation == Operation.Install && !File.Exists(PackPath))
                 throw new InstallerException("PACK_NOT_FOUND", "В опубликованной папке приложения не найден закреплённый .mrpack релиз.");
+
+            if (operation == Operation.ImportWorlds)
+            {
+                var instance = _installer.GetActiveInstancePath(root)
+                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", "Сначала установите сборку, в которую хотите скопировать миры.");
+                var worldProgress = new Progress<string>(message => ProgressLabel.Text = message);
+                var imported = await WorldImportService.ImportAsync(sourceWorlds!, instance, worldProgress, cancellation.Token);
+                StateHeading.Text = "Импорт завершён";
+                StatusBox.Text = $"Скопировано миров: {imported.Imported}. Пропущено совпадений имён: {imported.Skipped}.";
+                InstructionsBox.Text = "Исходные миры сохранены. Мир из другой версии Minecraft открывайте только после резервной копии: сама игра может преобразовать его формат.";
+                ProgressLabel.Text = "Операция завершена";
+                return;
+            }
 
             var progress = new Progress<InstallProgress>(item =>
             {
@@ -116,9 +142,16 @@ public partial class MainWindow : Window
                     InstructionsBox.Text = "Другие профили Launcher не изменены.";
                     return;
                 }
+                var installedVersion = InstallationManifest.Load(instance).PackVersion;
+                var (installedPackPath, installedPackHash) = installedVersion switch
+                {
+                    TestPackRelease.PackVersion => (PackPath, TestPackRelease.ArtifactSha512),
+                    "0.1.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LegacyArtifactFileName), TestPackRelease.LegacyArtifactSha512),
+                    _ => throw new InstallerException("RELEASE_UNKNOWN", "Для этой установленной версии в приложении нет закреплённого архива.")
+                };
                 result = operation == Operation.Repair
-                    ? await _installer.RepairAsync(instance, PackPath, TestPackRelease.ArtifactSha512, progress, cancellation.Token)
-                    : await _installer.UninstallAsync(instance, PackPath, TestPackRelease.ArtifactSha512);
+                    ? await _installer.RepairAsync(instance, installedPackPath, installedPackHash, progress, cancellation.Token)
+                    : await _installer.UninstallAsync(instance, installedPackPath, installedPackHash);
             }
 
             if (result.Success)
@@ -149,6 +182,14 @@ public partial class MainWindow : Window
         }
         catch (InstallerException ex)
         {
+            if (operation == Operation.ImportWorlds)
+            {
+                StateHeading.Text = "Импорт не завершён";
+                StatusBox.Text = $"{ex.Code}: {ex.Message}";
+                InstructionsBox.Text = "Ранее скопированные миры остаются на месте; исходные миры не изменены.";
+                ProgressLabel.Text = "Операция не завершена";
+                return;
+            }
             StateHeading.Text = filesRemoved ? "Файлы удалены, профиль остался" :
                 filesInstalled ? "Сборка есть, профиль ещё не готов" : "Нужен ещё один шаг";
             StatusBox.Text = $"{ex.Code}: {ex.Message}";
@@ -161,6 +202,13 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException)
         {
+            if (operation == Operation.ImportWorlds)
+            {
+                StateHeading.Text = "Импорт остановлен";
+                StatusBox.Text = "Копирование отменено. Уже скопированные миры сохранены, исходные не изменены.";
+                ProgressLabel.Text = "Операция отменена";
+                return;
+            }
             StateHeading.Text = "Операция отменена";
             StatusBox.Text = filesInstalled
                 ? "Файлы сборки уже установлены, но профиль Launcher не настроен. Нажмите «Настроить Launcher», когда будете готовы."
@@ -169,6 +217,14 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            if (operation == Operation.ImportWorlds)
+            {
+                StateHeading.Text = "Импорт не завершён";
+                StatusBox.Text = $"Не удалось скопировать миры ({ex.GetType().Name}). Проверьте доступ к папке и свободное место.";
+                InstructionsBox.Text = "Исходные миры не изменены; уже скопированные миры сохранены.";
+                ProgressLabel.Text = "Операция завершилась с ошибкой";
+                return;
+            }
             StateHeading.Text = filesRemoved ? "Файлы удалены, профиль остался" :
                 filesInstalled ? "Сборка есть, профиль ещё не готов" : "Не удалось завершить операцию";
             StatusBox.Text = $"Не удалось выполнить действие ({ex.GetType().Name}). Проверьте права на папку и журнал диагностики.";
@@ -191,9 +247,12 @@ public partial class MainWindow : Window
     {
         ProgressLabel.Text = "Загрузка Fabric и создание отдельного профиля Launcher…";
         await _launcher.ConfigureAsync(gameDirectory, cancellationToken);
+        var version = InstallationManifest.Load(gameDirectory).PackVersion;
         StateHeading.Text = "Сборка готова";
         ProgressLabel.Text = "Установка завершена";
-        StatusBox.Text = "Fabric, мод и отдельный профиль MinePack Test Pack установлены. Откройте официальный Minecraft Launcher, выберите этот профиль и нажмите «Играть».";
+        StatusBox.Text = version == TestPackRelease.PackVersion
+            ? "Fabric, моды, Complementary Reimagined и отдельный профиль MinePack Test Pack установлены. Откройте официальный Minecraft Launcher, выберите этот профиль и нажмите «Играть»."
+            : "Прежняя тестовая сборка и её отдельный профиль готовы. Для Iris, Sodium и Complementary Reimagined нажмите «Установить сборку».";
         InstructionsBox.Text = $"Папка игры: {gameDirectory}\nПри первом запуске Launcher сам загрузит необходимые файлы Minecraft и библиотеки Fabric.";
     }
 
@@ -256,6 +315,7 @@ public partial class MainWindow : Window
         UninstallButton.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
         RetryLauncherButton.IsEnabled = !busy;
+        ImportWorldsButton.IsEnabled = !busy;
         OpenFolderButton.IsEnabled = !busy;
         OpenLogButton.IsEnabled = !busy;
     }
@@ -268,5 +328,5 @@ public partial class MainWindow : Window
         base.OnClosed(e);
     }
 
-    private enum Operation { Install, Repair, Uninstall, ConfigureLauncher }
+    private enum Operation { Install, Repair, Uninstall, ConfigureLauncher, ImportWorlds }
 }
