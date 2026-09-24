@@ -1,0 +1,13 @@
+name = "Dense Flowers"
+filename = "dense-flowers-0.3.1+mc26.2.jar"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/Ud3A1Fat/versions/hAZimeFe/dense-flowers-0.3.1%2Bmc26.2.jar"
+hash-format = "sha512"
+hash = "2ef01811569e16ee9a0dd995203be8780403e23eca37d6d2b89df463ab9b033b620a3983779ac01186cdf01bf741d202abed47a2dd76e9f89c416afa1c39d23b"
+
+[update]
+[update.modrinth]
+mod-id = "Ud3A1Fat"
+version = "hAZimeFe"

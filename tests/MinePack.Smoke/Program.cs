@@ -107,7 +107,16 @@ internal static class Smoke
         Equal(TestPackRelease.PackVersion, pack.VersionId, "pinned release version");
         Equal(TestPackRelease.MinecraftVersion, pack.MinecraftVersion, "pinned Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, pack.FabricLoaderVersion, "pinned Fabric Loader version");
-        True(pack.Files.Count == 18 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
+        var addedMods = new[]
+        {
+            "InventoryParticles-3.2.0+26.2+fabric.jar", "dense-flowers-0.3.1+mc26.2.jar",
+            "inventorysorter-fabric-3.0.1+mc26.2.jar", "smoothswapping-0.9.10-26.2-fabric.jar",
+            "coolrain-1.4.0-26.2.jar", "sound-physics-remastered-fabric-1.5.1+26.2.jar",
+            "held-item-info-1.9.2.jar", "bbe-fabric-1.3.7+mc26.2.jar",
+            "Clumps-fabric-26.2-26.2.1.jar", "entityculling-fabric-1.11.2-mc26.2.jar",
+            "MossyLib-1.6.0+26.2+fabric.jar", "cloth-config-26.2.155.jar"
+        };
+        True(pack.Files.Count == 30 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
              pack.Files.Any(file => file.Path == "mods/voxy-0.2.19-beta.jar") &&
              pack.Files.Any(file => file.Path == "mods/Chunky-Fabric-1.5.3.jar") &&
              pack.Files.Any(file => file.Path == "mods/c2me-fabric-mc26.2-0.4.2-alpha.0.52.jar") &&
@@ -117,6 +126,7 @@ internal static class Smoke
              pack.Files.Any(file => file.Path == "mods/entity_texture_features-7.2.4-26.2-fabric.jar") &&
              pack.Files.Any(file => file.Path == "mods/PuzzlesLib-v26.2.4-mc26.2.x-Fabric.jar") &&
              pack.Files.Any(file => file.Path == "mods/ForgeConfigAPIPort-v26.2.1-mc26.2.x-Fabric.jar") &&
+             addedMods.All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
              TestPackRelease.InitialResourcePacks.All(name => pack.Files.Any(file => file.Path == "resourcepacks/" + name)) &&
              pack.Overrides.Any(file => file.Path == "config/iris.properties"),
             "pinned release includes the base pack, requested mods and resource packs, and required dependencies");
@@ -334,10 +344,19 @@ internal static class Smoke
         var expectedPacks = new[] { "vanilla" }.Concat(TestPackRelease.InitialResourcePacks.Select(name => "file/" + name));
         True(File.ReadAllText(optionsPath).Contains("resourcePacks:" + JsonSerializer.Serialize(expectedPacks), StringComparison.Ordinal),
             "all resource packs are selected on first launch in the pinned order");
+        var bbeConfigPath = Path.Combine(instance, "config", "BBEConfig.json");
+        using (var document = JsonDocument.Parse(File.ReadAllText(bbeConfigPath)))
+        {
+            var bbeOptions = document.RootElement.GetProperty("bbe.config.storage.main").EnumerateArray()
+                .ToDictionary(entry => entry.GetProperty("option").GetString()!, entry => entry.GetProperty("value").GetBoolean());
+            True(!bbeOptions["optimize.chest"] && !bbeOptions["optimize.shulker"],
+                "BBE leaves Fresh Animations chest and shulker models visible");
+        }
         File.WriteAllText(optionsPath, "resourcePacks:[\"vanilla\"]\n");
+        File.WriteAllText(bbeConfigPath, "{}");
         var repair = await installer.RepairAsync(instance, packPath, TestPackRelease.ArtifactSha512);
-        True(repair.Success && File.ReadAllText(optionsPath) == "resourcePacks:[\"vanilla\"]\n",
-            "repair preserves player resource pack choices");
+        True(repair.Success && File.ReadAllText(optionsPath) == "resourcePacks:[\"vanilla\"]\n" &&
+             File.ReadAllText(bbeConfigPath) == "{}", "repair preserves player settings");
         var vanillaAfter = CaptureVanillaData(vanilla);
         if (vanillaBefore is not null && vanillaAfter is not null)
             Equal(vanillaBefore, vanillaAfter, "vanilla mods/config/saves remain unchanged");
@@ -353,8 +372,8 @@ internal static class Smoke
             Console.WriteLine($"NOT RUN: actual release cleanup did not complete ({uninstall.Code}). {uninstall.Message}");
             return false;
         }
-        True(File.ReadAllText(optionsPath) == "resourcePacks:[\"vanilla\"]\n",
-            "uninstall preserves player resource pack choices");
+        True(File.ReadAllText(optionsPath) == "resourcePacks:[\"vanilla\"]\n" &&
+             File.ReadAllText(bbeConfigPath) == "{}", "uninstall preserves player settings");
         Pass("actual pinned release temporary install uninstalls cleanly");
         return true;
     }

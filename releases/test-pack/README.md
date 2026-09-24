@@ -1,6 +1,31 @@
 # Test pack releases
 
-## 0.5.0 — visual mods and resource packs, gameplay candidate
+## 0.6.0 — inventory, audio, vegetation, and performance candidate
+
+Minecraft `26.2`, Fabric Loader `0.19.5`; retains all 18 files from the gameplay-tested `0.5.0` pack. The 12 new pinned files are:
+
+| Component | Modrinth project / version | Filename |
+| --- | --- | --- |
+| [Inventory Particles](https://modrinth.com/mod/inventory-particles) 3.2.0 | `XYnKrsxH` / `6fZZmxDU` | `InventoryParticles-3.2.0+26.2+fabric.jar` |
+| [MossyLib](https://modrinth.com/mod/mossylib) 1.6.0 | `ffLDUGbm` / `sL8KZEzW` | `MossyLib-1.6.0+26.2+fabric.jar` |
+| [Dense Flowers](https://modrinth.com/mod/dense-flowers) 0.3.1 | `Ud3A1Fat` / `hAZimeFe` | `dense-flowers-0.3.1+mc26.2.jar` |
+| [Inventory Sorting](https://modrinth.com/mod/inventory-sorting) 3.0.1 | `5ibSyLAz` / `D6W3Lrmj` | `inventorysorter-fabric-3.0.1+mc26.2.jar` |
+| [Cloth Config](https://modrinth.com/mod/cloth-config) 26.2.155 | `9s6osm5g` / `Nv3xnWXd` | `cloth-config-26.2.155.jar` |
+| [Smooth Swapping](https://modrinth.com/mod/smooth-swapping) 0.9.10 | `ydZic5r4` / `aUhMczfZ` | `smoothswapping-0.9.10-26.2-fabric.jar` |
+| [Cool Rain](https://modrinth.com/mod/coolrain) 1.4.0 | `iDyqnQLT` / `zc88gNk3` | `coolrain-1.4.0-26.2.jar` |
+| [Sound Physics Remastered](https://modrinth.com/mod/sound-physics-remastered) 1.5.1 | `qyVF9oeo` / `d8iioMMp` | `sound-physics-remastered-fabric-1.5.1+26.2.jar` |
+| [Held Item Info](https://modrinth.com/mod/held-item-info) 1.9.2 | `tEcWzCZz` / `bNAT9H23` | `held-item-info-1.9.2.jar` |
+| [Better Block Entities](https://modrinth.com/mod/better-block-entities/version/IDqHHWrF) 1.3.7 | `ONZm0H7Y` / `IDqHHWrF` | `bbe-fabric-1.3.7+mc26.2.jar` |
+| [Clumps](https://modrinth.com/mod/clumps) 26.2.1 | `Wnxd13zP` / `dEMopoOJ` | `Clumps-fabric-26.2-26.2.1.jar` |
+| [Entity Culling](https://modrinth.com/mod/entityculling) 1.11.2 | `NNAgCjsB` / `RWjup6Jf` | `entityculling-fabric-1.11.2-mc26.2.jar` |
+
+Modrinth metadata and the SHA-512-verified JARs confirm Fabric `26.2` support. Inventory Particles requires MossyLib `>=1.6.0`; Inventory Sorting requires Cloth Config `>=26.2.155` and Fabric API `>=0.153.0`; the existing Fabric API `0.161.0` satisfies this. Dense Flowers and BBE require the existing Sodium. BBE's `1.3.7` release notes explicitly target Sodium `0.9.0–0.9.1`, so the tested Iris/Voxy/Sodium `0.9.1` stack remains pinned. No mod-declared hard break targets another selected mod. Mod JARs are downloaded from Modrinth CDN by URL and SHA-512; none is embedded in the installer.
+
+Fresh Animations: Extensions includes custom chest and shulker-box models. BBE can interfere with EMF/ETF models for those blocks, so a fresh instance starts with `optimize.chest=false` and `optimize.shulker=false` in BBE's verified `config/BBEConfig.json` format. Other BBE optimizations remain enabled. This initial config is unmanaged: Repair and Uninstall preserve later user changes. EMF's author recommends Entity Culling for animation-heavy packs; BBE lists C2ME support. Cool Rain generates material-specific rain sounds, while Sound Physics Remastered processes sound attenuation and reverb; no declared conflict was found. Clumps works on the integrated server in singleplayer; multiplayer XP grouping needs the server to have Clumps. Inventory Sorting's server-side functionality similarly depends on the server in multiplayer, though its client interface is available locally.
+
+Smooth Swapping and Inventory Sorting both touch inventory screens. Upstream reports crashes with **other** sorting mods, but no confirmed issue with this exact pair was found. The in-game test must include sorting a player inventory and a chest while Smooth Swapping is active. Also inspect chest/shulker animations, entity visibility, rain and indoor audio, and FPS. This is a gameplay candidate: successful archive checks are not proof of Minecraft runtime compatibility. The installer downloaded and hash-verified all 30 files in a clean temporary instance, then verified Repair and Uninstall. Release SHA-512: `0BFC3915A9F1856770536202449C3936A29BD2AD1FE1E090BD525FCF0E10307F9C1C2DCAEA69DD66C24F036663307C9034745D42559BFF23F2DBA9EE00B684E5`.
+
+## 0.5.0 — gameplay-tested visual mods and resource packs
 
 Minecraft `26.2`, Fabric Loader `0.19.5`; retains every pinned file from `0.4.0`, including C2ME. The user reported that Chunky radius 1024 completed in about 1.5 minutes with C2ME; the earlier baseline was an estimate, so the exact speedup is not established. This release adds the following exact Modrinth versions:
 
@@ -20,7 +45,7 @@ Minecraft `26.2`, Fabric Loader `0.19.5`; retains every pinned file from `0.4.0`
 
 Modrinth metadata and JAR declarations require Fabric API plus Puzzles Lib and Forge Config API Port for Pick Up Notifier, and ETF for EMF. EMF/ETF provide Fresh Animations support with Sodium/Iris; OptiFine is not included. Explosive Enhancement's version metadata/JAR only require Fabric API; YACL and Mod Menu are optional configuration interfaces and are not in this release. Resource-pack ZIPs advertise a format range including Minecraft `26.2`'s resource format `88`. No known hard incompatibility was found with Voxy, C2ME, Iris or Sodium. Fresh Animations Extensions overlaps the base pack intentionally, so it is selected above Fresh Animations. Low On Fire and Better Flame Particles edit different fire assets. The only other duplicated asset path among the five packs is `assets/minecraft/font/default.json` in Extensions and Low On Fire; each defines a different glyph, so its combined behavior should be checked in game. The five packs are selected in a fresh `options.txt` during staging; this file is left unmanaged so user choices survive Repair and Uninstall.
 
-The installer downloaded and hash-verified all 18 files in a temporary isolated instance, then verified Repair and Uninstall. Minecraft launch, actual visuals, resource-pack order, FPS and logs still need gameplay acceptance. Release SHA-512: `0B94017C6C392AB05B17102C72A9A3207AE5F52BA7175F17C7FF5F764FEC06EA62397183DC3B0F32AF6309600DE87F82E66DE1C77ED51384ED528E04FC8E23F6`.
+The installer downloaded and hash-verified all 18 files in a temporary isolated instance, then verified Repair and Uninstall. The user later confirmed that all mods worked in Minecraft with no observed issues; exact FPS and complete logs were not reported. Release SHA-512: `0B94017C6C392AB05B17102C72A9A3207AE5F52BA7175F17C7FF5F764FEC06EA62397183DC3B0F32AF6309600DE87F82E66DE1C77ED51384ED528E04FC8E23F6`.
 
 ## 0.4.0 — C2ME comparison test
 

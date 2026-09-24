@@ -116,6 +116,15 @@ public sealed class InstallService : IDisposable
                 await File.WriteAllTextAsync(Path.Combine(stagingRoot, "options.txt"),
                     "resourcePacks:" + JsonSerializer.Serialize(selected) + Environment.NewLine +
                     "incompatibleResourcePacks:[]" + Environment.NewLine, cancellationToken);
+                if (!manifest.Files.Any(file => file.Path.Equals("mods/bbe-fabric-1.3.7+mc26.2.jar", StringComparison.OrdinalIgnoreCase)))
+                    throw new InstallerException("PACK_INVALID", "В тестовом релизе отсутствует Better Block Entities.");
+                var bbeConfig = SafePath.Resolve(stagingRoot, "config/BBEConfig.json");
+                SafePath.EnsureNoReparsePoints(stagingRoot, bbeConfig);
+                if (File.Exists(bbeConfig))
+                    throw new InstallerException("PACK_INVALID", "Релиз уже содержит настройки Better Block Entities.");
+                await File.WriteAllTextAsync(bbeConfig,
+                    "{\"bbe.config.storage.main\":[{\"option\":\"optimize.chest\",\"value\":false},{\"option\":\"optimize.shulker\",\"value\":false}]}",
+                    cancellationToken);
             }
             manifest.SaveAtomic(stagingRoot);
             Log("staging_verified", new { files = manifest.Files.Count, stagingRoot });

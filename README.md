@@ -4,9 +4,9 @@ Windows WPF prototype for installing one pinned Fabric test pack into an isolate
 
 ## Запуск
 
-Откройте `artifacts/publish-0.5.0/MinePack.Installer.exe`, оставив рядом всю папку `artifacts/publish-0.5.0`. Закройте Minecraft Launcher, нажмите **Установить сборку** и дождитесь сообщения **Сборка готова**. Установщик скачает закреплённые моды, шейдер и ресурспаки, проверит их, включит ресурспаки для нового профиля и переключит **MinePack Test Pack** на новый отдельный Game Directory. Предыдущая папка сборки `0.4.0` и её мир останутся на диске. Затем откройте официальный Minecraft Launcher, выберите этот профиль и нажмите **Играть**. Для первого запуска Launcher сам загрузит базовые файлы Minecraft и библиотеки Fabric; вход в аккаунт остаётся в официальном Launcher.
+Откройте `artifacts/publish-0.6.0/MinePack.Installer.exe`, оставив рядом всю папку `artifacts/publish-0.6.0`. Закройте Minecraft Launcher, нажмите **Установить сборку** и дождитесь сообщения **Сборка готова**. Установщик скачает закреплённые моды, шейдер и ресурспаки, проверит их и переключит **MinePack Test Pack** на новый отдельный Game Directory. Предыдущая папка сборки `0.5.0` и её мир останутся на диске. Затем откройте официальный Minecraft Launcher, выберите этот профиль и нажмите **Играть**. Для первого запуска Launcher сам загрузит базовые файлы Minecraft и библиотеки Fabric; вход в аккаунт остаётся в официальном Launcher.
 
-Тестовый релиз `0.5.0` оставляет Minecraft `26.2` и весь набор `0.4.0` с C2ME. Он добавляет Pick Up Notifier, Explosive Enhancement, Fresh Animations, Fresh Animations: Extensions, Low On Fire, Fancy Crops и Better Flame Particles с обязательными зависимостями EMF, ETF, Puzzles Lib и Forge Config API Port. Ресурспаки включаются автоматически при первом запуске; затем игрок может менять их порядок и состав в настройках Minecraft, а Repair сохранит выбор. Проверьте анимации мобов, огонь, посевы, взрывы, уведомления о подборе предметов, шейдер и FPS. Это кандидат для игрового теста: программная установка не заменяет проверку запуска и внешнего вида в Minecraft. Миры `26.3` не открывайте в `26.2` без резервной копии.
+Тестовый кандидат `0.6.0` сохраняет Minecraft `26.2` и всю проверенную пользователем сборку `0.5.0`. Он добавляет десять запрошенных модов и обязательные MossyLib и Cloth Config. При первой установке отключает в Better Block Entities только оптимизацию сундуков и шалкеров, чтобы сохранить модели Fresh Animations: Extensions; пользовательские изменения настроек Repair не перезаписывает. Проверьте сортировку инвентаря и сундука вместе с Smooth Swapping, звуки дождя и помещений, анимации сундуков, плотные цветы, эффекты предметов и FPS. Работа в Minecraft ещё требует игрового теста. Миры `26.3` не открывайте в `26.2` без резервной копии.
 
 Если сборка скачалась, а профиль создать не удалось, исправьте причину в сообщении и нажмите **Настроить Launcher**. Повторная загрузка мода не требуется. По умолчанию данные сборки находятся в `%LOCALAPPDATA%\MinePack`.
 
@@ -31,13 +31,13 @@ dotnet build MinePack.slnx -c Release
 dotnet run --project tests/MinePack.Smoke -c Release
 dotnet run --project tests/MinePack.Smoke -c Release -- --live-fabric
 dotnet run --project tests/MinePack.Smoke -c Release -- --live-profile-copy
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.5.0
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.6.0
 ```
 
 The pinned Packwiz source is exported with the portable tool (run from `pack/test-pack`):
 
 ```powershell
-& 'C:\Users\Yarin\AppData\Local\Temp\minepack-tools\packwiz\packwiz.exe' --cache ../../artifacts/packwiz-cache modrinth export -o ../../releases/test-pack/test-pack-0.5.0.mrpack
+& 'C:\Users\Yarin\AppData\Local\Temp\minepack-tools\packwiz\packwiz.exe' --cache ../../artifacts/packwiz-cache modrinth export -o ../../releases/test-pack/test-pack-0.6.0.mrpack
 ```
 
 ## Pack and Fabric tools
