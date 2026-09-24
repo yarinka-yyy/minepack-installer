@@ -126,7 +126,12 @@ public partial class MainWindow : Window
             if (operation == Operation.Install)
             {
                 _launcher.CheckReady();
-                result = await _installer.InstallAsync(PackPath, TestPackRelease.ArtifactSha512, root, progress, cancellation.Token);
+                var active = _installer.GetActiveInstancePath(root);
+                var current = active is null ? null : InstallationManifest.Load(active);
+                result = current?.PackVersion == TestPackRelease.PackVersion &&
+                         current.PackArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase)
+                    ? await _installer.RepairAsync(active!, PackPath, TestPackRelease.ArtifactSha512, progress, cancellation.Token)
+                    : await _installer.InstallAsync(PackPath, TestPackRelease.ArtifactSha512, root, progress, cancellation.Token);
             }
             else
             {
@@ -149,6 +154,8 @@ public partial class MainWindow : Window
                     "0.1.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LegacyArtifactFileName), TestPackRelease.LegacyArtifactSha512),
                     _ => throw new InstallerException("RELEASE_UNKNOWN", "Для этой установленной версии в приложении нет закреплённого архива.")
                 };
+                if (operation == Operation.Uninstall)
+                    _launcher.RemoveOwnProfile(instance);
                 result = operation == Operation.Repair
                     ? await _installer.RepairAsync(instance, installedPackPath, installedPackHash, progress, cancellation.Token)
                     : await _installer.UninstallAsync(instance, installedPackPath, installedPackHash);
@@ -165,7 +172,6 @@ public partial class MainWindow : Window
                 else
                 {
                     filesRemoved = true;
-                    _launcher.RemoveOwnProfile();
                     StateHeading.Text = "Сборка удалена";
                     ProgressLabel.Text = "Операция завершена";
                     StatusBox.Text = result.Message;

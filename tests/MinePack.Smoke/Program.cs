@@ -30,7 +30,7 @@ internal static class Smoke
             VerifyArchiveRejections(tempRoot);
             await VerifyArchiveMutationRejectedAsync(tempRoot);
             await VerifyInstallRepairAndUninstallAsync(tempRoot);
-            VerifyLauncherFixture();
+            VerifyLauncherFixture(tempRoot);
             await VerifyAutomaticFabricProfileAsync(tempRoot);
             var liveCompleted = false;
             if (args.Contains("--live-pack", StringComparer.Ordinal))
@@ -361,7 +361,7 @@ internal static class Smoke
         return string.Join("\n", records);
     }
 
-    private static void VerifyLauncherFixture()
+    private static void VerifyLauncherFixture(string tempRoot)
     {
         const string input = "{\"settings\":{\"custom\":true},\"profiles\":{\"vanilla\":{\"name\":\"Existing\",\"customField\":17}}}";
         var candidate = LauncherProfile.BuildFixtureCandidate(input, Path.Combine(Path.GetTempPath(), "minepack-game"), "26.3", "0.19.5");
@@ -382,6 +382,45 @@ internal static class Smoke
         {
             _ = LauncherProfile.BuildFixtureCandidate(conflict, Path.GetTempPath(), "26.3", "0.19.5");
             throw new InvalidOperationException("Expected Launcher profile conflict rejection.");
+        }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
+
+        var oldInstance = Path.Combine(tempRoot, "owned-instance", "instances",
+            "test-pack-0.1.0-" + TestPackRelease.LegacyArtifactSha512[..12].ToLowerInvariant());
+        new InstallationManifest
+        {
+            PackVersion = "0.1.0",
+            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+            PackArchiveSha512 = TestPackRelease.LegacyArtifactSha512
+        }.SaveAtomic(oldInstance);
+        string ProfileWithoutMarker(string gameDir) => JsonSerializer.Serialize(new
+        {
+            profiles = new Dictionary<string, object>
+            {
+                [LauncherProfile.ProfileKey] = new
+                {
+                    name = "MinePack Test Pack", type = "custom",
+                    lastVersionId = "fabric-loader-0.19.5-26.3", gameDir
+                }
+            }
+        });
+        var markerless = ProfileWithoutMarker(oldInstance);
+        var reconfigured = LauncherProfile.BuildFixtureCandidate(markerless, Path.Combine(tempRoot, "new-instance"), "26.3", "0.19.5");
+        using (var parsed = JsonDocument.Parse(reconfigured))
+            Equal(Path.Combine(tempRoot, "new-instance"), parsed.RootElement.GetProperty("profiles")
+                .GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString(),
+                "Launcher-stripped marker can be recovered from a pinned MinePack manifest");
+        using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveFixtureCandidate(markerless)))
+            True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
+                "markerless MinePack profile can be removed while its manifest exists");
+        Equal(markerless, LauncherProfile.RemoveFixtureCandidate(markerless, Path.Combine(tempRoot, "new-instance")),
+            "uninstalling a different instance preserves the current MinePack profile");
+        try
+        {
+            _ = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(Path.Combine(tempRoot, "foreign-instance")),
+                Path.Combine(tempRoot, "new-instance"), "26.3", "0.19.5");
+            throw new InvalidOperationException("Expected unowned markerless profile rejection.");
         }
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
         Pass("Launcher fixture changes only the marked profile and preserves other JSON fields");
@@ -408,14 +447,24 @@ internal static class Smoke
             archive = memory.ToArray();
         }
 
+        var hydratedJar = Bytes("official Minecraft client JAR fixture");
         using var service = new FabricLauncherService(launcherRoot,
             new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) }),
-            HashBytes(archive));
+            HashBytes(archive), HashBytes(hydratedJar), hydratedJar.Length);
         await service.ConfigureAsync(gameDirectory);
         await service.ConfigureAsync(gameDirectory);
         var version = Path.Combine(launcherRoot, "versions", versionId);
         True(File.Exists(Path.Combine(version, versionId + ".json")), "Fabric version JSON installed");
         True(File.Exists(Path.Combine(version, versionId + ".jar")), "Fabric version dummy JAR installed");
+        var versionJar = Path.Combine(version, versionId + ".jar");
+        File.WriteAllBytes(versionJar, hydratedJar);
+        await service.ConfigureAsync(gameDirectory);
+        Equal(HashBytes(hydratedJar), HashFile(versionJar), "Launcher-filled official client JAR remains unchanged");
+        var profileBeforeConflict = File.ReadAllText(profilesPath);
+        File.WriteAllText(versionJar, "different client JAR");
+        try { await service.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected foreign Fabric JAR rejection."); }
+        catch (InstallerException ex) when (ex.Code == "FABRIC_VERSION_CONFLICT") { }
+        Equal(profileBeforeConflict, File.ReadAllText(profilesPath), "foreign Fabric JAR leaves Launcher profile untouched");
         True(Directory.EnumerateFiles(launcherRoot, "launcher_profiles.json.minepack-*.bak").Any(),
             "Launcher profile backup created");
         using (var document = JsonDocument.Parse(File.ReadAllText(profilesPath)))
@@ -453,7 +502,7 @@ internal static class Smoke
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
         Equal(conflict, File.ReadAllText(conflictProfiles), "foreign profile preserved after conflict");
         True(!Directory.Exists(Path.Combine(conflictRoot, "versions", versionId)), "new Fabric version rolled back after profile conflict");
-        Pass("automatic Fabric profile install is isolated, idempotent, removable, and hash-verified");
+        Pass("automatic Fabric profile accepts the official Launcher-filled JAR and rejects foreign files");
     }
 
     private static async Task VerifyOfficialFabricDownloadAsync(string tempRoot)
@@ -486,8 +535,22 @@ internal static class Smoke
         Directory.CreateDirectory(launcherRoot);
         var copiedFile = Path.Combine(launcherRoot, Path.GetFileName(sourceFiles[0]));
         File.WriteAllBytes(copiedFile, original);
+        const string versionId = "fabric-loader-0.19.5-26.3";
+        var sourceVersion = Path.Combine(realRoot, "versions", versionId);
+        var copiedVersion = Path.Combine(launcherRoot, "versions", versionId);
+        var copiedJar = Path.Combine(copiedVersion, versionId + ".jar");
+        if (File.Exists(Path.Combine(sourceVersion, versionId + ".json")) &&
+            File.Exists(Path.Combine(sourceVersion, versionId + ".jar")))
+        {
+            Directory.CreateDirectory(copiedVersion);
+            File.Copy(Path.Combine(sourceVersion, versionId + ".json"), Path.Combine(copiedVersion, versionId + ".json"));
+            File.Copy(Path.Combine(sourceVersion, versionId + ".jar"), copiedJar);
+        }
+        var copiedJarHash = File.Exists(copiedJar) ? HashFile(copiedJar) : null;
         using var service = new FabricLauncherService(launcherRoot);
         await service.ConfigureAsync(Path.Combine(tempRoot, "current-launcher-copy-game"));
+        if (copiedJarHash is not null)
+            Equal(copiedJarHash, HashFile(copiedJar), "Launcher-hydrated Fabric JAR survives reconfiguration in a copy");
         var before = JsonNode.Parse(original)!.AsObject();
         var after = JsonNode.Parse(File.ReadAllBytes(copiedFile))!.AsObject();
         before["profiles"]?.AsObject().Remove(LauncherProfile.ProfileKey);

@@ -11,14 +11,21 @@ public sealed class FabricLauncherService : IDisposable
     private const string ProfileUrl = "https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/profile/zip";
     private const string ProfileSha512 = "E951DB8CFBFCCBFDB95DA6EBDD2E89F4B3C1E5F821F75EA7629EE35DD5782AF2451DCC447F21B2F1A264A3A86407470DEDF56651B593E051C858DFCC2D5845AC";
     private const string VersionId = "fabric-loader-0.19.5-26.3";
+    private const string MinecraftClientJarSha512 = "9CEDD89122B11B0E079ECD342BABD034E3A2016F8B60CDC9FD1296A167AE606108819E7440381526704B335A9FC8948BEAB66C436B7C3BA5EF3D068301F7CFE6";
+    private const long MinecraftClientJarSize = 41_483_720;
     private readonly string _launcherRoot;
     private readonly string _expectedSha512;
+    private readonly string _expectedClientJarSha512;
+    private readonly long _expectedClientJarSize;
     private readonly HttpClient _http;
 
-    public FabricLauncherService(string? launcherRoot = null, HttpMessageHandler? handler = null, string? expectedSha512 = null)
+    public FabricLauncherService(string? launcherRoot = null, HttpMessageHandler? handler = null, string? expectedSha512 = null,
+        string? expectedClientJarSha512 = null, long? expectedClientJarSize = null)
     {
         _launcherRoot = launcherRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
         _expectedSha512 = expectedSha512 ?? ProfileSha512;
+        _expectedClientJarSha512 = expectedClientJarSha512 ?? MinecraftClientJarSha512;
+        _expectedClientJarSize = expectedClientJarSize ?? MinecraftClientJarSize;
         _http = new HttpClient(handler ?? new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(45) };
     }
 
@@ -54,10 +61,13 @@ public sealed class FabricLauncherService : IDisposable
         var createdVersion = false;
         if (Directory.Exists(versionPath))
         {
-            if (!File.Exists(Path.Combine(versionPath, VersionId + ".json")) ||
-                !File.ReadAllBytes(Path.Combine(versionPath, VersionId + ".json")).AsSpan().SequenceEqual(versionJson) ||
-                !File.Exists(Path.Combine(versionPath, VersionId + ".jar")) ||
-                !File.ReadAllBytes(Path.Combine(versionPath, VersionId + ".jar")).AsSpan().SequenceEqual(versionJar))
+            var existingJson = Path.Combine(versionPath, VersionId + ".json");
+            var existingJar = Path.Combine(versionPath, VersionId + ".jar");
+            SafePath.EnsureNoReparsePoints(_launcherRoot, existingJson);
+            SafePath.EnsureNoReparsePoints(_launcherRoot, existingJar);
+            if (!File.Exists(existingJson) ||
+                !File.ReadAllBytes(existingJson).AsSpan().SequenceEqual(versionJson) ||
+                !IsExpectedClientJar(existingJar))
                 throw new InstallerException("FABRIC_VERSION_CONFLICT", "Версия Fabric с таким именем уже существует и отличается от закреплённой. Чужие файлы не изменены.");
         }
         else
@@ -93,14 +103,23 @@ public sealed class FabricLauncherService : IDisposable
         }
     }
 
-    public void RemoveOwnProfile()
+    private bool IsExpectedClientJar(string path)
+    {
+        if (!File.Exists(path)) return false;
+        using var stream = File.OpenRead(path);
+        if (stream.Length == 0) return true;
+        return stream.Length == _expectedClientJarSize && CryptographicOperations.FixedTimeEquals(
+            SHA512.HashData(stream), Convert.FromHexString(_expectedClientJarSha512));
+    }
+
+    public void RemoveOwnProfile(string? expectedGameDirectory = null)
     {
         if (!Directory.Exists(_launcherRoot) ||
             !new[] { "launcher_profiles.json", "launcher_profiles_microsoft_store.json" }
                 .Any(name => File.Exists(Path.Combine(_launcherRoot, name)))) return;
         var profilePath = FindProfilePath();
         EnsureLauncherClosed();
-        UpdateProfile(profilePath, LauncherProfile.RemoveFixtureCandidate);
+        UpdateProfile(profilePath, json => LauncherProfile.RemoveFixtureCandidate(json, expectedGameDirectory));
     }
 
     private string FindProfilePath()

@@ -39,7 +39,7 @@ public static class LauncherProfile
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
-    public static string RemoveFixtureCandidate(string existingJson)
+    public static string RemoveFixtureCandidate(string existingJson, string? expectedGameDirectory = null)
     {
         JsonObject root;
         try { root = JsonNode.Parse(existingJson) as JsonObject ?? throw new JsonException(); }
@@ -47,12 +47,52 @@ public static class LauncherProfile
 
         if (root["profiles"] is not JsonObject profiles || profiles[ProfileKey] is not JsonObject profile)
             return existingJson;
+        if (expectedGameDirectory is not null &&
+            (profile["gameDir"] is not JsonValue gameDir || !gameDir.TryGetValue<string>(out var current) ||
+             !Path.GetFullPath(current).Equals(Path.GetFullPath(expectedGameDirectory), StringComparison.OrdinalIgnoreCase)))
+            return existingJson;
         if (!IsOurs(profile))
             throw new InstallerException("LAUNCHER_PROFILE_CONFLICT", "Профиль не помечен как принадлежащий установщику; он не изменён.");
         profiles.Remove(ProfileKey);
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
-    private static bool IsOurs(JsonObject profile) =>
-        profile[MarkerName] is JsonValue marker && marker.TryGetValue<string>(out var value) && value == ProfileKey;
+    private static bool IsOurs(JsonObject profile)
+    {
+        if (profile.TryGetPropertyValue(MarkerName, out var markerNode))
+            return markerNode is JsonValue marker && marker.TryGetValue<string>(out var value) && value == ProfileKey;
+
+        static string? Text(JsonNode? node) =>
+            node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+        if (Text(profile["name"]) != "MinePack Test Pack" || Text(profile["type"]) != "custom" ||
+            Text(profile["lastVersionId"]) != $"fabric-loader-{TestPackRelease.FabricLoaderVersion}-{TestPackRelease.MinecraftVersion}" ||
+            Text(profile["gameDir"]) is not { } gameDir)
+            return false;
+
+        try
+        {
+            if (!Path.IsPathFullyQualified(gameDir)) return false;
+            var path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(gameDir));
+            var vanilla = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+            if (path.Equals(vanilla, StringComparison.OrdinalIgnoreCase) ||
+                path.StartsWith(vanilla + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) return false;
+            SafePath.EnsureNoReparsePoints(path, path);
+            var manifest = InstallationManifest.Load(path);
+            var expectedHash = manifest.PackVersion switch
+            {
+                "0.1.0" => TestPackRelease.LegacyArtifactSha512,
+                TestPackRelease.PackVersion => TestPackRelease.ArtifactSha512,
+                _ => null
+            };
+            return expectedHash is not null &&
+                   manifest.PackArchiveSha512.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) &&
+                   manifest.MinecraftVersion == TestPackRelease.MinecraftVersion &&
+                   manifest.FabricLoaderVersion == TestPackRelease.FabricLoaderVersion &&
+                   Path.GetFileName(path).Equals($"test-pack-{manifest.PackVersion}-{expectedHash[..12].ToLowerInvariant()}", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            return false;
+        }
+    }
 }
