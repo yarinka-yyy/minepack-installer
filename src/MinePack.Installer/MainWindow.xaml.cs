@@ -10,6 +10,7 @@ namespace MinePack.Installer;
 public partial class MainWindow : Window
 {
     private readonly InstallService _installer = new();
+    private readonly FabricLauncherService _launcher = new();
     private CancellationTokenSource? _operationCancellation;
     private string? _gameDirectory;
 
@@ -25,6 +26,8 @@ public partial class MainWindow : Window
     private async void Install_Click(object sender, RoutedEventArgs e) => await RunOperationAsync(Operation.Install);
 
     private async void Repair_Click(object sender, RoutedEventArgs e) => await RunOperationAsync(Operation.Repair);
+
+    private async void Configure_Click(object sender, RoutedEventArgs e) => await RunOperationAsync(Operation.ConfigureLauncher);
 
     private async void Uninstall_Click(object sender, RoutedEventArgs e)
     {
@@ -51,18 +54,22 @@ public partial class MainWindow : Window
         var cancellation = new CancellationTokenSource();
         _operationCancellation = cancellation;
         SetBusy(true);
+        var filesInstalled = false;
+        var filesRemoved = false;
         OperationProgress.Value = 0;
+        StateHeading.Text = "Выполняется операция";
         ProgressLabel.Text = operation switch
         {
             Operation.Install => "Проверка закреплённого релиза…",
             Operation.Repair => "Поиск установленной сборки…",
+            Operation.ConfigureLauncher => "Настройка Fabric и Launcher…",
             _ => "Подготовка удаления…"
         };
 
         try
         {
             var root = Path.GetFullPath(InstallRootBox.Text);
-            if (!File.Exists(PackPath))
+            if (operation != Operation.ConfigureLauncher && !File.Exists(PackPath))
                 throw new InstallerException("PACK_NOT_FOUND", "В опубликованной папке приложения не найден закреплённый .mrpack релиз.");
 
             var progress = new Progress<InstallProgress>(item =>
@@ -80,16 +87,35 @@ public partial class MainWindow : Window
                 ProgressLabel.Text = item.Message;
             });
 
+            if (operation == Operation.ConfigureLauncher)
+            {
+                _gameDirectory = _installer.GetActiveInstancePath(root)
+                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", "Сначала установите тестовую сборку.");
+                filesInstalled = true;
+                await ConfigureLauncherAsync(_gameDirectory, cancellation.Token);
+                return;
+            }
+
             InstallResult result;
             if (operation == Operation.Install)
             {
+                _launcher.CheckReady();
                 result = await _installer.InstallAsync(PackPath, TestPackRelease.ArtifactSha512, root, progress, cancellation.Token);
             }
             else
             {
                 var instance = _installer.GetActiveInstancePath(root);
                 if (instance is null)
-                    throw new InstallerException("INSTANCE_NOT_FOUND", "Активная установка тестового релиза не найдена в выбранной папке.");
+                {
+                    if (operation != Operation.Uninstall)
+                        throw new InstallerException("INSTANCE_NOT_FOUND", "Активная установка тестового релиза не найдена в выбранной папке.");
+                    _launcher.RemoveOwnProfile();
+                    StateHeading.Text = "Профиль удалён";
+                    ProgressLabel.Text = "Операция завершена";
+                    StatusBox.Text = "Активной сборки уже нет. Собственный профиль MinePack удалён из Launcher.";
+                    InstructionsBox.Text = "Другие профили Launcher не изменены.";
+                    return;
+                }
                 result = operation == Operation.Repair
                     ? await _installer.RepairAsync(instance, PackPath, TestPackRelease.ArtifactSha512, progress, cancellation.Token)
                     : await _installer.UninstallAsync(instance, PackPath, TestPackRelease.ArtifactSha512);
@@ -98,32 +124,59 @@ public partial class MainWindow : Window
             if (result.Success)
             {
                 _gameDirectory = result.GameDirectory;
-                StatusBox.Text = $"{result.Message}\n\nGame Directory: {result.GameDirectory ?? "удалён"}\nЖурнал: {result.LogPath ?? _installer.GetLatestLogPath(root) ?? "не создан"}";
-                ProgressLabel.Text = "Операция завершена";
-                if (operation == Operation.Install || operation == Operation.Repair)
-                    InstructionsBox.Text = LauncherProfile.GetManualInstructions(result.GameDirectory ?? _gameDirectory ?? root);
+                if (operation != Operation.Uninstall)
+                {
+                    filesInstalled = true;
+                    await ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token);
+                }
                 else
-                    InstructionsBox.Text = "Управляемые файлы удалены. Миры, снимки экрана и неизвестные пользовательские файлы сохранены.";
+                {
+                    filesRemoved = true;
+                    _launcher.RemoveOwnProfile();
+                    StateHeading.Text = "Сборка удалена";
+                    ProgressLabel.Text = "Операция завершена";
+                    StatusBox.Text = result.Message;
+                    InstructionsBox.Text = "Миры, снимки экрана и другие личные файлы сохранены, если они были в папке сборки.";
+                }
             }
             else
             {
-                StatusBox.Text = $"{result.Code}: {result.Message}\n\nGame Directory: {result.GameDirectory ?? "не изменён"}\nЖурнал: {result.LogPath ?? _installer.GetLatestLogPath(root) ?? "не создан"}";
+                StateHeading.Text = "Не удалось завершить операцию";
+                StatusBox.Text = $"{result.Code}: {result.Message}";
+                InstructionsBox.Text = $"Журнал: {result.LogPath ?? _installer.GetLatestLogPath(root) ?? "не создан"}";
                 ProgressLabel.Text = result.Code == "CANCELLED" ? "Операция отменена" : "Операция завершилась с ошибкой";
             }
         }
         catch (InstallerException ex)
         {
+            StateHeading.Text = filesRemoved ? "Файлы удалены, профиль остался" :
+                filesInstalled ? "Сборка есть, профиль ещё не готов" : "Нужен ещё один шаг";
             StatusBox.Text = $"{ex.Code}: {ex.Message}";
-            ProgressLabel.Text = "Операция не запущена";
+            InstructionsBox.Text = filesRemoved
+                ? "После устранения причины нажмите «Удалить сборку» ещё раз — останется убрать только профиль MinePack."
+                : filesInstalled
+                ? "Файлы сборки сохранены. После устранения причины нажмите «Настроить Launcher» — скачивать мод заново не потребуется."
+                : "Исправьте указанную причину и повторите действие.";
+            ProgressLabel.Text = "Операция не завершена";
         }
         catch (OperationCanceledException)
         {
-            StatusBox.Text = "Операция отменена.";
+            StateHeading.Text = "Операция отменена";
+            StatusBox.Text = filesInstalled
+                ? "Файлы сборки уже установлены, но профиль Launcher не настроен. Нажмите «Настроить Launcher», когда будете готовы."
+                : "Операция отменена.";
             ProgressLabel.Text = "Операция отменена";
         }
         catch (Exception ex)
         {
-            StatusBox.Text = $"Не удалось выполнить действие ({ex.GetType().Name}). Проверьте путь и откройте журнал диагностики.";
+            StateHeading.Text = filesRemoved ? "Файлы удалены, профиль остался" :
+                filesInstalled ? "Сборка есть, профиль ещё не готов" : "Не удалось завершить операцию";
+            StatusBox.Text = $"Не удалось выполнить действие ({ex.GetType().Name}). Проверьте права на папку и журнал диагностики.";
+            InstructionsBox.Text = filesRemoved
+                ? "Закройте Launcher и нажмите «Удалить сборку» ещё раз."
+                : filesInstalled
+                ? "Файлы сохранены. Нажмите «Настроить Launcher» после устранения причины."
+                : "Исправьте указанную причину и повторите действие.";
             ProgressLabel.Text = "Операция завершилась с ошибкой";
         }
         finally
@@ -134,19 +187,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Instructions_Click(object sender, RoutedEventArgs e)
+    private async Task ConfigureLauncherAsync(string gameDirectory, CancellationToken cancellationToken)
     {
-        try
-        {
-            var path = _gameDirectory ?? _installer.GetActiveInstancePath(Path.GetFullPath(InstallRootBox.Text));
-            InstructionsBox.Text = path is null
-                ? "Сначала установите тестовую сборку. После успешной установки здесь появятся точные ручные шаги настройки профиля и Game Directory."
-                : LauncherProfile.GetManualInstructions(path);
-        }
-        catch (Exception ex)
-        {
-            InstructionsBox.Text = $"Не удалось сформировать инструкцию ({ex.GetType().Name}). Проверьте корневую папку MinePack.";
-        }
+        ProgressLabel.Text = "Загрузка Fabric и создание отдельного профиля Launcher…";
+        await _launcher.ConfigureAsync(gameDirectory, cancellationToken);
+        StateHeading.Text = "Сборка готова";
+        ProgressLabel.Text = "Установка завершена";
+        StatusBox.Text = "Fabric, мод и отдельный профиль MinePack Test Pack установлены. Откройте официальный Minecraft Launcher, выберите этот профиль и нажмите «Играть».";
+        InstructionsBox.Text = $"Папка игры: {gameDirectory}\nПри первом запуске Launcher сам загрузит необходимые файлы Minecraft и библиотеки Fabric.";
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
@@ -207,7 +255,7 @@ public partial class MainWindow : Window
         RepairButton.IsEnabled = !busy;
         UninstallButton.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
-        InstructionsButton.IsEnabled = !busy;
+        RetryLauncherButton.IsEnabled = !busy;
         OpenFolderButton.IsEnabled = !busy;
         OpenLogButton.IsEnabled = !busy;
     }
@@ -216,8 +264,9 @@ public partial class MainWindow : Window
     {
         _operationCancellation?.Cancel();
         _installer.Dispose();
+        _launcher.Dispose();
         base.OnClosed(e);
     }
 
-    private enum Operation { Install, Repair, Uninstall }
+    private enum Operation { Install, Repair, Uninstall, ConfigureLauncher }
 }

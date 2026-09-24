@@ -53,13 +53,6 @@ public static class LauncherProfile
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
-    public static string GetManualInstructions(string gameDirectory) =>
-        $"Для запуска тестовой сборки выполните вручную:\n\n" +
-        $"1. Откройте официальный Fabric Installer и установите Fabric для Minecraft {TestPackRelease.MinecraftVersion} с Loader {TestPackRelease.FabricLoaderVersion}.\n" +
-        "2. В Minecraft Launcher откройте Installations и создайте НОВЫЙ отдельный профиль MinePack для установленной версии Fabric; не изменяйте существующие профили. Откройте More Options нового профиля.\n" +
-        $"3. В поле Game Directory укажите:\n{Path.GetFullPath(gameDirectory)}\n\n" +
-        "4. Сохраните профиль и запускайте сборку только с этим каталогом. Установщик не менял файлы профилей Launcher.";
-
     private static bool IsOurs(JsonObject profile) =>
         profile[MarkerName] is JsonValue marker && marker.TryGetValue<string>(out var value) && value == ProfileKey;
 }

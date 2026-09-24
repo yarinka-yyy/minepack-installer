@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using MinePack.Core;
 
 try
@@ -30,6 +31,7 @@ internal static class Smoke
             await VerifyArchiveMutationRejectedAsync(tempRoot);
             await VerifyInstallRepairAndUninstallAsync(tempRoot);
             VerifyLauncherFixture();
+            await VerifyAutomaticFabricProfileAsync(tempRoot);
             var liveCompleted = false;
             if (args.Contains("--live-pack", StringComparer.Ordinal))
             {
@@ -47,6 +49,10 @@ internal static class Smoke
                     Console.WriteLine($"NOT RUN: live release check stopped on an I/O restriction ({ex.GetType().Name}).");
                 }
             }
+            if (args.Contains("--live-fabric", StringComparer.Ordinal))
+                await VerifyOfficialFabricDownloadAsync(tempRoot);
+            if (args.Contains("--live-profile-copy", StringComparer.Ordinal))
+                await VerifyCurrentLauncherCopyAsync(tempRoot);
             Console.WriteLine(args.Contains("--live-pack", StringComparer.Ordinal) && !liveCompleted
                 ? "Deterministic smoke scenarios passed; live release check NOT RUN."
                 : "All smoke scenarios passed.");
@@ -359,6 +365,116 @@ internal static class Smoke
         }
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
         Pass("Launcher fixture changes only the marked profile and preserves other JSON fields");
+    }
+
+    private static async Task VerifyAutomaticFabricProfileAsync(string tempRoot)
+    {
+        var launcherRoot = Path.Combine(tempRoot, "launcher-fixture");
+        var gameDirectory = Path.Combine(tempRoot, "isolated-game");
+        Directory.CreateDirectory(launcherRoot);
+        var profilesPath = Path.Combine(launcherRoot, "launcher_profiles.json");
+        const string input = "{\"profiles\":{\"vanilla\":{\"name\":\"Original\",\"customField\":17}},\"settings\":{\"custom\":true}}";
+        File.WriteAllText(profilesPath, input);
+        const string versionId = "fabric-loader-0.19.5-26.3";
+        byte[] archive;
+        using (var memory = new MemoryStream())
+        {
+            using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                using (var writer = new StreamWriter(zip.CreateEntry($"{versionId}/{versionId}.json").Open()))
+                    writer.Write($"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"26.3\"}}");
+                zip.CreateEntry($"{versionId}/{versionId}.jar");
+            }
+            archive = memory.ToArray();
+        }
+
+        using var service = new FabricLauncherService(launcherRoot,
+            new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) }),
+            HashBytes(archive));
+        await service.ConfigureAsync(gameDirectory);
+        await service.ConfigureAsync(gameDirectory);
+        var version = Path.Combine(launcherRoot, "versions", versionId);
+        True(File.Exists(Path.Combine(version, versionId + ".json")), "Fabric version JSON installed");
+        True(File.Exists(Path.Combine(version, versionId + ".jar")), "Fabric version dummy JAR installed");
+        True(Directory.EnumerateFiles(launcherRoot, "launcher_profiles.json.minepack-*.bak").Any(),
+            "Launcher profile backup created");
+        using (var document = JsonDocument.Parse(File.ReadAllText(profilesPath)))
+        {
+            var root = document.RootElement;
+            True(root.GetProperty("settings").GetProperty("custom").GetBoolean(), "Launcher settings preserved");
+            Equal(17, root.GetProperty("profiles").GetProperty("vanilla").GetProperty("customField").GetInt32(), "vanilla profile preserved");
+            Equal(Path.GetFullPath(gameDirectory), root.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+                .GetProperty("gameDir").GetString(), "automatic profile uses isolated game directory");
+        }
+        service.RemoveOwnProfile();
+        using (var document = JsonDocument.Parse(File.ReadAllText(profilesPath)))
+            True(!document.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _), "only owned profile removed");
+
+        var badRoot = Path.Combine(tempRoot, "launcher-bad-hash");
+        Directory.CreateDirectory(badRoot);
+        var badProfiles = Path.Combine(badRoot, "launcher_profiles.json");
+        File.WriteAllText(badProfiles, input);
+        using var badService = new FabricLauncherService(badRoot,
+            new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) }),
+            HashBytes(Bytes("different")));
+        try { await badService.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected Fabric hash rejection."); }
+        catch (InstallerException ex) when (ex.Code == "FABRIC_HASH") { }
+        Equal(input, File.ReadAllText(badProfiles), "bad Fabric archive leaves Launcher profile untouched");
+
+        var conflictRoot = Path.Combine(tempRoot, "launcher-conflict");
+        Directory.CreateDirectory(conflictRoot);
+        const string conflict = "{\"profiles\":{\"minepack-test-pack\":{\"name\":\"Someone else's profile\"}}}";
+        var conflictProfiles = Path.Combine(conflictRoot, "launcher_profiles.json");
+        File.WriteAllText(conflictProfiles, conflict);
+        using var conflictService = new FabricLauncherService(conflictRoot,
+            new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) }),
+            HashBytes(archive));
+        try { await conflictService.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected Launcher conflict rejection."); }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
+        Equal(conflict, File.ReadAllText(conflictProfiles), "foreign profile preserved after conflict");
+        True(!Directory.Exists(Path.Combine(conflictRoot, "versions", versionId)), "new Fabric version rolled back after profile conflict");
+        Pass("automatic Fabric profile install is isolated, idempotent, removable, and hash-verified");
+    }
+
+    private static async Task VerifyOfficialFabricDownloadAsync(string tempRoot)
+    {
+        var launcherRoot = Path.Combine(tempRoot, "official-fabric-fixture");
+        Directory.CreateDirectory(launcherRoot);
+        var profilesPath = Path.Combine(launcherRoot, "launcher_profiles.json");
+        File.WriteAllText(profilesPath, "{\"profiles\":{\"vanilla\":{\"name\":\"Original\"}}}");
+        using var service = new FabricLauncherService(launcherRoot);
+        await service.ConfigureAsync(Path.Combine(tempRoot, "official-fabric-game"));
+        using var document = JsonDocument.Parse(File.ReadAllText(profilesPath));
+        True(document.RootElement.GetProperty("profiles").TryGetProperty("vanilla", out _), "official Fabric download keeps vanilla profile");
+        True(document.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _), "official Fabric download creates MinePack profile");
+        Pass("official Fabric profile ZIP downloads, verifies, and configures an isolated Launcher fixture");
+    }
+
+    private static async Task VerifyCurrentLauncherCopyAsync(string tempRoot)
+    {
+        var realRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+        var names = new[] { "launcher_profiles.json", "launcher_profiles_microsoft_store.json" };
+        var sourceFiles = names.Select(name => Path.Combine(realRoot, name)).Where(File.Exists).ToArray();
+        if (sourceFiles.Length != 1)
+        {
+            Console.WriteLine("NOT RUN: current Launcher has no unambiguous supported profile file.");
+            return;
+        }
+
+        var original = File.ReadAllBytes(sourceFiles[0]);
+        var launcherRoot = Path.Combine(tempRoot, "current-launcher-copy");
+        Directory.CreateDirectory(launcherRoot);
+        var copiedFile = Path.Combine(launcherRoot, Path.GetFileName(sourceFiles[0]));
+        File.WriteAllBytes(copiedFile, original);
+        using var service = new FabricLauncherService(launcherRoot);
+        await service.ConfigureAsync(Path.Combine(tempRoot, "current-launcher-copy-game"));
+        var before = JsonNode.Parse(original)!.AsObject();
+        var after = JsonNode.Parse(File.ReadAllBytes(copiedFile))!.AsObject();
+        before["profiles"]?.AsObject().Remove(LauncherProfile.ProfileKey);
+        after["profiles"]?.AsObject().Remove(LauncherProfile.ProfileKey);
+        True(JsonNode.DeepEquals(before, after), "current Launcher settings and other profiles stay unchanged in a copy");
+        True(File.ReadAllBytes(sourceFiles[0]).AsSpan().SequenceEqual(original), "actual Launcher profile file stays untouched");
+        Pass("current Launcher profile format accepts an isolated MinePack profile in a temporary copy");
     }
 
     private static string CreatePack(string path, string version, IReadOnlyList<TestFile> files,

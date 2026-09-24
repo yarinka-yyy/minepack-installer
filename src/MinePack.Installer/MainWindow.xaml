@@ -1,63 +1,123 @@
 <Window x:Class="MinePack.Installer.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MinePack Installer — тестовая сборка" Height="650" Width="780"
-        MinHeight="600" MinWidth="680" WindowStartupLocation="CenterScreen">
-    <Grid Margin="24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <StackPanel Grid.Row="0" Margin="0,0,0,18">
-            <TextBlock Text="MinePack Installer" FontSize="26" FontWeight="SemiBold" />
-            <TextBlock Text="Закреплённый тестовый релиз 0.1.0 · Minecraft 26.3 · Fabric Loader 0.19.5 · Fabric API 0.160.7+26.3"
-                       TextWrapping="Wrap" Margin="0,5,0,0" Foreground="#555555" />
-            <TextBlock Text="Отдельная папка игры. Vanilla .minecraft и данные аккаунта не изменяются установщиком."
-                       TextWrapping="Wrap" Margin="0,3,0,0" Foreground="#555555" />
+        Title="MinePack Installer" Width="850" Height="730" MinWidth="710" MinHeight="610"
+        WindowStartupLocation="CenterScreen" Background="#F4F7FB" Foreground="#172338"
+        FontFamily="Segoe UI" FontSize="14">
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#172338" />
+        </Style>
+        <Style x:Key="MutedText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#526176" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#DCE4EF" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="20" />
+        </Style>
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Background" Value="#EDF2F8" />
+            <Setter Property="Foreground" Value="#173453" />
+            <Setter Property="BorderBrush" Value="#D5DFEB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="17,10" />
+            <Setter Property="MinHeight" Value="42" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Surface" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Surface" Property="Opacity" Value="0.48" />
+                                <Setter Property="Cursor" Value="Arrow" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Surface" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="#F4F7FB">
+        <StackPanel Margin="30,20,30,20" MaxWidth="900">
+            <TextBlock Text="MINEPACK" Foreground="#1769C2" FontSize="12" FontWeight="Bold" />
+            <TextBlock Text="Ваша сборка Minecraft — в пару кликов" FontSize="27"
+                       FontWeight="SemiBold" Margin="0,5,0,5" TextWrapping="Wrap" />
+            <TextBlock Style="{StaticResource MutedText}"
+                       Text="Установщик загрузит тестовую сборку и Fabric, создаст отдельный профиль в официальном Launcher. Ваши миры и обычная игра останутся отдельно."
+                       Margin="0,0,0,16" />
+
+            <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Тестовый релиз 0.1.0" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,5,0,0"
+                               Text="Minecraft 26.3  •  Fabric Loader 0.19.5  •  Fabric API 0.160.7+26.3" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,7,0,0"
+                               Text="Пока это небольшая проверочная сборка. В ней один мод: Fabric API." />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,0,0,10">
+                <StackPanel>
+                    <TextBlock Text="Куда установить" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock Style="{StaticResource MutedText}" Margin="0,4,0,12"
+                               Text="Для сборки будет создана отдельная папка. Установщик не помещает моды в обычную .minecraft." />
+                    <DockPanel LastChildFill="True">
+                        <Button x:Name="BrowseButton" Content="Выбрать папку" Style="{StaticResource ActionButton}"
+                                DockPanel.Dock="Right" Margin="10,0,0,0" Click="Browse_Click" />
+                        <TextBox x:Name="InstallRootBox" MinHeight="42" VerticalContentAlignment="Center"
+                                 Padding="10,6" Background="White" Foreground="#172338" BorderBrush="#C4D1E0" />
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
+            <WrapPanel Margin="0,0,0,12">
+                <Button x:Name="InstallButton" Content="Установить сборку" Style="{StaticResource ActionButton}"
+                        Background="#1769C2" Foreground="White" BorderBrush="#1769C2"
+                        FontWeight="SemiBold" IsDefault="True" Margin="0,0,9,8" Click="Install_Click" />
+                <Button x:Name="RepairButton" Content="Проверить файлы" Style="{StaticResource ActionButton}"
+                        Margin="0,0,9,8" Click="Repair_Click" />
+                <Button x:Name="RetryLauncherButton" Content="Настроить Launcher" Style="{StaticResource ActionButton}"
+                        Margin="0,0,9,8" Click="Configure_Click" />
+                <Button x:Name="UninstallButton" Content="Удалить сборку" Style="{StaticResource ActionButton}"
+                        Margin="0,0,9,8" Click="Uninstall_Click" />
+                <Button x:Name="CancelButton" Content="Отмена" Style="{StaticResource ActionButton}"
+                        IsEnabled="False" Margin="0,0,0,8" Click="Cancel_Click" />
+            </WrapPanel>
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock x:Name="StateHeading" Text="Готово к установке" FontSize="17" FontWeight="SemiBold" />
+                    <ProgressBar x:Name="OperationProgress" Height="7" Minimum="0" Maximum="1"
+                                 Margin="0,14,0,8" Foreground="#1769C2" Background="#E5EDF6" />
+                    <TextBlock x:Name="ProgressLabel" Style="{StaticResource MutedText}" Text="Ожидание" />
+                    <TextBlock x:Name="StatusBox" Text="Нажмите «Установить сборку». Остальные шаги установщик выполнит сам."
+                               TextWrapping="Wrap" Margin="0,15,0,0" />
+                    <TextBlock x:Name="InstructionsBox" Style="{StaticResource MutedText}" Margin="0,7,0,0"
+                               Text="Перед установкой закройте Minecraft Launcher, если он сейчас открыт." />
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                        <Button x:Name="OpenFolderButton" Content="Открыть папку сборки"
+                                Style="{StaticResource ActionButton}" Margin="0,0,8,0" Click="OpenFolder_Click" />
+                        <Button x:Name="OpenLogButton" Content="Журнал" Style="{StaticResource ActionButton}"
+                                Click="OpenLog_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+            <TextBlock Style="{StaticResource MutedText}" FontSize="12" Margin="2,14,0,0"
+                       Text="Для игры нужен установленный официальный Minecraft Launcher и ваш аккаунт Minecraft Java Edition." />
         </StackPanel>
-
-        <StackPanel Grid.Row="1" Margin="0,0,0,16">
-            <TextBlock Text="Корневая папка данных MinePack" FontWeight="SemiBold" Margin="0,0,0,6" />
-            <DockPanel LastChildFill="True">
-                <Button x:Name="BrowseButton" Content="Обзор…" Width="90" Margin="8,0,0,0" DockPanel.Dock="Right" Click="Browse_Click" />
-                <TextBox x:Name="InstallRootBox" VerticalContentAlignment="Center" Padding="6" />
-            </DockPanel>
-            <TextBlock Text="Файлы будут храниться в versioned каталоге внутри instances. Удаление сохраняет миры и неизвестные файлы."
-                       TextWrapping="Wrap" Margin="0,5,0,0" FontSize="12" Foreground="#666666" />
-        </StackPanel>
-
-        <WrapPanel Grid.Row="2" Margin="0,0,0,14">
-            <Button x:Name="InstallButton" Content="Установить" MinWidth="112" Padding="12,7" Margin="0,0,8,0" Click="Install_Click" />
-            <Button x:Name="RepairButton" Content="Проверить / исправить" MinWidth="150" Padding="12,7" Margin="0,0,8,0" Click="Repair_Click" />
-            <Button x:Name="UninstallButton" Content="Удалить" MinWidth="90" Padding="12,7" Margin="0,0,8,0" Click="Uninstall_Click" />
-            <Button x:Name="CancelButton" Content="Отмена" MinWidth="82" Padding="12,7" IsEnabled="False" Click="Cancel_Click" />
-        </WrapPanel>
-
-        <StackPanel Grid.Row="3" Margin="0,0,0,12">
-            <ProgressBar x:Name="OperationProgress" Height="14" Minimum="0" Maximum="1" />
-            <TextBlock x:Name="ProgressLabel" Text="Ожидание операции" Margin="0,5,0,0" Foreground="#555555" />
-        </StackPanel>
-
-        <TextBox x:Name="StatusBox" Grid.Row="4" Height="88" Padding="8" IsReadOnly="True" TextWrapping="Wrap"
-                 VerticalScrollBarVisibility="Auto" AcceptsReturn="True" Text="Готово к установке закреплённого тестового релиза." />
-
-        <Border Grid.Row="5" Margin="0,14,0,0" Padding="10" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <TextBox x:Name="InstructionsBox" IsReadOnly="True" BorderThickness="0" Background="Transparent"
-                         TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Disabled"
-                         Text="После установки нажмите «Инструкция Launcher», чтобы создать или настроить профиль вручную. Автоматическая запись в профиль Launcher отключена: живая установка безопасно не подтверждена." />
-            </ScrollViewer>
-        </Border>
-
-        <WrapPanel Grid.Row="6" HorizontalAlignment="Right" Margin="0,14,0,0">
-            <Button x:Name="InstructionsButton" Content="Инструкция Launcher" Padding="12,7" Margin="0,0,8,0" Click="Instructions_Click" />
-            <Button x:Name="OpenFolderButton" Content="Открыть папку" Padding="12,7" Margin="0,0,8,0" Click="OpenFolder_Click" />
-            <Button x:Name="OpenLogButton" Content="Открыть журнал" Padding="12,7" Click="OpenLog_Click" />
-        </WrapPanel>
-    </Grid>
+    </ScrollViewer>
 </Window>

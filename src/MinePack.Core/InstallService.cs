@@ -121,7 +121,7 @@ public sealed class InstallService : IDisposable
             catch { }
             try { progress?.Report(new InstallProgress("complete", "Установка файлов завершена", total, total)); }
             catch { }
-            return new InstallResult(true, "OK", "Файлы тестовой сборки установлены. Профиль Launcher не менялся.", instancePath, _logPath);
+            return new InstallResult(true, "OK", "Файлы тестовой сборки установлены.", instancePath, _logPath);
         }
         catch (OperationCanceledException)
         {
