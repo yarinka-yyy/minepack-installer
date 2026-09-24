@@ -5,6 +5,11 @@ file = "config/iris.properties"
 hash = "ecdc47e26c1b274613251b8935d35c7225b4e1b12b7671388999dacd0f7178cb"
 
 [[files]]
+file = "mods/c2me.pw.toml"
+hash = "1e1770d1c2707473950f9a782ef19a5d1aa9a99ff1eccc92dfff8baf1c942840"
+metafile = true
+
+[[files]]
 file = "mods/chunky.pw.toml"
 hash = "8e4512056e448a6f3d1ac179961eb699c15fbe000284e0aee041b5971b417302"
 metafile = true

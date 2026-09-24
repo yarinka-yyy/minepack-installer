@@ -4,9 +4,9 @@ Windows WPF prototype for installing one pinned Fabric test pack into an isolate
 
 ## Запуск
 
-Откройте `artifacts/publish-0.3.0/MinePack.Installer.exe`, оставив рядом всю опубликованную папку `artifacts/publish-0.3.0`. Закройте Minecraft Launcher, нажмите **Установить сборку** и дождитесь сообщения **Сборка готова**. Установщик скачает закреплённые Fabric API, Iris, Sodium, Voxy, Chunky и Complementary Reimagined, проверит их, настроит шейдер и создаст отдельный профиль **MinePack Test Pack** с собственным Game Directory. Затем откройте официальный Minecraft Launcher, выберите этот профиль и нажмите **Играть**. Для первого запуска Launcher сам загрузит базовые файлы Minecraft и библиотеки Fabric; вход в аккаунт остаётся в официальном Launcher.
+Откройте `artifacts/publish-0.4.0/MinePack.Installer.exe`, оставив рядом всю опубликованную папку `artifacts/publish-0.4.0`. Закройте Minecraft Launcher, нажмите **Установить сборку** и дождитесь сообщения **Сборка готова**. Установщик скачает закреплённые Fabric API, Iris, Sodium, Voxy, Chunky, C2ME и Complementary Reimagined, проверит их, настроит шейдер и переключит профиль **MinePack Test Pack** на новый отдельный Game Directory. Предыдущая папка сборки `0.3.0` и её мир останутся на диске. Затем откройте официальный Minecraft Launcher, выберите этот профиль и нажмите **Играть**. Для первого запуска Launcher сам загрузит базовые файлы Minecraft и библиотеки Fabric; вход в аккаунт остаётся в официальном Launcher.
 
-Релиз `0.3.0` использует Minecraft `26.2`, потому что официального Voxy для `26.3` пока нет. Сначала создайте **новый мир 26.2**. Миры, уже сохранённые в `26.3`, не открывайте в `26.2`: переход на старую версию может повредить данные. Voxy показывает дальние области, которые уже были исследованы или импортированы. Для первого теста начните с обычной дальности 8–12 чанков и Voxy 64 чанка. В новом мире можно открыть чат и выполнить `/chunky radius 1024`, затем `/chunky start`, дождаться конца генерации и выполнить `/voxy import current`. Радиус Chunky задаётся в блоках: 1024 блока — это 64 чанка. C2ME в первом тесте нет: он ускоряет генерацию, но не требуется для работы Voxy и Chunky. Voxy требует OpenGL 4.6; частота кадров зависит от ПК, мира и настроек шейдера.
+Экспериментальный релиз `0.4.0` оставляет Minecraft `26.2` и все компоненты проверенного релиза `0.3.0`, добавляя только C2ME `0.4.2-alpha.0.52`. Создайте **новый мир 26.2 с записанным сидом**; прежний мир с уже сгенерированными чанками для сравнения времени не подходит. Выполните `/chunky radius 1024`, затем `/chunky start` и засеките время до завершения. После этого можно выполнить `/voxy import current`. Радиус Chunky задаётся в блоках: 1024 блока — это 64 чанка. Сравнение с прежними 2,5–3 минутами приблизительное: фоновые процессы и положение центра генерации могут отличаться. Миры `26.3` не открывайте в `26.2` без резервной копии. Voxy требует OpenGL 4.6; частота кадров зависит от ПК, мира и настроек шейдера.
 
 Если сборка скачалась, а профиль создать не удалось, исправьте причину в сообщении и нажмите **Настроить Launcher**. Повторная загрузка мода не требуется. По умолчанию данные сборки находятся в `%LOCALAPPDATA%\MinePack`.
 
@@ -31,13 +31,13 @@ dotnet build MinePack.slnx -c Release
 dotnet run --project tests/MinePack.Smoke -c Release
 dotnet run --project tests/MinePack.Smoke -c Release -- --live-fabric
 dotnet run --project tests/MinePack.Smoke -c Release -- --live-profile-copy
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.3.0
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.4.0
 ```
 
 The pinned Packwiz source is exported with the portable tool (run from `pack/test-pack`):
 
 ```powershell
-& 'C:\Users\Yarin\AppData\Local\Temp\minepack-tools\packwiz\packwiz.exe' --cache ../../artifacts/packwiz-cache modrinth export -o ../../releases/test-pack/test-pack-0.3.0.mrpack
+& 'C:\Users\Yarin\AppData\Local\Temp\minepack-tools\packwiz\packwiz.exe' --cache ../../artifacts/packwiz-cache modrinth export -o ../../releases/test-pack/test-pack-0.4.0.mrpack
 ```
 
 ## Pack and Fabric tools
@@ -45,6 +45,6 @@ The pinned Packwiz source is exported with the portable tool (run from `pack/tes
 - Packwiz: portable executable from the official Packwiz GitHub Actions run `34043101039`, source revision `ef87d964f8cbd52b3b13ea42453ef322290e2b9e`; downloaded ZIP SHA-256 `C59CD1AB7B8FB6A09CD00CC9BECBCA5467731CA2DA37C14E8166CFE360FCB31E`. It is kept outside this repository and invoked by full path.
 - Fabric Installer CLI `1.1.2` was inspected during research, but the application uses the official Fabric Meta API profile ZIP directly. The pinned ZIP SHA-512 is in `FabricLauncherService.cs`; the installer verifies it before touching Launcher files.
 
-The test pack is intentionally small and pinned: Minecraft `26.2`, Fabric Loader `0.19.5`, Fabric API, Iris, Sodium, Voxy, Chunky, and Complementary Reimagined. Its exact Modrinth project/version IDs, source URLs, hashes, and `.mrpack` SHA-512 are recorded in `releases/test-pack/README.md`. No mod JAR or shader ZIP is redistributed in the app.
+The test pack is intentionally small and pinned: Minecraft `26.2`, Fabric Loader `0.19.5`, Fabric API, Iris, Sodium, Voxy, Chunky, C2ME, and Complementary Reimagined. Its exact Modrinth project/version IDs, source URLs, hashes, and `.mrpack` SHA-512 are recorded in `releases/test-pack/README.md`. No mod JAR or shader ZIP is redistributed in the app.
 
 Install stages and verifies files before marking the instance active. Repair checks managed files and reconfigures the MinePack profile; uninstall removes managed files and only that profile, preserving worlds, screenshots, unknown user data, and shared Fabric versions. If the profile cannot be removed after the pack files, **Удалить сборку** can be run again to remove only the remaining MinePack profile. Launcher profile changes require the Launcher to be closed. The installer handles one detected official profile file (`launcher_profiles.json` or `launcher_profiles_microsoft_store.json`); if both are present, it stops instead of guessing. The live Launcher and gameplay still need a manual acceptance run. Automated checks use isolated profile fixtures and never write to the user's Launcher.

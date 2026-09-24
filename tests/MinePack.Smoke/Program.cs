@@ -107,11 +107,12 @@ internal static class Smoke
         Equal(TestPackRelease.PackVersion, pack.VersionId, "pinned release version");
         Equal(TestPackRelease.MinecraftVersion, pack.MinecraftVersion, "pinned Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, pack.FabricLoaderVersion, "pinned Fabric Loader version");
-        True(pack.Files.Count == 6 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
+        True(pack.Files.Count == 7 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
              pack.Files.Any(file => file.Path == "mods/voxy-0.2.19-beta.jar") &&
              pack.Files.Any(file => file.Path == "mods/Chunky-Fabric-1.5.3.jar") &&
+             pack.Files.Any(file => file.Path == "mods/c2me-fabric-mc26.2-0.4.2-alpha.0.52.jar") &&
              pack.Overrides.Any(file => file.Path == "config/iris.properties"),
-            "pinned release includes Fabric API, Iris, Sodium, Reimagined, Voxy, Chunky, and Iris selection");
+            "pinned release includes Fabric API, Iris, Sodium, Reimagined, Voxy, Chunky, C2ME, and Iris selection");
         True(pack.Files.All(file => file.Sha512.Length == 128 && file.Sha512.All(Uri.IsHexDigit) &&
                                    file.Downloads.All(uri => uri.Scheme == Uri.UriSchemeHttps && uri.Host == "cdn.modrinth.com")),
             "pinned release hashes and URLs are valid");
@@ -388,13 +389,13 @@ internal static class Smoke
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
 
         var oldInstance = Path.Combine(tempRoot, "owned-instance", "instances",
-            "test-pack-0.2.0-" + TestPackRelease.PreviousArtifactSha512[..12].ToLowerInvariant());
+            "test-pack-0.3.0-" + TestPackRelease.VoxyArtifactSha512[..12].ToLowerInvariant());
         new InstallationManifest
         {
-            PackVersion = "0.2.0",
-            MinecraftVersion = "26.3",
+            PackVersion = "0.3.0",
+            MinecraftVersion = "26.2",
             FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
-            PackArchiveSha512 = TestPackRelease.PreviousArtifactSha512
+            PackArchiveSha512 = TestPackRelease.VoxyArtifactSha512
         }.SaveAtomic(oldInstance);
         string ProfileWithoutMarker(string gameDir) => JsonSerializer.Serialize(new
         {
@@ -403,7 +404,7 @@ internal static class Smoke
                 [LauncherProfile.ProfileKey] = new
                 {
                     name = "MinePack Test Pack", type = "custom",
-                    lastVersionId = "fabric-loader-0.19.5-26.3", gameDir
+                    lastVersionId = "fabric-loader-0.19.5-26.2", gameDir
                 }
             }
         });

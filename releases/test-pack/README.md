@@ -1,5 +1,11 @@
 # Test pack releases
 
+## 0.4.0 — C2ME comparison test
+
+Pinned Minecraft `26.2` and Fabric Loader `0.19.5`. This is a separate versioned instance with the exact `0.3.0` file set plus one mod: [C2ME `0.4.2-alpha.0.52+26.2`](https://modrinth.com/mod/c2me-fabric/version/LmKTn6Yc), project `VSNURh3q`, version `LmKTn6Yc`, file `c2me-fabric-mc26.2-0.4.2-alpha.0.52.jar`. Modrinth reports no additional external dependencies; the JAR bundles its internal modules and declares Fabric Loader `>=0.18.3`, Java `>=25`, and Minecraft `>1.21.11`. The selected loader `0.19.5` and Minecraft `26.2` satisfy those constraints. Its declared conflicts (`tic_tacs`, `optifabric`) are absent from this pack. C2ME is an alpha release, so this pack is experimental until a clean Minecraft launch and Chunky run are checked on the target PC.
+
+Create a new world with the same recorded seed; do not reuse a world that Chunky has already generated. Run `/chunky radius 1024` and `/chunky start`, and compare the completion time with the `0.3.0` baseline of roughly 2.5–3 minutes. This is a practical comparison, not a controlled benchmark: world spawn, background load, and generation order can differ. The `0.3.0` archive and installed instance remain available separately. Release SHA-512: `04483AB2F7996049C7962C5ADB835499DD1B05C36BBCA9EFBE36F3071B7685136EE56C51ECF55FEA0FCC94C3CB4F33AE48ED1DD4351CAF40D01A39B157A02D90`.
+
 ## 0.3.0 — Voxy and Chunky test
 
 Pinned Minecraft `26.2` and Fabric Loader `0.19.5`. This is a separate versioned release; the `0.2.0` artifact remains available. The `.mrpack` downloads six exact files from Modrinth CDN and verifies SHA-512.
@@ -13,7 +19,7 @@ Pinned Minecraft `26.2` and Fabric Loader `0.19.5`. This is a separate versioned
 | Chunky 1.5.3 | `fALzjamp` / `4Eotm6ov` | `Chunky-Fabric-1.5.3.jar` |
 | Complementary Reimagined r5.9.3 | `HVnmMxH1` / `Bqen1mJX` | `ComplementaryReimagined_r5.9.3.zip` |
 
-Iris and Voxy both require this exact Sodium version in Modrinth metadata. Fabric API is required by Voxy and Chunky. Chunky is included for optional pre-generation of a new world; C2ME is not required and is deferred until the basic stack is tested. Complementary Reimagined contains Voxy integration code, but live shader rendering and FPS must be checked in Minecraft. Voxy requires OpenGL 4.6. Release SHA-512: `9B50156730A5A17E264B4EA0B5AD0BE594CF426CB46BB54D4AF16E4960F1B55222B7F22C873135BBDF79E9BE8C05B069C0D44396DDD8DD8A77A5D649DBE57E84`.
+Iris and Voxy both require this exact Sodium version in Modrinth metadata. Fabric API is required by Voxy and Chunky. Chunky is included for optional pre-generation of a new world; C2ME is not required and was deferred until the basic stack was tested. The user confirmed an in-game run of Voxy, Chunky, and the shader with good FPS; Chunky completed a 1024-block radius in roughly 2.5–3 minutes. Voxy requires OpenGL 4.6. Release SHA-512: `9B50156730A5A17E264B4EA0B5AD0BE594CF426CB46BB54D4AF16E4960F1B55222B7F22C873135BBDF79E9BE8C05B069C0D44396DDD8DD8A77A5D649DBE57E84`.
 
 ## 0.2.0 — Complementary Reimagined test
 

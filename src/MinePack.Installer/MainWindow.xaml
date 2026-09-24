@@ -62,11 +62,11 @@
 
             <Border Style="{StaticResource Card}" Margin="0,0,0,10">
                 <StackPanel>
-                    <TextBlock Text="Тестовый релиз 0.3.0 — Voxy" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock Text="Тестовый релиз 0.4.0 — C2ME" FontSize="17" FontWeight="SemiBold" />
                     <TextBlock Style="{StaticResource MutedText}" Margin="0,5,0,0"
                                Text="Minecraft 26.2  •  Fabric Loader 0.19.5  •  Fabric API 0.161.0+26.2" />
                     <TextBlock Style="{StaticResource MutedText}" Margin="0,7,0,0"
-                               Text="Voxy, Chunky, Iris, Sodium и Complementary Reimagined. Шейдер включится при первом запуске. Для Voxy нужен OpenGL 4.6." />
+                               Text="К проверенной сборке с Voxy и Chunky добавлен C2ME. Для сравнения создайте новый мир с прежним сидом. Шейдер включится при первом запуске." />
                 </StackPanel>
             </Border>
 

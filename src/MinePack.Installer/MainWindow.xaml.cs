@@ -151,6 +151,7 @@ public partial class MainWindow : Window
                 var (installedPackPath, installedPackHash) = installedVersion switch
                 {
                     TestPackRelease.PackVersion => (PackPath, TestPackRelease.ArtifactSha512),
+                    "0.3.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VoxyArtifactFileName), TestPackRelease.VoxyArtifactSha512),
                     "0.2.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PreviousArtifactFileName), TestPackRelease.PreviousArtifactSha512),
                     "0.1.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LegacyArtifactFileName), TestPackRelease.LegacyArtifactSha512),
                     _ => throw new InstallerException("RELEASE_UNKNOWN", "Для этой установленной версии в приложении нет закреплённого архива.")
@@ -265,10 +266,12 @@ public partial class MainWindow : Window
         StateHeading.Text = "Сборка готова";
         ProgressLabel.Text = "Установка завершена";
         StatusBox.Text = version == TestPackRelease.PackVersion
-            ? "Fabric, Voxy, Chunky, Iris, Sodium и Complementary Reimagined установлены. Откройте официальный Minecraft Launcher, выберите MinePack Test Pack и нажмите «Играть»."
-            : "Прежняя тестовая сборка и её профиль готовы. Для Voxy нажмите «Установить сборку».";
+            ? "Fabric, Voxy, Chunky, C2ME, Iris, Sodium и Complementary Reimagined установлены. Откройте официальный Minecraft Launcher, выберите MinePack Test Pack и нажмите «Играть»."
+            : version == "0.3.0"
+                ? "Проверенная сборка с Voxy и Chunky готова. Для отдельного теста C2ME нажмите «Установить сборку»."
+                : "Прежняя тестовая сборка и её профиль готовы. Для Voxy нажмите «Установить сборку».";
         InstructionsBox.Text = version == TestPackRelease.PackVersion
-            ? $"Папка игры: {gameDirectory}\nСоздайте новый мир 26.2. Начните с обычной дальности 8–12 и Voxy 64 чанка. Voxy запоминает местность при исследовании; для предварительной генерации используйте в чате /chunky radius 1024, затем /chunky start, дождитесь завершения и выполните /voxy import current."
+            ? $"Папка игры: {gameDirectory}\nДля сравнения создайте новый мир 26.2 с записанным сидом. В том же месте выполните /chunky radius 1024, затем /chunky start и замерьте время до завершения. После этого можно выполнить /voxy import current. Старый мир и сборка 0.3.0 сохранены отдельно."
             : $"Папка игры: {gameDirectory}\nПри первом запуске Launcher сам загрузит необходимые файлы Minecraft и библиотеки Fabric.";
     }
 
