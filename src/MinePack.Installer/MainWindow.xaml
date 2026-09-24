@@ -1,0 +1,63 @@
+<Window x:Class="MinePack.Installer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MinePack Installer — тестовая сборка" Height="650" Width="780"
+        MinHeight="600" MinWidth="680" WindowStartupLocation="CenterScreen">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock Text="MinePack Installer" FontSize="26" FontWeight="SemiBold" />
+            <TextBlock Text="Закреплённый тестовый релиз 0.1.0 · Minecraft 26.3 · Fabric Loader 0.19.5 · Fabric API 0.160.7+26.3"
+                       TextWrapping="Wrap" Margin="0,5,0,0" Foreground="#555555" />
+            <TextBlock Text="Отдельная папка игры. Vanilla .minecraft и данные аккаунта не изменяются установщиком."
+                       TextWrapping="Wrap" Margin="0,3,0,0" Foreground="#555555" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,0,0,16">
+            <TextBlock Text="Корневая папка данных MinePack" FontWeight="SemiBold" Margin="0,0,0,6" />
+            <DockPanel LastChildFill="True">
+                <Button x:Name="BrowseButton" Content="Обзор…" Width="90" Margin="8,0,0,0" DockPanel.Dock="Right" Click="Browse_Click" />
+                <TextBox x:Name="InstallRootBox" VerticalContentAlignment="Center" Padding="6" />
+            </DockPanel>
+            <TextBlock Text="Файлы будут храниться в versioned каталоге внутри instances. Удаление сохраняет миры и неизвестные файлы."
+                       TextWrapping="Wrap" Margin="0,5,0,0" FontSize="12" Foreground="#666666" />
+        </StackPanel>
+
+        <WrapPanel Grid.Row="2" Margin="0,0,0,14">
+            <Button x:Name="InstallButton" Content="Установить" MinWidth="112" Padding="12,7" Margin="0,0,8,0" Click="Install_Click" />
+            <Button x:Name="RepairButton" Content="Проверить / исправить" MinWidth="150" Padding="12,7" Margin="0,0,8,0" Click="Repair_Click" />
+            <Button x:Name="UninstallButton" Content="Удалить" MinWidth="90" Padding="12,7" Margin="0,0,8,0" Click="Uninstall_Click" />
+            <Button x:Name="CancelButton" Content="Отмена" MinWidth="82" Padding="12,7" IsEnabled="False" Click="Cancel_Click" />
+        </WrapPanel>
+
+        <StackPanel Grid.Row="3" Margin="0,0,0,12">
+            <ProgressBar x:Name="OperationProgress" Height="14" Minimum="0" Maximum="1" />
+            <TextBlock x:Name="ProgressLabel" Text="Ожидание операции" Margin="0,5,0,0" Foreground="#555555" />
+        </StackPanel>
+
+        <TextBox x:Name="StatusBox" Grid.Row="4" Height="88" Padding="8" IsReadOnly="True" TextWrapping="Wrap"
+                 VerticalScrollBarVisibility="Auto" AcceptsReturn="True" Text="Готово к установке закреплённого тестового релиза." />
+
+        <Border Grid.Row="5" Margin="0,14,0,0" Padding="10" BorderBrush="#CCCCCC" BorderThickness="1" CornerRadius="4">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TextBox x:Name="InstructionsBox" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                         TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Disabled"
+                         Text="После установки нажмите «Инструкция Launcher», чтобы создать или настроить профиль вручную. Автоматическая запись в профиль Launcher отключена: живая установка безопасно не подтверждена." />
+            </ScrollViewer>
+        </Border>
+
+        <WrapPanel Grid.Row="6" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button x:Name="InstructionsButton" Content="Инструкция Launcher" Padding="12,7" Margin="0,0,8,0" Click="Instructions_Click" />
+            <Button x:Name="OpenFolderButton" Content="Открыть папку" Padding="12,7" Margin="0,0,8,0" Click="OpenFolder_Click" />
+            <Button x:Name="OpenLogButton" Content="Открыть журнал" Padding="12,7" Click="OpenLog_Click" />
+        </WrapPanel>
+    </Grid>
+</Window>

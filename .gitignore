@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+/artifacts/
+/logs/
+/staging/
+/.vs/
+*.log
+*.user
+*.suo

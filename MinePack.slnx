@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MinePack.Core/MinePack.Core.csproj" />
+    <Project Path="src/MinePack.Installer/MinePack.Installer.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MinePack.Smoke/MinePack.Smoke.csproj" />
+  </Folder>
+</Solution>
