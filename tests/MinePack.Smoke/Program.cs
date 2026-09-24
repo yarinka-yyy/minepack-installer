@@ -117,7 +117,7 @@ internal static class Smoke
             "MossyLib-1.6.0+26.2+fabric.jar", "cloth-config-26.2.155.jar",
             "ferritecore-9.0.0-fabric.jar"
         };
-        True(pack.Files.Count == 34 && !pack.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
+        True(pack.Files.Count == 35 && !pack.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
              pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
              pack.Files.Any(file => file.Path == "mods/voxy-0.2.19-beta.jar") &&
              pack.Files.Any(file => file.Path == "mods/Chunky-Fabric-1.5.3.jar") &&
@@ -126,6 +126,7 @@ internal static class Smoke
              pack.Files.Any(file => file.Path == "mods/explosive-enhancement-1.4.2-26.2.jar") &&
              pack.Files.Any(file => file.Path == "mods/entity_model_features-3.3.8-26.2-fabric.jar") &&
              pack.Files.Any(file => file.Path == "mods/entity_texture_features-7.2.4-26.2-fabric.jar") &&
+             pack.Files.Any(file => file.Path == "mods/punchy-2.8a-fabric-26.2.jar") &&
              pack.Files.Any(file => file.Path == "mods/PuzzlesLib-v26.2.4-mc26.2.x-Fabric.jar") &&
              pack.Files.Any(file => file.Path == "mods/ForgeConfigAPIPort-v26.2.1-mc26.2.x-Fabric.jar") &&
              addedMods.All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
@@ -343,7 +344,7 @@ internal static class Smoke
                 $"actual release managed file hash {file.Path}");
         }
         var optionsPath = Path.Combine(instance, "options.txt");
-        var expectedPacks = new[] { "vanilla" }.Concat(TestPackRelease.InitialResourcePacks.Select(name => "file/" + name));
+        var expectedPacks = new[] { "vanilla" }.Concat(TestPackRelease.InitialResourcePacks.Select(name => "file/" + name)).Append("punchy:punchy");
         True(File.ReadAllText(optionsPath).Contains("resourcePacks:" + JsonSerializer.Serialize(expectedPacks), StringComparison.Ordinal),
             "all resource packs are selected on first launch in the pinned order");
         var bbeConfigPath = Path.Combine(instance, "config", "BBEConfig.json");
@@ -427,13 +428,13 @@ internal static class Smoke
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
 
         var oldInstance = Path.Combine(tempRoot, "owned-instance", "instances",
-            "test-pack-0.3.0-" + TestPackRelease.VoxyArtifactSha512[..12].ToLowerInvariant());
+            "test-pack-0.7.0-" + TestPackRelease.GraphicsArtifactSha512[..12].ToLowerInvariant());
         new InstallationManifest
         {
-            PackVersion = "0.3.0",
+            PackVersion = "0.7.0",
             MinecraftVersion = "26.2",
             FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
-            PackArchiveSha512 = TestPackRelease.VoxyArtifactSha512
+            PackArchiveSha512 = TestPackRelease.GraphicsArtifactSha512
         }.SaveAtomic(oldInstance);
         string ProfileWithoutMarker(string gameDir) => JsonSerializer.Serialize(new
         {

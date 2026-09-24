@@ -1,5 +1,15 @@
 # Test pack releases
 
+## 0.8.0 — Punchy! first-person animation candidate
+
+Minecraft `26.2`, Fabric Loader `0.19.5`. Preserves all 34 files from the user-tested `0.7.0` pack and adds [Punchy! 2.8a for Fabric 26.2](https://modrinth.com/mod/punchy-fpa/version/QShDZDjS): Modrinth project `8aoMKplv`, version `QShDZDjS`, file `mods/punchy-2.8a-fabric-26.2.jar`. The JAR declares Fabric Loader `>=0.19.3`, Java `>=25`, Minecraft `26.2`, and Fabric API; the pinned pack meets these requirements. No additional external dependency or declared hard break targets an existing mod. The JAR is downloaded from Modrinth CDN with SHA-512 verification, not embedded in the installer.
+
+Punchy's JAR includes a resource pack `punchy:punchy` with animation data. The installer selects it in a new instance's `options.txt` after the eight file resource packs; Repair and Uninstall preserve later user choices. Fresh Animations and Extensions in this pack supply mob models and do not include the separate player extension. Punchy contains optional Iris rendering hooks. The existing BBE chest and shulker optimizations remain disabled for the Fresh Animations models.
+
+There is an [open report](https://github.com/Traben-0/Entity_Model_Features/issues/542) of displaced mob limbs with Punchy, EMF 3.2.4, and Fresh Animations on Minecraft 1.21.1. The Punchy 2.5 [release notes](https://www.curseforge.com/minecraft/mc-mods/punchy/files/7984365) claim a fix for that combination, but the report was filed later and does not establish whether the current 26.2 versions are affected. Inspect mobs in game before treating this candidate as validated. [Grim AntiCheat](https://github.com/GrimAnticheat/Grim/wiki/Known-incompatible-client-mods) lists Punchy as incompatible on servers using Grim because attack/mining packet order can trigger checks; this is a multiplayer limitation outside the local mod stack.
+
+The installer installed and hash-verified all 35 files in a clean temporary instance, then verified Repair and Uninstall. Minecraft launch, animation visuals, shader interaction, multiplayer compatibility, and FPS require user testing. Release SHA-512: `F191D98E2E87C6CB1B75274471B28535C2D717F795A6A1B94C2BE3F5015F9069AF5BB7AFA2A55FD0AFA0866656506F82E48C36FC00A38AE7580324E859DBAA38`.
+
 ## 0.7.0 — GUI, sound, vegetation, and optimization candidate
 
 Minecraft `26.2`, Fabric Loader `0.19.5`. Based on `0.6.0`, with Smooth Swapping `0.9.10` removed after the user reported that it did not work in game. Its cause was not investigated. All other `0.6.0` components remain. Five pinned files were added:

@@ -4,9 +4,9 @@ Windows WPF prototype for installing one pinned Fabric test pack into an isolate
 
 ## Запуск
 
-Откройте `artifacts/publish-0.7.0/MinePack.Installer.exe`, оставив рядом всю папку `artifacts/publish-0.7.0`. Закройте Minecraft Launcher, нажмите **Установить сборку** и дождитесь сообщения **Сборка готова**. Установщик скачает закреплённые моды, шейдер и ресурспаки, проверит их и переключит **MinePack Test Pack** на новый отдельный Game Directory. Предыдущая папка сборки `0.6.0` и её мир останутся на диске. Затем откройте официальный Minecraft Launcher, выберите этот профиль и нажмите **Играть**. Для первого запуска Launcher сам загрузит базовые файлы Minecraft и библиотеки Fabric; вход в аккаунт остаётся в официальном Launcher.
+Откройте `artifacts/publish-0.8.0/MinePack.Installer.exe`, оставив рядом всю папку `artifacts/publish-0.8.0`. Закройте Minecraft Launcher, нажмите **Установить сборку** и дождитесь сообщения **Сборка готова**. Установщик скачает закреплённые моды, шейдер и ресурспаки, проверит их и переключит **MinePack Test Pack** на новый отдельный Game Directory. Предыдущая папка сборки `0.7.0` и её мир останутся на диске. Затем откройте официальный Minecraft Launcher, выберите этот профиль и нажмите **Играть**. Для первого запуска Launcher сам загрузит базовые файлы Minecraft и библиотеки Fabric; вход в аккаунт остаётся в официальном Launcher.
 
-Тестовый кандидат `0.7.0` остаётся на Minecraft `26.2`. По результатам игрового теста `0.6.0` удалён неработающий Smooth Swapping; остальные прежние компоненты сохранены. Добавлены Os' Colorful Grasses (Mix), GUI Retextures (тёмный вариант по умолчанию), Better Click Sounds, ImmediatelyFast и FerriteCore. При первом запуске восемь ресурспаков включаются автоматически; настройки пользователя при Repair не перезаписываются. Проверьте траву, GUI, клики, шейдер, анимации и FPS. Игровой тест `0.7.0` ещё нужен. Миры `26.3` не открывайте в `26.2` без резервной копии.
+Тестовый кандидат `0.8.0` остаётся на Minecraft `26.2` и сохраняет все компоненты проверенной вами сборки `0.7.0`. Добавлен Punchy! `2.8a` с анимациями от первого лица; его встроенный ресурспак включается в новом профиле вместе с прежними восемью. При Repair выбор ресурспаков игрока не перезаписывается. Проверьте движения рук с мечом и топором, еду, добычу блоков, сундуки, мобов с Fresh Animations и шейдер. Игровая проверка `0.8.0` ещё нужна. Миры `26.3` не открывайте в `26.2` без резервной копии.
 
 Если сборка скачалась, а профиль создать не удалось, исправьте причину в сообщении и нажмите **Настроить Launcher**. Повторная загрузка мода не требуется. По умолчанию данные сборки находятся в `%LOCALAPPDATA%\MinePack`.
 
@@ -31,13 +31,13 @@ dotnet build MinePack.slnx -c Release
 dotnet run --project tests/MinePack.Smoke -c Release
 dotnet run --project tests/MinePack.Smoke -c Release -- --live-fabric
 dotnet run --project tests/MinePack.Smoke -c Release -- --live-profile-copy
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.7.0
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.8.0
 ```
 
 The pinned Packwiz source is exported with the portable tool (run from `pack/test-pack`):
 
 ```powershell
-& 'C:\Users\Yarin\AppData\Local\Temp\minepack-tools\packwiz\packwiz.exe' --cache ../../artifacts/packwiz-cache modrinth export -o ../../releases/test-pack/test-pack-0.7.0.mrpack
+& 'C:\Users\Yarin\AppData\Local\Temp\minepack-tools\packwiz\packwiz.exe' --cache ../../artifacts/packwiz-cache modrinth export -o ../../releases/test-pack/test-pack-0.8.0.mrpack
 ```
 
 ## Pack and Fabric tools

@@ -110,6 +110,11 @@ hash = "cb97138eae13d3b0069f1705ec0e9da41a2bf5ec2114ce8b9b17909186efe738"
 metafile = true
 
 [[files]]
+file = "mods/punchy-fpa.pw.toml"
+hash = "79b634b8f820bdf3c12c59b5542bd6ae69f7dd9f76380ed8893cfb0ccc9abf52"
+metafile = true
+
+[[files]]
 file = "mods/puzzles-lib.pw.toml"
 hash = "5587d752a3b30750512779e21e0a5eb400d0657593d9ba8c392e157ec74c251c"
 metafile = true

@@ -112,7 +112,7 @@ public sealed class InstallService : IDisposable
                 if (resourcePacks.Any(name => !manifest.Files.Any(file =>
                     file.Path.Equals("resourcepacks/" + name, StringComparison.OrdinalIgnoreCase))))
                     throw new InstallerException("PACK_INVALID", "В тестовом релизе отсутствует обязательный ресурспак.");
-                var selected = new[] { "vanilla" }.Concat(resourcePacks.Select(name => "file/" + name));
+                var selected = new[] { "vanilla" }.Concat(resourcePacks.Select(name => "file/" + name)).Append("punchy:punchy");
                 await File.WriteAllTextAsync(Path.Combine(stagingRoot, "options.txt"),
                     "resourcePacks:" + JsonSerializer.Serialize(selected) + Environment.NewLine +
                     "incompatibleResourcePacks:[]" + Environment.NewLine, cancellationToken);
