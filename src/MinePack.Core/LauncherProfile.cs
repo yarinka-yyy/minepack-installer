@@ -65,7 +65,6 @@ public static class LauncherProfile
         static string? Text(JsonNode? node) =>
             node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
         if (Text(profile["name"]) != "MinePack Test Pack" || Text(profile["type"]) != "custom" ||
-            Text(profile["lastVersionId"]) != $"fabric-loader-{TestPackRelease.FabricLoaderVersion}-{TestPackRelease.MinecraftVersion}" ||
             Text(profile["gameDir"]) is not { } gameDir)
             return false;
 
@@ -81,13 +80,17 @@ public static class LauncherProfile
             var expectedHash = manifest.PackVersion switch
             {
                 "0.1.0" => TestPackRelease.LegacyArtifactSha512,
+                "0.2.0" => TestPackRelease.PreviousArtifactSha512,
                 TestPackRelease.PackVersion => TestPackRelease.ArtifactSha512,
                 _ => null
             };
+            var expectedMinecraftVersion = manifest.PackVersion == TestPackRelease.PackVersion
+                ? TestPackRelease.MinecraftVersion : "26.3";
             return expectedHash is not null &&
                    manifest.PackArchiveSha512.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) &&
-                   manifest.MinecraftVersion == TestPackRelease.MinecraftVersion &&
+                   manifest.MinecraftVersion == expectedMinecraftVersion &&
                    manifest.FabricLoaderVersion == TestPackRelease.FabricLoaderVersion &&
+                   Text(profile["lastVersionId"]) == $"fabric-loader-{manifest.FabricLoaderVersion}-{manifest.MinecraftVersion}" &&
                    Path.GetFileName(path).Equals($"test-pack-{manifest.PackVersion}-{expectedHash[..12].ToLowerInvariant()}", StringComparison.OrdinalIgnoreCase);
         }
         catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)

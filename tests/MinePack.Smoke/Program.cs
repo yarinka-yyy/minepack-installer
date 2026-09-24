@@ -107,9 +107,11 @@ internal static class Smoke
         Equal(TestPackRelease.PackVersion, pack.VersionId, "pinned release version");
         Equal(TestPackRelease.MinecraftVersion, pack.MinecraftVersion, "pinned Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, pack.FabricLoaderVersion, "pinned Fabric Loader version");
-        True(pack.Files.Count == 4 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
+        True(pack.Files.Count == 6 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
+             pack.Files.Any(file => file.Path == "mods/voxy-0.2.19-beta.jar") &&
+             pack.Files.Any(file => file.Path == "mods/Chunky-Fabric-1.5.3.jar") &&
              pack.Overrides.Any(file => file.Path == "config/iris.properties"),
-            "pinned release includes Fabric API, Iris, Sodium, Reimagined, and Iris selection");
+            "pinned release includes Fabric API, Iris, Sodium, Reimagined, Voxy, Chunky, and Iris selection");
         True(pack.Files.All(file => file.Sha512.Length == 128 && file.Sha512.All(Uri.IsHexDigit) &&
                                    file.Downloads.All(uri => uri.Scheme == Uri.UriSchemeHttps && uri.Host == "cdn.modrinth.com")),
             "pinned release hashes and URLs are valid");
@@ -364,7 +366,7 @@ internal static class Smoke
     private static void VerifyLauncherFixture(string tempRoot)
     {
         const string input = "{\"settings\":{\"custom\":true},\"profiles\":{\"vanilla\":{\"name\":\"Existing\",\"customField\":17}}}";
-        var candidate = LauncherProfile.BuildFixtureCandidate(input, Path.Combine(Path.GetTempPath(), "minepack-game"), "26.3", "0.19.5");
+        var candidate = LauncherProfile.BuildFixtureCandidate(input, Path.Combine(Path.GetTempPath(), "minepack-game"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
         using var added = JsonDocument.Parse(candidate);
         var root = added.RootElement;
         True(root.GetProperty("settings").GetProperty("custom").GetBoolean(), "unknown root Launcher fields are preserved");
@@ -380,19 +382,19 @@ internal static class Smoke
         const string conflict = "{\"profiles\":{\"minepack-test-pack\":{\"name\":\"Someone else's profile\"}}}";
         try
         {
-            _ = LauncherProfile.BuildFixtureCandidate(conflict, Path.GetTempPath(), "26.3", "0.19.5");
+            _ = LauncherProfile.BuildFixtureCandidate(conflict, Path.GetTempPath(), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
             throw new InvalidOperationException("Expected Launcher profile conflict rejection.");
         }
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
 
         var oldInstance = Path.Combine(tempRoot, "owned-instance", "instances",
-            "test-pack-0.1.0-" + TestPackRelease.LegacyArtifactSha512[..12].ToLowerInvariant());
+            "test-pack-0.2.0-" + TestPackRelease.PreviousArtifactSha512[..12].ToLowerInvariant());
         new InstallationManifest
         {
-            PackVersion = "0.1.0",
-            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            PackVersion = "0.2.0",
+            MinecraftVersion = "26.3",
             FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
-            PackArchiveSha512 = TestPackRelease.LegacyArtifactSha512
+            PackArchiveSha512 = TestPackRelease.PreviousArtifactSha512
         }.SaveAtomic(oldInstance);
         string ProfileWithoutMarker(string gameDir) => JsonSerializer.Serialize(new
         {
@@ -406,7 +408,7 @@ internal static class Smoke
             }
         });
         var markerless = ProfileWithoutMarker(oldInstance);
-        var reconfigured = LauncherProfile.BuildFixtureCandidate(markerless, Path.Combine(tempRoot, "new-instance"), "26.3", "0.19.5");
+        var reconfigured = LauncherProfile.BuildFixtureCandidate(markerless, Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
         using (var parsed = JsonDocument.Parse(reconfigured))
             Equal(Path.Combine(tempRoot, "new-instance"), parsed.RootElement.GetProperty("profiles")
                 .GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString(),
@@ -419,7 +421,7 @@ internal static class Smoke
         try
         {
             _ = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(Path.Combine(tempRoot, "foreign-instance")),
-                Path.Combine(tempRoot, "new-instance"), "26.3", "0.19.5");
+                Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
             throw new InvalidOperationException("Expected unowned markerless profile rejection.");
         }
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
@@ -434,14 +436,14 @@ internal static class Smoke
         var profilesPath = Path.Combine(launcherRoot, "launcher_profiles.json");
         const string input = "{\"profiles\":{\"vanilla\":{\"name\":\"Original\",\"customField\":17}},\"settings\":{\"custom\":true}}";
         File.WriteAllText(profilesPath, input);
-        const string versionId = "fabric-loader-0.19.5-26.3";
+        const string versionId = "fabric-loader-0.19.5-26.2";
         byte[] archive;
         using (var memory = new MemoryStream())
         {
             using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
             {
                 using (var writer = new StreamWriter(zip.CreateEntry($"{versionId}/{versionId}.json").Open()))
-                    writer.Write($"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"26.3\"}}");
+                    writer.Write($"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"26.2\"}}");
                 zip.CreateEntry($"{versionId}/{versionId}.jar");
             }
             archive = memory.ToArray();
@@ -502,6 +504,28 @@ internal static class Smoke
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
         Equal(conflict, File.ReadAllText(conflictProfiles), "foreign profile preserved after conflict");
         True(!Directory.Exists(Path.Combine(conflictRoot, "versions", versionId)), "new Fabric version rolled back after profile conflict");
+        var previousRoot = Path.Combine(tempRoot, "launcher-previous-release");
+        Directory.CreateDirectory(previousRoot);
+        File.WriteAllText(Path.Combine(previousRoot, "launcher_profiles.json"), input);
+        const string previousId = "fabric-loader-0.19.5-26.3";
+        byte[] previousArchive;
+        using (var memory = new MemoryStream())
+        {
+            using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                using (var writer = new StreamWriter(zip.CreateEntry($"{previousId}/{previousId}.json").Open()))
+                    writer.Write($"{{\"id\":\"{previousId}\",\"inheritsFrom\":\"26.3\"}}");
+                zip.CreateEntry($"{previousId}/{previousId}.jar");
+            }
+            previousArchive = memory.ToArray();
+        }
+        using (var previousService = new FabricLauncherService(previousRoot,
+                   new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(previousArchive) }),
+                   expectedSha512: HashBytes(previousArchive), minecraftVersion: "26.3"))
+            await previousService.ConfigureAsync(gameDirectory);
+        using (var previousProfile = JsonDocument.Parse(File.ReadAllText(Path.Combine(previousRoot, "launcher_profiles.json"))))
+            Equal(previousId, previousProfile.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+                .GetProperty("lastVersionId").GetString(), "previous release retains its Fabric version");
         Pass("automatic Fabric profile accepts the official Launcher-filled JAR and rejects foreign files");
     }
 
@@ -535,7 +559,7 @@ internal static class Smoke
         Directory.CreateDirectory(launcherRoot);
         var copiedFile = Path.Combine(launcherRoot, Path.GetFileName(sourceFiles[0]));
         File.WriteAllBytes(copiedFile, original);
-        const string versionId = "fabric-loader-0.19.5-26.3";
+        const string versionId = "fabric-loader-0.19.5-26.2";
         var sourceVersion = Path.Combine(realRoot, "versions", versionId);
         var copiedVersion = Path.Combine(launcherRoot, "versions", versionId);
         var copiedJar = Path.Combine(copiedVersion, versionId + ".jar");

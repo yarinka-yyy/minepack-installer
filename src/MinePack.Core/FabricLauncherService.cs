@@ -8,24 +8,34 @@ namespace MinePack.Core;
 
 public sealed class FabricLauncherService : IDisposable
 {
-    private const string ProfileUrl = "https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/profile/zip";
-    private const string ProfileSha512 = "E951DB8CFBFCCBFDB95DA6EBDD2E89F4B3C1E5F821F75EA7629EE35DD5782AF2451DCC447F21B2F1A264A3A86407470DEDF56651B593E051C858DFCC2D5845AC";
-    private const string VersionId = "fabric-loader-0.19.5-26.3";
-    private const string MinecraftClientJarSha512 = "9CEDD89122B11B0E079ECD342BABD034E3A2016F8B60CDC9FD1296A167AE606108819E7440381526704B335A9FC8948BEAB66C436B7C3BA5EF3D068301F7CFE6";
-    private const long MinecraftClientJarSize = 41_483_720;
+    private const string ProfileSha512 = "A33455AA111C1EB32E79D22716CDFA499744E0625C7491E12200AE2D188E1E0F5DA45372D8723BDBAEB3BA814F2248165B2EB50366A82C969EB8B542ED9E0280";
+    private const string PreviousProfileSha512 = "E951DB8CFBFCCBFDB95DA6EBDD2E89F4B3C1E5F821F75EA7629EE35DD5782AF2451DCC447F21B2F1A264A3A86407470DEDF56651B593E051C858DFCC2D5845AC";
+    private const string MinecraftClientJarSha512 = "9A2465F82D7706E7FECF4C5D9AB05BF85F818D81C1FF1605B9C0D982B29BABDDBF036A6440AA6D4F0C184110457B637F9D7959453B4FB314489782B82CAACC90";
+    private const string PreviousMinecraftClientJarSha512 = "9CEDD89122B11B0E079ECD342BABD034E3A2016F8B60CDC9FD1296A167AE606108819E7440381526704B335A9FC8948BEAB66C436B7C3BA5EF3D068301F7CFE6";
+    private const long MinecraftClientJarSize = 39_193_383;
+    private const long PreviousMinecraftClientJarSize = 41_483_720;
     private readonly string _launcherRoot;
+    private readonly string _minecraftVersion;
+    private readonly string _versionId;
+    private readonly string _profileUrl;
     private readonly string _expectedSha512;
     private readonly string _expectedClientJarSha512;
     private readonly long _expectedClientJarSize;
     private readonly HttpClient _http;
 
     public FabricLauncherService(string? launcherRoot = null, HttpMessageHandler? handler = null, string? expectedSha512 = null,
-        string? expectedClientJarSha512 = null, long? expectedClientJarSize = null)
+        string? expectedClientJarSha512 = null, long? expectedClientJarSize = null, string? minecraftVersion = null)
     {
+        _minecraftVersion = minecraftVersion ?? TestPackRelease.MinecraftVersion;
+        if (_minecraftVersion is not ("26.2" or "26.3"))
+            throw new ArgumentException("Unsupported pinned Minecraft version.", nameof(minecraftVersion));
+        var previous = _minecraftVersion == "26.3";
+        _versionId = $"fabric-loader-{TestPackRelease.FabricLoaderVersion}-{_minecraftVersion}";
+        _profileUrl = $"https://meta.fabricmc.net/v2/versions/loader/{_minecraftVersion}/{TestPackRelease.FabricLoaderVersion}/profile/zip";
         _launcherRoot = launcherRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
-        _expectedSha512 = expectedSha512 ?? ProfileSha512;
-        _expectedClientJarSha512 = expectedClientJarSha512 ?? MinecraftClientJarSha512;
-        _expectedClientJarSize = expectedClientJarSize ?? MinecraftClientJarSize;
+        _expectedSha512 = expectedSha512 ?? (previous ? PreviousProfileSha512 : ProfileSha512);
+        _expectedClientJarSha512 = expectedClientJarSha512 ?? (previous ? PreviousMinecraftClientJarSha512 : MinecraftClientJarSha512);
+        _expectedClientJarSize = expectedClientJarSize ?? (previous ? PreviousMinecraftClientJarSize : MinecraftClientJarSize);
         _http = new HttpClient(handler ?? new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(45) };
     }
 
@@ -40,7 +50,7 @@ public sealed class FabricLauncherService : IDisposable
         CheckReady();
         var profilePath = FindProfilePath();
         HttpResponseMessage response;
-        try { response = await _http.GetAsync(ProfileUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken); }
+        try { response = await _http.GetAsync(_profileUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken); }
         catch (HttpRequestException ex)
         {
             throw new InstallerException("FABRIC_NETWORK", "Не удалось связаться с официальным сервером Fabric. Проверьте подключение и повторите попытку.", ex);
@@ -55,14 +65,14 @@ public sealed class FabricLauncherService : IDisposable
 
         var (versionJson, versionJar) = ReadProfileArchive(archive);
         var versionsRoot = Path.Combine(_launcherRoot, "versions");
-        var versionPath = Path.Combine(versionsRoot, VersionId);
+        var versionPath = Path.Combine(versionsRoot, _versionId);
         SafePath.EnsureNoReparsePoints(_launcherRoot, versionPath);
         Directory.CreateDirectory(versionsRoot);
         var createdVersion = false;
         if (Directory.Exists(versionPath))
         {
-            var existingJson = Path.Combine(versionPath, VersionId + ".json");
-            var existingJar = Path.Combine(versionPath, VersionId + ".jar");
+            var existingJson = Path.Combine(versionPath, _versionId + ".json");
+            var existingJar = Path.Combine(versionPath, _versionId + ".jar");
             SafePath.EnsureNoReparsePoints(_launcherRoot, existingJson);
             SafePath.EnsureNoReparsePoints(_launcherRoot, existingJar);
             if (!File.Exists(existingJson) ||
@@ -77,8 +87,8 @@ public sealed class FabricLauncherService : IDisposable
             try
             {
                 Directory.CreateDirectory(staging);
-                await File.WriteAllBytesAsync(Path.Combine(staging, VersionId + ".json"), versionJson, cancellationToken);
-                await File.WriteAllBytesAsync(Path.Combine(staging, VersionId + ".jar"), versionJar, cancellationToken);
+                await File.WriteAllBytesAsync(Path.Combine(staging, _versionId + ".json"), versionJson, cancellationToken);
+                await File.WriteAllBytesAsync(Path.Combine(staging, _versionId + ".jar"), versionJar, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
                 Directory.Move(staging, versionPath);
                 createdVersion = true;
@@ -94,7 +104,7 @@ public sealed class FabricLauncherService : IDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             UpdateProfile(profilePath, json => LauncherProfile.BuildFixtureCandidate(json, gameDirectory,
-                TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion));
+                _minecraftVersion, TestPackRelease.FabricLoaderVersion));
         }
         catch
         {
@@ -142,11 +152,11 @@ public sealed class FabricLauncherService : IDisposable
             throw new InstallerException("LAUNCHER_RUNNING", "Закройте Minecraft Launcher и повторите настройку. Открытый Launcher может перезаписать профиль.");
     }
 
-    private static (byte[] Json, byte[] Jar) ReadProfileArchive(byte[] archive)
+    private (byte[] Json, byte[] Jar) ReadProfileArchive(byte[] archive)
     {
         using var zip = new ZipArchive(new MemoryStream(archive), ZipArchiveMode.Read);
-        var jsonName = $"{VersionId}/{VersionId}.json";
-        var jarName = $"{VersionId}/{VersionId}.jar";
+        var jsonName = $"{_versionId}/{_versionId}.json";
+        var jarName = $"{_versionId}/{_versionId}.jar";
         if (zip.Entries.Count != 2 || zip.GetEntry(jsonName) is not { Length: > 0 and < 100_000 } jsonEntry ||
             zip.GetEntry(jarName) is not { Length: 0 } jarEntry)
             throw new InstallerException("FABRIC_ARCHIVE", "Официальный пакет Fabric имеет неожиданную структуру.");
@@ -154,8 +164,8 @@ public sealed class FabricLauncherService : IDisposable
         var json = reader.ReadToEnd();
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
-        if (root.GetProperty("id").GetString() != VersionId ||
-            root.GetProperty("inheritsFrom").GetString() != TestPackRelease.MinecraftVersion)
+        if (root.GetProperty("id").GetString() != _versionId ||
+            root.GetProperty("inheritsFrom").GetString() != _minecraftVersion)
             throw new InstallerException("FABRIC_ARCHIVE", "Версии в пакете Fabric не соответствуют тестовому релизу.");
         return (Encoding.UTF8.GetBytes(json), Array.Empty<byte>());
     }
@@ -190,8 +200,8 @@ public sealed class FabricLauncherService : IDisposable
     private void RemoveCreatedVersion(string versionPath)
     {
         SafePath.EnsureNoReparsePoints(_launcherRoot, versionPath);
-        File.Delete(Path.Combine(versionPath, VersionId + ".json"));
-        File.Delete(Path.Combine(versionPath, VersionId + ".jar"));
+        File.Delete(Path.Combine(versionPath, _versionId + ".json"));
+        File.Delete(Path.Combine(versionPath, _versionId + ".jar"));
         if (!Directory.EnumerateFileSystemEntries(versionPath).Any()) Directory.Delete(versionPath);
     }
 

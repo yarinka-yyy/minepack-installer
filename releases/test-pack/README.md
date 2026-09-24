@@ -1,5 +1,20 @@
 # Test pack releases
 
+## 0.3.0 — Voxy and Chunky test
+
+Pinned Minecraft `26.2` and Fabric Loader `0.19.5`. This is a separate versioned release; the `0.2.0` artifact remains available. The `.mrpack` downloads six exact files from Modrinth CDN and verifies SHA-512.
+
+| Component | Modrinth project / version | Filename |
+| --- | --- | --- |
+| Fabric API 0.161.0+26.2 | `P7dR8mSH` / `ewUK83HI` | `fabric-api-0.161.0+26.2.jar` |
+| Iris 1.11.2 | `YL57xq9U` / `oaD6KQls` | `iris-fabric-1.11.2+mc26.2.jar` |
+| Sodium 0.9.1 | `AANobbMI` / `2Yom1N68` | `sodium-fabric-0.9.1+mc26.2.jar` |
+| [Voxy 0.2.19-beta](https://modrinth.com/mod/voxy) | `fxxUqruK` / `LzyXnE51` | `voxy-0.2.19-beta.jar` |
+| Chunky 1.5.3 | `fALzjamp` / `4Eotm6ov` | `Chunky-Fabric-1.5.3.jar` |
+| Complementary Reimagined r5.9.3 | `HVnmMxH1` / `Bqen1mJX` | `ComplementaryReimagined_r5.9.3.zip` |
+
+Iris and Voxy both require this exact Sodium version in Modrinth metadata. Fabric API is required by Voxy and Chunky. Chunky is included for optional pre-generation of a new world; C2ME is not required and is deferred until the basic stack is tested. Complementary Reimagined contains Voxy integration code, but live shader rendering and FPS must be checked in Minecraft. Voxy requires OpenGL 4.6. Release SHA-512: `9B50156730A5A17E264B4EA0B5AD0BE594CF426CB46BB54D4AF16E4960F1B55222B7F22C873135BBDF79E9BE8C05B069C0D44396DDD8DD8A77A5D649DBE57E84`.
+
 ## 0.2.0 — Complementary Reimagined test
 
 Pinned Minecraft `26.3`, Fabric Loader `0.19.5`, and the following Modrinth files. The `.mrpack` downloads them from Modrinth CDN and verifies SHA-512; it does not bundle their binaries.

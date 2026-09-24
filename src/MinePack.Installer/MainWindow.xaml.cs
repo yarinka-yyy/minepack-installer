@@ -151,6 +151,7 @@ public partial class MainWindow : Window
                 var (installedPackPath, installedPackHash) = installedVersion switch
                 {
                     TestPackRelease.PackVersion => (PackPath, TestPackRelease.ArtifactSha512),
+                    "0.2.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PreviousArtifactFileName), TestPackRelease.PreviousArtifactSha512),
                     "0.1.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LegacyArtifactFileName), TestPackRelease.LegacyArtifactSha512),
                     _ => throw new InstallerException("RELEASE_UNKNOWN", "Для этой установленной версии в приложении нет закреплённого архива.")
                 };
@@ -252,14 +253,23 @@ public partial class MainWindow : Window
     private async Task ConfigureLauncherAsync(string gameDirectory, CancellationToken cancellationToken)
     {
         ProgressLabel.Text = "Загрузка Fabric и создание отдельного профиля Launcher…";
-        await _launcher.ConfigureAsync(gameDirectory, cancellationToken);
-        var version = InstallationManifest.Load(gameDirectory).PackVersion;
+        var manifest = InstallationManifest.Load(gameDirectory);
+        if (manifest.MinecraftVersion == TestPackRelease.MinecraftVersion)
+            await _launcher.ConfigureAsync(gameDirectory, cancellationToken);
+        else
+        {
+            using var previousLauncher = new FabricLauncherService(minecraftVersion: manifest.MinecraftVersion);
+            await previousLauncher.ConfigureAsync(gameDirectory, cancellationToken);
+        }
+        var version = manifest.PackVersion;
         StateHeading.Text = "Сборка готова";
         ProgressLabel.Text = "Установка завершена";
         StatusBox.Text = version == TestPackRelease.PackVersion
-            ? "Fabric, моды, Complementary Reimagined и отдельный профиль MinePack Test Pack установлены. Откройте официальный Minecraft Launcher, выберите этот профиль и нажмите «Играть»."
-            : "Прежняя тестовая сборка и её отдельный профиль готовы. Для Iris, Sodium и Complementary Reimagined нажмите «Установить сборку».";
-        InstructionsBox.Text = $"Папка игры: {gameDirectory}\nПри первом запуске Launcher сам загрузит необходимые файлы Minecraft и библиотеки Fabric.";
+            ? "Fabric, Voxy, Chunky, Iris, Sodium и Complementary Reimagined установлены. Откройте официальный Minecraft Launcher, выберите MinePack Test Pack и нажмите «Играть»."
+            : "Прежняя тестовая сборка и её профиль готовы. Для Voxy нажмите «Установить сборку».";
+        InstructionsBox.Text = version == TestPackRelease.PackVersion
+            ? $"Папка игры: {gameDirectory}\nСоздайте новый мир 26.2. Начните с обычной дальности 8–12 и Voxy 64 чанка. Voxy запоминает местность при исследовании; для предварительной генерации используйте в чате /chunky radius 1024, затем /chunky start, дождитесь завершения и выполните /voxy import current."
+            : $"Папка игры: {gameDirectory}\nПри первом запуске Launcher сам загрузит необходимые файлы Minecraft и библиотеки Fabric.";
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
