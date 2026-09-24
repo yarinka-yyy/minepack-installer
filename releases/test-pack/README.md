@@ -1,10 +1,32 @@
 # Test pack releases
 
+## 0.5.0 — visual mods and resource packs, gameplay candidate
+
+Minecraft `26.2`, Fabric Loader `0.19.5`; retains every pinned file from `0.4.0`, including C2ME. The user reported that Chunky radius 1024 completed in about 1.5 minutes with C2ME; the earlier baseline was an estimate, so the exact speedup is not established. This release adds the following exact Modrinth versions:
+
+| Component | Project / version | Filename |
+| --- | --- | --- |
+| [Pick Up Notifier](https://modrinth.com/mod/pick-up-notifier/version/DWaZDkc8) 26.2.0 | `ZX66K16c` / `DWaZDkc8` | `PickUpNotifier-v26.2.0-mc26.2.x-Fabric.jar` |
+| [Puzzles Lib](https://modrinth.com/mod/puzzles-lib) 26.2.4 | `QAGBst4M` / `aNOJuoCM` | `PuzzlesLib-v26.2.4-mc26.2.x-Fabric.jar` |
+| [Forge Config API Port](https://modrinth.com/mod/forge-config-api-port) 26.2.1 | `ohNO6lps` / `rSd3GiG8` | `ForgeConfigAPIPort-v26.2.1-mc26.2.x-Fabric.jar` |
+| [Explosive Enhancement](https://modrinth.com/mod/explosive-enhancement/version/q9vZmPqg) 1.4.2-26.2 | `OSQ8mw2r` / `q9vZmPqg` | `explosive-enhancement-1.4.2-26.2.jar` |
+| [Entity Model Features](https://modrinth.com/mod/entity-model-features) 3.3.8 | `4I1XuqiY` / `uqpavrXj` | `entity_model_features-3.3.8-26.2-fabric.jar` |
+| [Entity Texture Features](https://modrinth.com/mod/entitytexturefeatures) 7.2.4 | `BVzZfTc1` / `sTno2gjm` | `entity_texture_features-7.2.4-26.2-fabric.jar` |
+| [Fresh Animations](https://modrinth.com/resourcepack/fresh-animations/version/RGIzA5em) 1.10.5 | `50dA9Sha` / `RGIzA5em` | `FreshAnimations_v1.10.5.zip` |
+| [Fresh Animations: Extensions](https://modrinth.com/resourcepack/fresh-animations-extensions/version/R5ZGSF8A) 1.9.2 | `YAVTU8mK` / `R5ZGSF8A` | `FA+All_Extensions-v1.9.2.zip` |
+| [Low On Fire](https://modrinth.com/resourcepack/low-on-fire) 26.3 (file tagged 26.2) | `RRxvWKNC` / `yQdcUfnr` | `LowOnFire v26.2§8.zip` |
+| [Fancy Crops](https://modrinth.com/resourcepack/fancy-crops) 1.3 | `UGEVQ6t9` / `ZJEBZjg6` | `Fancy Crops v1.3.zip` |
+| [Better Flame Particles](https://modrinth.com/resourcepack/better-flame-particles) 3.1 | `ivUZsvzp` / `5zlKz15s` | `better_flame_particles-v3.1-mc1.21.9+-resourcepack.zip` |
+
+Modrinth metadata and JAR declarations require Fabric API plus Puzzles Lib and Forge Config API Port for Pick Up Notifier, and ETF for EMF. EMF/ETF provide Fresh Animations support with Sodium/Iris; OptiFine is not included. Explosive Enhancement's version metadata/JAR only require Fabric API; YACL and Mod Menu are optional configuration interfaces and are not in this release. Resource-pack ZIPs advertise a format range including Minecraft `26.2`'s resource format `88`. No known hard incompatibility was found with Voxy, C2ME, Iris or Sodium. Fresh Animations Extensions overlaps the base pack intentionally, so it is selected above Fresh Animations. Low On Fire and Better Flame Particles edit different fire assets. The only other duplicated asset path among the five packs is `assets/minecraft/font/default.json` in Extensions and Low On Fire; each defines a different glyph, so its combined behavior should be checked in game. The five packs are selected in a fresh `options.txt` during staging; this file is left unmanaged so user choices survive Repair and Uninstall.
+
+The installer downloaded and hash-verified all 18 files in a temporary isolated instance, then verified Repair and Uninstall. Minecraft launch, actual visuals, resource-pack order, FPS and logs still need gameplay acceptance. Release SHA-512: `0B94017C6C392AB05B17102C72A9A3207AE5F52BA7175F17C7FF5F764FEC06EA62397183DC3B0F32AF6309600DE87F82E66DE1C77ED51384ED528E04FC8E23F6`.
+
 ## 0.4.0 — C2ME comparison test
 
-Pinned Minecraft `26.2` and Fabric Loader `0.19.5`. This is a separate versioned instance with the exact `0.3.0` file set plus one mod: [C2ME `0.4.2-alpha.0.52+26.2`](https://modrinth.com/mod/c2me-fabric/version/LmKTn6Yc), project `VSNURh3q`, version `LmKTn6Yc`, file `c2me-fabric-mc26.2-0.4.2-alpha.0.52.jar`. Modrinth reports no additional external dependencies; the JAR bundles its internal modules and declares Fabric Loader `>=0.18.3`, Java `>=25`, and Minecraft `>1.21.11`. The selected loader `0.19.5` and Minecraft `26.2` satisfy those constraints. Its declared conflicts (`tic_tacs`, `optifabric`) are absent from this pack. C2ME is an alpha release, so this pack is experimental until a clean Minecraft launch and Chunky run are checked on the target PC.
+Pinned Minecraft `26.2` and Fabric Loader `0.19.5`. This is a separate versioned instance with the exact `0.3.0` file set plus one mod: [C2ME `0.4.2-alpha.0.52+26.2`](https://modrinth.com/mod/c2me-fabric/version/LmKTn6Yc), project `VSNURh3q`, version `LmKTn6Yc`, file `c2me-fabric-mc26.2-0.4.2-alpha.0.52.jar`. Modrinth reports no additional external dependencies; the JAR bundles its internal modules and declares Fabric Loader `>=0.18.3`, Java `>=25`, and Minecraft `>1.21.11`. The selected loader `0.19.5` and Minecraft `26.2` satisfy those constraints. Its declared conflicts (`tic_tacs`, `optifabric`) are absent from this pack. The user confirmed a successful Minecraft launch and Chunky run on the target PC.
 
-Create a new world with the same recorded seed; do not reuse a world that Chunky has already generated. Run `/chunky radius 1024` and `/chunky start`, and compare the completion time with the `0.3.0` baseline of roughly 2.5–3 minutes. This is a practical comparison, not a controlled benchmark: world spawn, background load, and generation order can differ. The `0.3.0` archive and installed instance remain available separately. Release SHA-512: `04483AB2F7996049C7962C5ADB835499DD1B05C36BBCA9EFBE36F3071B7685136EE56C51ECF55FEA0FCC94C3CB4F33AE48ED1DD4351CAF40D01A39B157A02D90`.
+Create a new world with the same recorded seed; do not reuse a world that Chunky has already generated. Run `/chunky radius 1024` and `/chunky start`. The user reported about 1.5 minutes with C2ME, while the `0.3.0` baseline of 2.5–3 minutes is uncertain; the exact speedup is not established. World spawn, background load, and generation order can differ. The `0.3.0` archive and installed instance remain available separately. Release SHA-512: `04483AB2F7996049C7962C5ADB835499DD1B05C36BBCA9EFBE36F3071B7685136EE56C51ECF55FEA0FCC94C3CB4F33AE48ED1DD4351CAF40D01A39B157A02D90`.
 
 ## 0.3.0 — Voxy and Chunky test
 

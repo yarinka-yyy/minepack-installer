@@ -106,6 +106,17 @@ public sealed class InstallService : IDisposable
                 Files = managed.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase).ToList()
             };
             await VerifyManagedFilesAsync(stagingRoot, manifest.Files, cancellationToken);
+            if (pack.ArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase))
+            {
+                var resourcePacks = TestPackRelease.InitialResourcePacks;
+                if (resourcePacks.Any(name => !manifest.Files.Any(file =>
+                    file.Path.Equals("resourcepacks/" + name, StringComparison.OrdinalIgnoreCase))))
+                    throw new InstallerException("PACK_INVALID", "В тестовом релизе отсутствует обязательный ресурспак.");
+                var selected = new[] { "vanilla" }.Concat(resourcePacks.Select(name => "file/" + name));
+                await File.WriteAllTextAsync(Path.Combine(stagingRoot, "options.txt"),
+                    "resourcePacks:" + JsonSerializer.Serialize(selected) + Environment.NewLine +
+                    "incompatibleResourcePacks:[]" + Environment.NewLine, cancellationToken);
+            }
             manifest.SaveAtomic(stagingRoot);
             Log("staging_verified", new { files = manifest.Files.Count, stagingRoot });
 

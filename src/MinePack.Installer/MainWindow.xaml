@@ -62,11 +62,11 @@
 
             <Border Style="{StaticResource Card}" Margin="0,0,0,10">
                 <StackPanel>
-                    <TextBlock Text="Тестовый релиз 0.4.0 — C2ME" FontSize="17" FontWeight="SemiBold" />
+                    <TextBlock Text="Тестовый релиз 0.5.0 — визуальные моды" FontSize="17" FontWeight="SemiBold" />
                     <TextBlock Style="{StaticResource MutedText}" Margin="0,5,0,0"
                                Text="Minecraft 26.2  •  Fabric Loader 0.19.5  •  Fabric API 0.161.0+26.2" />
                     <TextBlock Style="{StaticResource MutedText}" Margin="0,7,0,0"
-                               Text="К проверенной сборке с Voxy и Chunky добавлен C2ME. Для сравнения создайте новый мир с прежним сидом. Шейдер включится при первом запуске." />
+                               Text="Сохраняет Voxy, Chunky, C2ME и шейдер. Добавляет Pick Up Notifier, Explosive Enhancement и пять ресурспаков; они включатся при первом запуске." />
                 </StackPanel>
             </Border>
 

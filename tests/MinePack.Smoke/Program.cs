@@ -107,12 +107,19 @@ internal static class Smoke
         Equal(TestPackRelease.PackVersion, pack.VersionId, "pinned release version");
         Equal(TestPackRelease.MinecraftVersion, pack.MinecraftVersion, "pinned Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, pack.FabricLoaderVersion, "pinned Fabric Loader version");
-        True(pack.Files.Count == 7 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
+        True(pack.Files.Count == 18 && pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
              pack.Files.Any(file => file.Path == "mods/voxy-0.2.19-beta.jar") &&
              pack.Files.Any(file => file.Path == "mods/Chunky-Fabric-1.5.3.jar") &&
              pack.Files.Any(file => file.Path == "mods/c2me-fabric-mc26.2-0.4.2-alpha.0.52.jar") &&
+             pack.Files.Any(file => file.Path == "mods/PickUpNotifier-v26.2.0-mc26.2.x-Fabric.jar") &&
+             pack.Files.Any(file => file.Path == "mods/explosive-enhancement-1.4.2-26.2.jar") &&
+             pack.Files.Any(file => file.Path == "mods/entity_model_features-3.3.8-26.2-fabric.jar") &&
+             pack.Files.Any(file => file.Path == "mods/entity_texture_features-7.2.4-26.2-fabric.jar") &&
+             pack.Files.Any(file => file.Path == "mods/PuzzlesLib-v26.2.4-mc26.2.x-Fabric.jar") &&
+             pack.Files.Any(file => file.Path == "mods/ForgeConfigAPIPort-v26.2.1-mc26.2.x-Fabric.jar") &&
+             TestPackRelease.InitialResourcePacks.All(name => pack.Files.Any(file => file.Path == "resourcepacks/" + name)) &&
              pack.Overrides.Any(file => file.Path == "config/iris.properties"),
-            "pinned release includes Fabric API, Iris, Sodium, Reimagined, Voxy, Chunky, C2ME, and Iris selection");
+            "pinned release includes the base pack, requested mods and resource packs, and required dependencies");
         True(pack.Files.All(file => file.Sha512.Length == 128 && file.Sha512.All(Uri.IsHexDigit) &&
                                    file.Downloads.All(uri => uri.Scheme == Uri.UriSchemeHttps && uri.Host == "cdn.modrinth.com")),
             "pinned release hashes and URLs are valid");
@@ -323,6 +330,14 @@ internal static class Smoke
             True(string.Equals(file.Sha512, HashFile(path), StringComparison.OrdinalIgnoreCase),
                 $"actual release managed file hash {file.Path}");
         }
+        var optionsPath = Path.Combine(instance, "options.txt");
+        var expectedPacks = new[] { "vanilla" }.Concat(TestPackRelease.InitialResourcePacks.Select(name => "file/" + name));
+        True(File.ReadAllText(optionsPath).Contains("resourcePacks:" + JsonSerializer.Serialize(expectedPacks), StringComparison.Ordinal),
+            "all resource packs are selected on first launch in the pinned order");
+        File.WriteAllText(optionsPath, "resourcePacks:[\"vanilla\"]\n");
+        var repair = await installer.RepairAsync(instance, packPath, TestPackRelease.ArtifactSha512);
+        True(repair.Success && File.ReadAllText(optionsPath) == "resourcePacks:[\"vanilla\"]\n",
+            "repair preserves player resource pack choices");
         var vanillaAfter = CaptureVanillaData(vanilla);
         if (vanillaBefore is not null && vanillaAfter is not null)
             Equal(vanillaBefore, vanillaAfter, "vanilla mods/config/saves remain unchanged");
@@ -338,6 +353,8 @@ internal static class Smoke
             Console.WriteLine($"NOT RUN: actual release cleanup did not complete ({uninstall.Code}). {uninstall.Message}");
             return false;
         }
+        True(File.ReadAllText(optionsPath) == "resourcePacks:[\"vanilla\"]\n",
+            "uninstall preserves player resource pack choices");
         Pass("actual pinned release temporary install uninstalls cleanly");
         return true;
     }

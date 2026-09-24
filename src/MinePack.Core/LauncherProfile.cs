@@ -82,10 +82,11 @@ public static class LauncherProfile
                 "0.1.0" => TestPackRelease.LegacyArtifactSha512,
                 "0.2.0" => TestPackRelease.PreviousArtifactSha512,
                 "0.3.0" => TestPackRelease.VoxyArtifactSha512,
+                "0.4.0" => TestPackRelease.C2meArtifactSha512,
                 TestPackRelease.PackVersion => TestPackRelease.ArtifactSha512,
                 _ => null
             };
-            var expectedMinecraftVersion = manifest.PackVersion is "0.3.0" or TestPackRelease.PackVersion
+            var expectedMinecraftVersion = manifest.PackVersion is "0.3.0" or "0.4.0" or TestPackRelease.PackVersion
                 ? TestPackRelease.MinecraftVersion : "26.3";
             return expectedHash is not null &&
                    manifest.PackArchiveSha512.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) &&

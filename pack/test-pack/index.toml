@@ -15,13 +15,43 @@ hash = "8e4512056e448a6f3d1ac179961eb699c15fbe000284e0aee041b5971b417302"
 metafile = true
 
 [[files]]
+file = "mods/entity-model-features.pw.toml"
+hash = "1f86e76fc51b47591e1356c196c1f78c1c41dfa92b21610dda00febe0429c16d"
+metafile = true
+
+[[files]]
+file = "mods/entitytexturefeatures.pw.toml"
+hash = "944f951fd554a018cbf5b2cb81cb58355ff68be88e58cf8fb476736fff3a5476"
+metafile = true
+
+[[files]]
+file = "mods/explosive-enhancement.pw.toml"
+hash = "dc420c450637141ad2e893d6adb7d365d0d2f4174a4e266f3ec035f7c546e3dd"
+metafile = true
+
+[[files]]
 file = "mods/fabric-api.pw.toml"
 hash = "af4c96fcc59bec634f457bf7693496f203ceaac28a180e84a73c488a1a2895cb"
 metafile = true
 
 [[files]]
+file = "mods/forge-config-api-port.pw.toml"
+hash = "8c91080e610d7c8c40ae6445d36af1cf591fe1ebf70718b3e6d4714232b23592"
+metafile = true
+
+[[files]]
 file = "mods/iris.pw.toml"
 hash = "7262c5dea44f3ef66051c5300f498d03ad64f97cc5c920dd04ec8f0ba607bb92"
+metafile = true
+
+[[files]]
+file = "mods/pick-up-notifier.pw.toml"
+hash = "cb97138eae13d3b0069f1705ec0e9da41a2bf5ec2114ce8b9b17909186efe738"
+metafile = true
+
+[[files]]
+file = "mods/puzzles-lib.pw.toml"
+hash = "5587d752a3b30750512779e21e0a5eb400d0657593d9ba8c392e157ec74c251c"
 metafile = true
 
 [[files]]
@@ -32,6 +62,31 @@ metafile = true
 [[files]]
 file = "mods/voxy.pw.toml"
 hash = "93462b004525a25f82e8faec0e6c54a37cffb214117639f604d997bc026af17c"
+metafile = true
+
+[[files]]
+file = "resourcepacks/better-flame-particles.pw.toml"
+hash = "0b4979c841967a2b5c49a65a2941304f7b0da163795f899decd7ade5f293b77c"
+metafile = true
+
+[[files]]
+file = "resourcepacks/fancy-crops.pw.toml"
+hash = "0cb5fc8c29fb99530cc20e013347558e198a686420aaf996fa03b9e23fa291dd"
+metafile = true
+
+[[files]]
+file = "resourcepacks/fresh-animations-extensions.pw.toml"
+hash = "3874d5d4499148996d5e11f9bee74f669f0e5901440edf7aab3c5e55d14f1829"
+metafile = true
+
+[[files]]
+file = "resourcepacks/fresh-animations.pw.toml"
+hash = "91f03f95a740457e053a3c265b56ebe3b26342205c5e25ba3e4668ed60312880"
+metafile = true
+
+[[files]]
+file = "resourcepacks/low-on-fire.pw.toml"
+hash = "f5bafd1fbb787341af6c231f2a735ff3c44b3b1db076e297ecc5e323703cd7fb"
 metafile = true
 
 [[files]]
