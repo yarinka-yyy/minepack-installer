@@ -53,15 +53,15 @@ public sealed class FabricLauncherService : IDisposable
         try { response = await _http.GetAsync(_profileUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken); }
         catch (HttpRequestException ex)
         {
-            throw new InstallerException("FABRIC_NETWORK", "Не удалось связаться с официальным сервером Fabric. Проверьте подключение и повторите попытку.", ex);
+            throw new InstallerException("FABRIC_NETWORK", LocalizedText.Get("FabricNetworkFailed"), ex);
         }
         using var responseScope = response;
         if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength is > 1_000_000)
-            throw new InstallerException("FABRIC_DOWNLOAD", "Не удалось получить закреплённый профиль Fabric с официального сервера.");
+            throw new InstallerException("FABRIC_DOWNLOAD", LocalizedText.Get("PinnedFabricProfileUnavailable"));
         var archive = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         if (archive.Length > 1_000_000 || !CryptographicOperations.FixedTimeEquals(
                 SHA512.HashData(archive), Convert.FromHexString(_expectedSha512)))
-            throw new InstallerException("FABRIC_HASH", "Проверка целостности профиля Fabric не прошла.");
+            throw new InstallerException("FABRIC_HASH", LocalizedText.Get("FabricProfileHashInvalid"));
 
         var (versionJson, versionJar) = ReadProfileArchive(archive);
         var versionsRoot = Path.Combine(_launcherRoot, "versions");
@@ -78,7 +78,7 @@ public sealed class FabricLauncherService : IDisposable
             if (!File.Exists(existingJson) ||
                 !File.ReadAllBytes(existingJson).AsSpan().SequenceEqual(versionJson) ||
                 !IsExpectedClientJar(existingJar))
-                throw new InstallerException("FABRIC_VERSION_CONFLICT", "Версия Fabric с таким именем уже существует и отличается от закреплённой. Чужие файлы не изменены.");
+                throw new InstallerException("FABRIC_VERSION_CONFLICT", LocalizedText.Get("FabricVersionConflict"));
         }
         else
         {
@@ -135,13 +135,13 @@ public sealed class FabricLauncherService : IDisposable
     private string FindProfilePath()
     {
         if (!Directory.Exists(_launcherRoot))
-            throw new InstallerException("LAUNCHER_NOT_FOUND", "Официальный Minecraft Launcher не найден. Установите и один раз откройте его.");
+            throw new InstallerException("LAUNCHER_NOT_FOUND", LocalizedText.Get("OfficialLauncherNotFound"));
         var candidates = new[] { "launcher_profiles.json", "launcher_profiles_microsoft_store.json" }
             .Select(name => Path.Combine(_launcherRoot, name)).Where(File.Exists).ToArray();
         if (candidates.Length != 1)
             throw new InstallerException("LAUNCHER_PROFILE_UNKNOWN", candidates.Length == 0
-                ? "Файл профилей Launcher не найден. Откройте официальный Launcher один раз и закройте его."
-                : "Найдены два варианта профилей Launcher; автоматический выбор невозможен без риска изменить не тот профиль.");
+                ? LocalizedText.Get("LauncherProfilesMissing")
+                : LocalizedText.Get("LauncherProfilesAmbiguous"));
         SafePath.EnsureNoReparsePoints(_launcherRoot, candidates[0]);
         return candidates[0];
     }
@@ -149,7 +149,7 @@ public sealed class FabricLauncherService : IDisposable
     private static void EnsureLauncherClosed()
     {
         if (Process.GetProcesses().Any(process => process.ProcessName.Contains("MinecraftLauncher", StringComparison.OrdinalIgnoreCase)))
-            throw new InstallerException("LAUNCHER_RUNNING", "Закройте Minecraft Launcher и повторите настройку. Открытый Launcher может перезаписать профиль.");
+            throw new InstallerException("LAUNCHER_RUNNING", LocalizedText.Get("LauncherRunning"));
     }
 
     private (byte[] Json, byte[] Jar) ReadProfileArchive(byte[] archive)
@@ -159,14 +159,14 @@ public sealed class FabricLauncherService : IDisposable
         var jarName = $"{_versionId}/{_versionId}.jar";
         if (zip.Entries.Count != 2 || zip.GetEntry(jsonName) is not { Length: > 0 and < 100_000 } jsonEntry ||
             zip.GetEntry(jarName) is not { Length: 0 } jarEntry)
-            throw new InstallerException("FABRIC_ARCHIVE", "Официальный пакет Fabric имеет неожиданную структуру.");
+            throw new InstallerException("FABRIC_ARCHIVE", LocalizedText.Get("FabricArchiveUnexpected"));
         using var reader = new StreamReader(jsonEntry.Open(), Encoding.UTF8);
         var json = reader.ReadToEnd();
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
         if (root.GetProperty("id").GetString() != _versionId ||
             root.GetProperty("inheritsFrom").GetString() != _minecraftVersion)
-            throw new InstallerException("FABRIC_ARCHIVE", "Версии в пакете Fabric не соответствуют тестовому релизу.");
+            throw new InstallerException("FABRIC_ARCHIVE", LocalizedText.Get("FabricArchiveVersionMismatch"));
         return (Encoding.UTF8.GetBytes(json), Array.Empty<byte>());
     }
 
@@ -181,7 +181,7 @@ public sealed class FabricLauncherService : IDisposable
         {
             File.WriteAllBytes(temp, updated);
             if (!File.ReadAllBytes(path).AsSpan().SequenceEqual(original))
-                throw new InstallerException("LAUNCHER_PROFILE_CHANGED", "Профиль Launcher изменился во время установки. Повторите попытку после закрытия Launcher.");
+                throw new InstallerException("LAUNCHER_PROFILE_CHANGED", LocalizedText.Get("LauncherProfileChanged"));
             File.Replace(temp, path, backup);
             try
             {

@@ -22,7 +22,7 @@ public sealed class DownloadEngine : IDisposable
     public async Task<string> DownloadVerifiedAsync(PackFile file, string stagingRoot,
         Action<long, long?>? progress, CancellationToken cancellationToken)
     {
-        if (!PackArchive.IsSha512(file.Sha512)) throw new InstallerException("PACK_INVALID_HASH", "Индекс содержит некорректный SHA-512.");
+        if (!PackArchive.IsSha512(file.Sha512)) throw new InstallerException("PACK_INVALID_HASH", LocalizedText.Get("IndexSha512Invalid"));
         await _slots.WaitAsync(cancellationToken);
         try
         {
@@ -33,7 +33,7 @@ public sealed class DownloadEngine : IDisposable
             foreach (var source in file.Downloads)
             {
                 if (!PackArchive.IsAllowedDownloadUri(source))
-                    throw new InstallerException("DOWNLOAD_URL_BLOCKED", "Источник файла не входит в список разрешённых HTTPS-адресов.");
+                    throw new InstallerException("DOWNLOAD_URL_BLOCKED", LocalizedText.Get("DownloadSourceBlocked"));
                 for (var attempt = 0; attempt < MaxAttempts; attempt++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -58,7 +58,7 @@ public sealed class DownloadEngine : IDisposable
                     }
                     catch (HttpRequestException ex)
                     {
-                        lastError = new InstallerException("DOWNLOAD_NETWORK", "Не удалось загрузить файл из Modrinth.", ex);
+                        lastError = new InstallerException("DOWNLOAD_NETWORK", LocalizedText.Get("DownloadNetworkFailed"), ex);
                         TryDelete(partial);
                         Report(attempt + 1 < MaxAttempts ? "download_retry" : "download_source_failed",
                             new { path = file.Path, source = Origin(source), attempt = attempt + 1, code = "DOWNLOAD_NETWORK", errorType = ex.GetType().Name });
@@ -89,7 +89,7 @@ public sealed class DownloadEngine : IDisposable
                     TryDelete(partial);
                 }
             }
-            var failure = lastError ?? new InstallerException("DOWNLOAD_FAILED", "Не удалось загрузить файл сборки.");
+            var failure = lastError ?? new InstallerException("DOWNLOAD_FAILED", LocalizedText.Get("DownloadFailed"));
             Report("download_failed", new { path = file.Path, code = failure.Code });
             throw failure;
         }
@@ -103,29 +103,29 @@ public sealed class DownloadEngine : IDisposable
         for (var redirect = 0; redirect <= MaxRedirects; redirect++)
         {
             if (!PackArchive.IsAllowedDownloadUri(uri))
-                throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", "Перенаправление ведёт на неразрешённый адрес.");
+                throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", LocalizedText.Get("DownloadRedirectBlocked"));
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
             Report("download_response", new { source = Origin(uri), statusCode = (int)response.StatusCode });
             if (IsRedirect(response.StatusCode))
             {
                 if (redirect == MaxRedirects || response.Headers.Location is null)
-                    throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", "Слишком много перенаправлений или отсутствует адрес назначения.");
+                    throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", LocalizedText.Get("DownloadRedirectInvalid"));
                 var previousOrigin = Origin(uri);
                 uri = response.Headers.Location.IsAbsoluteUri ? response.Headers.Location : new Uri(uri, response.Headers.Location);
                 if (!PackArchive.IsAllowedDownloadUri(uri))
-                    throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", "Перенаправление ведёт на неразрешённый адрес.");
+                    throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", LocalizedText.Get("DownloadRedirectBlocked"));
                 Report("download_redirect", new { source = previousOrigin, destination = Origin(uri) });
                 continue;
             }
             if (IsRetryableStatus(response.StatusCode))
-                throw new DownloadFailure("DOWNLOAD_HTTP", $"Сервер временно вернул HTTP {(int)response.StatusCode}.", true, RetryAfter(response));
+                throw new DownloadFailure("DOWNLOAD_HTTP", LocalizedText.Get("HttpTemporaryFailure", (int)response.StatusCode), true, RetryAfter(response));
             if (!response.IsSuccessStatusCode)
-                throw new InstallerException("DOWNLOAD_HTTP", $"Сервер вернул HTTP {(int)response.StatusCode}.");
+                throw new InstallerException("DOWNLOAD_HTTP", LocalizedText.Get("HttpFailure", (int)response.StatusCode));
 
             var expectedSize = response.Content.Headers.ContentLength;
             if (file.Size >= 0 && expectedSize.HasValue && expectedSize.Value != file.Size)
-                throw new InstallerException("DOWNLOAD_SIZE_MISMATCH", "Размер загружаемого файла не совпадает с индексом.");
+                throw new InstallerException("DOWNLOAD_SIZE_MISMATCH", LocalizedText.Get("DownloadSizeMismatch"));
             await using var sourceStream = await response.Content.ReadAsStreamAsync(cancellationToken);
             await using var output = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
@@ -141,21 +141,21 @@ public sealed class DownloadEngine : IDisposable
                 total += count;
                 progress?.Invoke(total, expectedSize);
                 if (file.Size >= 0 && total > file.Size)
-                    throw new InstallerException("DOWNLOAD_SIZE_MISMATCH", "Загружаемый файл превышает размер из индекса.");
+                    throw new InstallerException("DOWNLOAD_SIZE_MISMATCH", LocalizedText.Get("DownloadTooLarge"));
             }
             await output.FlushAsync(cancellationToken);
             if (file.Size >= 0 && total != file.Size)
-                throw new InstallerException("DOWNLOAD_SIZE_MISMATCH", "Загружаемый файл короче размера из индекса.");
+                throw new InstallerException("DOWNLOAD_SIZE_MISMATCH", LocalizedText.Get("DownloadTooShort"));
             var actual = Convert.ToHexString(hash.GetHashAndReset());
             if (!PackArchive.FixedTimeHashEquals(actual, file.Sha512))
             {
                 Report("download_hash_mismatch", new { path = file.Path, expected = file.Sha512, actual });
-                throw new InstallerException("DOWNLOAD_HASH_MISMATCH", "SHA-512 загруженного файла не совпадает с индексом.");
+                throw new InstallerException("DOWNLOAD_HASH_MISMATCH", LocalizedText.Get("DownloadHashMismatch"));
             }
             Report("download_hash_verified", new { path = file.Path, sha512 = actual, size = total });
             return;
         }
-        throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", "Слишком много перенаправлений.");
+        throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", LocalizedText.Get("DownloadRedirectLimit"));
     }
 
     private static bool IsRedirect(HttpStatusCode status) => status is HttpStatusCode.MovedPermanently or

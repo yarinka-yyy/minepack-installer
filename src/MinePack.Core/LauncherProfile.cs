@@ -12,19 +12,19 @@ public static class LauncherProfile
     {
         JsonObject root;
         try { root = JsonNode.Parse(existingJson) as JsonObject ?? throw new JsonException(); }
-        catch (JsonException ex) { throw new InstallerException("LAUNCHER_JSON_INVALID", "Файл профилей Launcher содержит некорректный JSON.", ex); }
+        catch (JsonException ex) { throw new InstallerException("LAUNCHER_JSON_INVALID", LocalizedText.Get("LauncherJsonInvalid"), ex); }
 
         var profiles = root["profiles"] switch
         {
             null => new JsonObject(),
             JsonObject value => value,
-            _ => throw new InstallerException("LAUNCHER_JSON_INVALID", "Список профилей Launcher имеет неподдерживаемый формат.")
+            _ => throw new InstallerException("LAUNCHER_JSON_INVALID", LocalizedText.Get("LauncherProfileListUnsupported"))
         };
         root["profiles"] = profiles;
         if (profiles[ProfileKey] is JsonNode existingNode)
         {
             if (existingNode is not JsonObject existing || !IsOurs(existing))
-                throw new InstallerException("LAUNCHER_PROFILE_CONFLICT", "Идентификатор профиля MinePack уже занят чужим профилем.");
+                throw new InstallerException("LAUNCHER_PROFILE_CONFLICT", LocalizedText.Get("LauncherProfileIdConflict"));
         }
 
         var profile = (JsonObject?)profiles[ProfileKey] ?? new JsonObject();
@@ -43,7 +43,7 @@ public static class LauncherProfile
     {
         JsonObject root;
         try { root = JsonNode.Parse(existingJson) as JsonObject ?? throw new JsonException(); }
-        catch (JsonException ex) { throw new InstallerException("LAUNCHER_JSON_INVALID", "Файл профилей Launcher содержит некорректный JSON.", ex); }
+        catch (JsonException ex) { throw new InstallerException("LAUNCHER_JSON_INVALID", LocalizedText.Get("LauncherJsonInvalid"), ex); }
 
         if (root["profiles"] is not JsonObject profiles || profiles[ProfileKey] is not JsonObject profile)
             return existingJson;
@@ -52,7 +52,7 @@ public static class LauncherProfile
              !Path.GetFullPath(current).Equals(Path.GetFullPath(expectedGameDirectory), StringComparison.OrdinalIgnoreCase)))
             return existingJson;
         if (!IsOurs(profile))
-            throw new InstallerException("LAUNCHER_PROFILE_CONFLICT", "Профиль не помечен как принадлежащий установщику; он не изменён.");
+            throw new InstallerException("LAUNCHER_PROFILE_CONFLICT", LocalizedText.Get("LauncherProfileUnowned"));
         profiles.Remove(ProfileKey);
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }

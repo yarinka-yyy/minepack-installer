@@ -67,7 +67,7 @@ public sealed class InstallService : IDisposable
             var instanceName = $"test-pack-{pack.VersionId}-{pack.ArchiveSha512[..12].ToLowerInvariant()}";
             instancePath = SafePath.Resolve(instancesRoot, instanceName);
             if (Directory.Exists(instancePath))
-                throw new InstallerException("ALREADY_INSTALLED", "Эта версия уже установлена. Используйте Repair.");
+                throw new InstallerException("ALREADY_INSTALLED", LocalizedText.Get("AlreadyInstalled"));
 
             stagingRoot = Path.Combine(root, "staging", instanceName + "-" + Guid.NewGuid().ToString("N"));
             SafePath.EnsureNoReparsePoints(root, stagingRoot);
@@ -75,16 +75,16 @@ public sealed class InstallService : IDisposable
             var managed = new ConcurrentBag<ManagedFile>();
             var total = pack.Files.Count + pack.Overrides.Count;
             var completed = 0;
-            progress?.Report(new InstallProgress("prepare", "Подготовка отдельного каталога", 0, total));
+            progress?.Report(new InstallProgress("prepare", LocalizedText.Get("PreparingInstance"), 0, total));
 
             var tasks = pack.Files.Select(async file =>
             {
                 var downloaded = await _downloads.DownloadVerifiedAsync(file, stagingRoot, (bytes, expected) =>
-                    progress?.Report(new InstallProgress("download", $"Загрузка {Path.GetFileName(file.Path)}", Volatile.Read(ref completed), total, bytes, expected)), cancellationToken);
+                    progress?.Report(new InstallProgress("download", LocalizedText.Get("DownloadingFile", Path.GetFileName(file.Path)), Volatile.Read(ref completed), total, bytes, expected)), cancellationToken);
                 var size = new FileInfo(downloaded).Length;
                 managed.Add(new ManagedFile(file.Path, file.Sha512, file.Downloads.Select(x => x.AbsoluteUri).ToArray(), false, size));
                 Log("download_verified", new { path = file.Path, source = file.Downloads[0].GetLeftPart(UriPartial.Authority), file.Sha512, size });
-                progress?.Report(new InstallProgress("download", $"Проверен {Path.GetFileName(file.Path)}", Interlocked.Increment(ref completed), total));
+                progress?.Report(new InstallProgress("download", LocalizedText.Get("VerifiedFile", Path.GetFileName(file.Path)), Interlocked.Increment(ref completed), total));
             });
             await Task.WhenAll(tasks);
 
@@ -93,7 +93,7 @@ public sealed class InstallService : IDisposable
             {
                 managed.Add(file);
                 Log("override_applied", new { path = file.Path, file.Sha512, file.Size });
-                progress?.Report(new InstallProgress("override", $"Применён {Path.GetFileName(file.Path)}", Interlocked.Increment(ref completed), total));
+                progress?.Report(new InstallProgress("override", LocalizedText.Get("AppliedOverride", Path.GetFileName(file.Path)), Interlocked.Increment(ref completed), total));
             }
 
             var manifest = new InstallationManifest
@@ -111,15 +111,15 @@ public sealed class InstallService : IDisposable
                 var resourcePacks = TestPackRelease.InitialResourcePacks;
                 if (resourcePacks.Any(name => !manifest.Files.Any(file =>
                     file.Path.Equals("resourcepacks/" + name, StringComparison.OrdinalIgnoreCase))))
-                    throw new InstallerException("PACK_INVALID", "В тестовом релизе отсутствует обязательный ресурспак.");
+                    throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedResourcePackMissing"));
                 await File.WriteAllTextAsync(Path.Combine(stagingRoot, "options.txt"),
                     TestPackRelease.InitialOptions, cancellationToken);
                 if (!manifest.Files.Any(file => file.Path.Equals("mods/bbe-fabric-1.3.7+mc26.2.jar", StringComparison.OrdinalIgnoreCase)))
-                    throw new InstallerException("PACK_INVALID", "В тестовом релизе отсутствует Better Block Entities.");
+                    throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedBbeMissing"));
                 var bbeConfig = SafePath.Resolve(stagingRoot, "config/BBEConfig.json");
                 SafePath.EnsureNoReparsePoints(stagingRoot, bbeConfig);
                 if (File.Exists(bbeConfig))
-                    throw new InstallerException("PACK_INVALID", "Релиз уже содержит настройки Better Block Entities.");
+                    throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedBbeConfigExists"));
                 await File.WriteAllTextAsync(bbeConfig,
                     "{\"bbe.config.storage.main\":[{\"option\":\"optimize.chest\",\"value\":false},{\"option\":\"optimize.shulker\",\"value\":false}]}",
                     cancellationToken);
@@ -137,14 +137,14 @@ public sealed class InstallService : IDisposable
             installCommitted = true;
             try { Log("install_committed", new { instancePath }); }
             catch { }
-            try { progress?.Report(new InstallProgress("complete", "Установка файлов завершена", total, total)); }
+            try { progress?.Report(new InstallProgress("complete", LocalizedText.Get("InstallFilesComplete"), total, total)); }
             catch { }
-            return new InstallResult(true, "OK", "Файлы тестовой сборки установлены.", instancePath, _logPath);
+            return new InstallResult(true, "OK", LocalizedText.Get("PackFilesInstalled"), instancePath, _logPath);
         }
         catch (OperationCanceledException)
         {
             LogSafe("install_cancelled");
-            return new InstallResult(false, "CANCELLED", "Установка отменена. Предыдущая активная версия не изменена.", installCommitted ? instancePath : null, _logPath);
+            return new InstallResult(false, "CANCELLED", LocalizedText.Get("InstallCancelled"), installCommitted ? instancePath : null, _logPath);
         }
         catch (InstallerException ex)
         {
@@ -154,7 +154,7 @@ public sealed class InstallService : IDisposable
         catch (Exception ex)
         {
             LogSafe("install_failed", new { error = ex.GetType().Name });
-            return new InstallResult(false, "INSTALL_FAILED", "Не удалось завершить установку. Откройте журнал диагностики.", installCommitted ? instancePath : null, _logPath);
+            return new InstallResult(false, "INSTALL_FAILED", LocalizedText.Get("InstallFailed"), installCommitted ? instancePath : null, _logPath);
         }
         finally
         {
@@ -192,7 +192,7 @@ public sealed class InstallService : IDisposable
                 SafePath.EnsureNoReparsePoints(fullInstance, target);
                 if (File.Exists(target) && PackArchive.FixedTimeHashEquals(PackArchive.HashFile(target), managed.Sha512))
                 {
-                    progress?.Report(new InstallProgress("repair", $"Проверен {Path.GetFileName(target)}", ++completed, total));
+                    progress?.Report(new InstallProgress("repair", LocalizedText.Get("VerifiedFile", Path.GetFileName(target)), ++completed, total));
                     continue;
                 }
 
@@ -204,25 +204,25 @@ public sealed class InstallService : IDisposable
                 }
                 else if (!overrideByPath.ContainsKey(managed.Path))
                 {
-                    throw new InstallerException("MANIFEST_INVALID", "Локальный manifest не соответствует overrides релиза.");
+                    throw new InstallerException("MANIFEST_INVALID", LocalizedText.Get("ManifestOverridesMismatch"));
                 }
                 if (!PackArchive.FixedTimeHashEquals(PackArchive.HashFile(staged), managed.Sha512))
-                    throw new InstallerException("REPAIR_HASH_MISMATCH", "Восстановленный файл не совпал с локальным manifest.");
+                    throw new InstallerException("REPAIR_HASH_MISMATCH", LocalizedText.Get("RepairedHashMismatch"));
                 Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                 SafePath.EnsureNoReparsePoints(fullInstance, target);
                 File.Move(staged, target, overwrite: true);
                 repaired++;
-                progress?.Report(new InstallProgress("repair", $"Восстановлен {Path.GetFileName(target)}", ++completed, total));
+                progress?.Report(new InstallProgress("repair", LocalizedText.Get("RestoredFile", Path.GetFileName(target)), ++completed, total));
                 Log("repair_file", new { path = managed.Path, managed.Sha512 });
             }
             await VerifyManagedFilesAsync(fullInstance, manifest.Files, cancellationToken);
             Log("repair_complete", new { repaired, total });
-            return new InstallResult(true, "OK", repaired == 0 ? "Все управляемые файлы исправны." : $"Восстановлено файлов: {repaired}.", fullInstance, _logPath);
+            return new InstallResult(true, "OK", repaired == 0 ? LocalizedText.Get("RepairAllHealthy") : LocalizedText.Get("RepairFilesRestored", repaired), fullInstance, _logPath);
         }
         catch (OperationCanceledException)
         {
             LogSafe("repair_cancelled");
-            return new InstallResult(false, "CANCELLED", "Проверка или восстановление отменено.", instancePath, _logPath);
+            return new InstallResult(false, "CANCELLED", LocalizedText.Get("RepairCancelled"), instancePath, _logPath);
         }
         catch (InstallerException ex)
         {
@@ -232,7 +232,7 @@ public sealed class InstallService : IDisposable
         catch (Exception ex)
         {
             LogSafe("repair_failed", new { error = ex.GetType().Name });
-            return new InstallResult(false, "REPAIR_FAILED", "Не удалось восстановить установку. Откройте журнал диагностики.", instancePath, _logPath);
+            return new InstallResult(false, "REPAIR_FAILED", LocalizedText.Get("RepairFailed"), instancePath, _logPath);
         }
         finally { TryDeleteDirectory(Path.GetDirectoryName(repairRoot)!, repairRoot); }
     }
@@ -273,7 +273,7 @@ public sealed class InstallService : IDisposable
 
             Log("uninstall_complete", new { remainingDirectory = Directory.Exists(fullInstance) ? fullInstance : null });
             var remains = Directory.Exists(fullInstance);
-            return Task.FromResult(new InstallResult(true, "OK", remains ? "Управляемые файлы удалены; пользовательские данные сохранены." : "Управляемые файлы удалены.", remains ? fullInstance : null, _logPath));
+            return Task.FromResult(new InstallResult(true, "OK", LocalizedText.Get(remains ? "UninstallFilesRemovedWithData" : "UninstallFilesRemoved"), remains ? fullInstance : null, _logPath));
         }
         catch (InstallerException ex)
         {
@@ -283,7 +283,7 @@ public sealed class InstallService : IDisposable
         catch (Exception ex)
         {
             LogSafe("uninstall_failed", new { error = ex.GetType().Name });
-            return Task.FromResult(new InstallResult(false, "UNINSTALL_FAILED", "Не удалось удалить установку. Откройте журнал диагностики.", instancePath, _logPath));
+            return Task.FromResult(new InstallResult(false, "UNINSTALL_FAILED", LocalizedText.Get("UninstallFailed"), instancePath, _logPath));
         }
     }
 
@@ -293,7 +293,7 @@ public sealed class InstallService : IDisposable
         var volumeRoot = Path.GetPathRoot(root);
         if (string.Equals(root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
             volumeRoot?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
-            throw new InstallerException("ROOT_UNSAFE", "Нельзя выбрать корень диска как каталог установки.");
+            throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("DriveRootUnsafe"));
         EnsureNotVanilla(root);
         SafePath.EnsureNoReparsePoints(root, root);
         Directory.CreateDirectory(root);
@@ -308,7 +308,7 @@ public sealed class InstallService : IDisposable
         var canonicalVanilla = vanilla.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         if (full.Equals(canonicalVanilla, StringComparison.OrdinalIgnoreCase) ||
             full.StartsWith(canonicalVanilla + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-            throw new InstallerException("VANILLA_PATH_BLOCKED", "Для безопасности выберите каталог вне vanilla .minecraft.");
+            throw new InstallerException("VANILLA_PATH_BLOCKED", LocalizedText.Get("VanillaPathBlocked"));
     }
 
     private void StartLog(string root)
@@ -346,12 +346,12 @@ public sealed class InstallService : IDisposable
                 var current = JsonSerializer.Deserialize<ActiveInstallation>(File.ReadAllText(marker));
                 if (current is null || current.SchemaVersion != 1 || string.IsNullOrWhiteSpace(current.InstanceDirectory) ||
                     GetActiveInstancePath(root) is null)
-                    throw new InstallerException("ACTIVE_MARKER_CONFLICT", "Файл активной установки повреждён; существующий маркер не изменён.");
+                    throw new InstallerException("ACTIVE_MARKER_CONFLICT", LocalizedText.Get("ActiveMarkerCorrupt"));
                 _ = SafePath.Resolve(root, current.InstanceDirectory);
             }
             catch (JsonException ex)
             {
-                throw new InstallerException("ACTIVE_MARKER_CONFLICT", "Файл активной установки повреждён; существующий маркер не изменён.", ex);
+                throw new InstallerException("ACTIVE_MARKER_CONFLICT", LocalizedText.Get("ActiveMarkerCorrupt"), ex);
             }
         }
         var temp = marker + "." + Guid.NewGuid().ToString("N") + ".tmp";
@@ -381,7 +381,7 @@ public sealed class InstallService : IDisposable
             var path = SafePath.Resolve(root, file.Path);
             SafePath.EnsureNoReparsePoints(root, path);
             if (!File.Exists(path) || !PackArchive.FixedTimeHashEquals(await Task.Run(() => PackArchive.HashFile(path), cancellationToken), file.Sha512))
-                throw new InstallerException("INSTALL_VERIFY_FAILED", $"Проверка файла {Path.GetFileName(path)} не прошла.");
+                throw new InstallerException("INSTALL_VERIFY_FAILED", LocalizedText.Get("InstallFileVerificationFailed", Path.GetFileName(path)));
         }
     }
 
@@ -390,22 +390,22 @@ public sealed class InstallService : IDisposable
         if (!PackArchive.FixedTimeHashEquals(manifest.PackArchiveSha512, pack.ArchiveSha512) ||
             manifest.PackVersion != pack.VersionId || manifest.MinecraftVersion != pack.MinecraftVersion ||
             manifest.FabricLoaderVersion != pack.FabricLoaderVersion)
-            throw new InstallerException("RELEASE_MISMATCH", "Установленный manifest относится к другой версии сборки.");
+            throw new InstallerException("RELEASE_MISMATCH", LocalizedText.Get("InstalledReleaseMismatch"));
 
         var packFiles = pack.Files.ToDictionary(x => x.Path, StringComparer.OrdinalIgnoreCase);
         var overrides = pack.Overrides.ToDictionary(x => x.Path, StringComparer.OrdinalIgnoreCase);
         if (manifest.Files.Count != packFiles.Count + overrides.Count)
-            throw new InstallerException("MANIFEST_INVALID", "Локальный manifest не соответствует закреплённому релизу.");
+            throw new InstallerException("MANIFEST_INVALID", LocalizedText.Get("ManifestReleaseMismatch"));
         foreach (var item in manifest.Files)
         {
             if (item.IsOverride)
             {
-                if (!overrides.ContainsKey(item.Path)) throw new InstallerException("MANIFEST_INVALID", "Локальный manifest содержит неизвестный override.");
+                if (!overrides.ContainsKey(item.Path)) throw new InstallerException("MANIFEST_INVALID", LocalizedText.Get("ManifestUnknownOverride"));
             }
             else if (!packFiles.TryGetValue(item.Path, out var source) ||
                      !PackArchive.FixedTimeHashEquals(item.Sha512, source.Sha512) ||
                      !item.Downloads.SequenceEqual(source.Downloads.Select(x => x.AbsoluteUri), StringComparer.OrdinalIgnoreCase))
-                throw new InstallerException("MANIFEST_INVALID", "Локальный manifest содержит неизвестный managed-файл.");
+                throw new InstallerException("MANIFEST_INVALID", LocalizedText.Get("ManifestUnknownManagedFile"));
         }
     }
 

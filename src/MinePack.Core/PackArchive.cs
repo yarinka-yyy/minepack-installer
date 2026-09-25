@@ -41,18 +41,18 @@ public sealed class PackArchive
     public static PackArchive Open(string path, string? expectedArchiveSha512 = null)
     {
         var fullPath = Path.GetFullPath(path);
-        if (!File.Exists(fullPath)) throw new InstallerException("PACK_NOT_FOUND", "Файл сборки не найден.");
+        if (!File.Exists(fullPath)) throw new InstallerException("PACK_NOT_FOUND", LocalizedText.Get("PackFileMissing"));
 
         try
         {
             using var file = File.OpenRead(fullPath);
             var archiveHash = Convert.ToHexString(SHA512.HashData(file));
             if (expectedArchiveSha512 is not null && !FixedTimeHashEquals(archiveHash, expectedArchiveSha512))
-                throw new InstallerException("PACK_HASH_MISMATCH", "Файл закреплённой сборки повреждён.");
+                throw new InstallerException("PACK_HASH_MISMATCH", LocalizedText.Get("PinnedPackCorrupt"));
             file.Position = 0;
             using var zip = new ZipArchive(file, ZipArchiveMode.Read);
             if (zip.Entries.Count > MaxArchiveEntries)
-                throw new InstallerException("PACK_TOO_MANY_FILES", "В архиве слишком много записей.");
+                throw new InstallerException("PACK_TOO_MANY_FILES", LocalizedText.Get("ArchiveTooManyEntries"));
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var entryKinds = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
             ZipArchiveEntry? manifestEntry = null;
@@ -63,25 +63,25 @@ public sealed class PackArchive
             {
                 var isDirectory = entry.FullName.EndsWith('/');
                 var relative = SafePath.ValidateRelative(entry.FullName, isDirectory);
-                if (!names.Add(relative)) throw new InstallerException("PACK_DUPLICATE_PATH", "В архиве есть повторяющиеся пути.");
+                if (!names.Add(relative)) throw new InstallerException("PACK_DUPLICATE_PATH", LocalizedText.Get("ArchiveDuplicatePath"));
                 var segments = relative.Split('/');
                 for (var i = 1; i < segments.Length; i++)
                 {
                     var parent = string.Join('/', segments.Take(i));
                     if (entryKinds.TryGetValue(parent, out var parentIsDirectory) && !parentIsDirectory)
-                        throw new InstallerException("PACK_DUPLICATE_PATH", "Файл в архиве используется как каталог другого файла.");
+                        throw new InstallerException("PACK_DUPLICATE_PATH", LocalizedText.Get("ArchiveFileParentConflict"));
                 }
                 if (!isDirectory && entryKinds.Keys.Any(existing => existing.StartsWith(relative + "/", StringComparison.OrdinalIgnoreCase)))
-                    throw new InstallerException("PACK_DUPLICATE_PATH", "Каталог в архиве используется как файл.");
+                    throw new InstallerException("PACK_DUPLICATE_PATH", LocalizedText.Get("ArchiveDirectoryFileConflict"));
                 entryKinds.Add(relative, isDirectory);
                 RejectLink(entry);
 
                 if (relative.Equals("modrinth.index.json", StringComparison.OrdinalIgnoreCase))
                 {
                     if (isDirectory || manifestEntry is not null)
-                        throw new InstallerException("PACK_INVALID_INDEX", "Индекс сборки задан некорректно.");
+                        throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("PackIndexInvalid"));
                     if (entry.Length > MaxManifestBytes)
-                        throw new InstallerException("PACK_INDEX_TOO_LARGE", "Индекс сборки превышает допустимый размер.");
+                        throw new InstallerException("PACK_INDEX_TOO_LARGE", LocalizedText.Get("PackIndexTooLarge"));
                     manifestEntry = entry;
                     continue;
                 }
@@ -92,7 +92,7 @@ public sealed class PackArchive
                         !relative.Equals("client-overrides", StringComparison.OrdinalIgnoreCase) &&
                         !relative.StartsWith("overrides/", StringComparison.OrdinalIgnoreCase) &&
                         !relative.StartsWith("client-overrides/", StringComparison.OrdinalIgnoreCase))
-                        throw new InstallerException("PACK_UNSUPPORTED_ENTRY", "Архив содержит неподдерживаемый каталог.");
+                        throw new InstallerException("PACK_UNSUPPORTED_ENTRY", LocalizedText.Get("ArchiveUnsupportedDirectory"));
                     continue;
                 }
 
@@ -100,30 +100,30 @@ public sealed class PackArchive
                     ? relative["overrides/".Length..]
                     : relative.StartsWith("client-overrides/", StringComparison.OrdinalIgnoreCase)
                         ? relative["client-overrides/".Length..]
-                        : throw new InstallerException("PACK_UNSUPPORTED_ENTRY", "Архив содержит неподдерживаемый файл.");
+                        : throw new InstallerException("PACK_UNSUPPORTED_ENTRY", LocalizedText.Get("ArchiveUnsupportedFile"));
                 target = SafePath.ValidateRelative(target);
                 ValidateManagedTarget(target);
                 if (!names.Add("override-target:" + target))
-                    throw new InstallerException("PACK_DUPLICATE_PATH", "В сборке есть конфликтующие пути overrides.");
+                    throw new InstallerException("PACK_DUPLICATE_PATH", LocalizedText.Get("PackOverridesConflict"));
                 totalOverrideBytes += entry.Length;
                 if (entry.Length > MaxOverrideBytes || totalOverrideBytes > MaxOverrideBytes)
-                    throw new InstallerException("PACK_OVERRIDE_TOO_LARGE", "Файлы overrides превышают допустимый размер.");
+                    throw new InstallerException("PACK_OVERRIDE_TOO_LARGE", LocalizedText.Get("PackOverridesTooLarge"));
                 overrideEntries.Add(new PackOverride(target, entry.FullName, entry.Length));
             }
 
-            if (manifestEntry is null) throw new InstallerException("PACK_INVALID_INDEX", "В архиве отсутствует modrinth.index.json.");
+            if (manifestEntry is null) throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("ModrinthIndexMissing"));
             var (name, version, minecraft, fabric, files) = ReadIndex(manifestEntry);
             var allTargets = new HashSet<string>(overrideEntries.Select(x => x.Path), StringComparer.OrdinalIgnoreCase);
             foreach (var packFile in files)
                 if (!allTargets.Add(packFile.Path))
-                    throw new InstallerException("PACK_DUPLICATE_PATH", "Файл из индекса конфликтует с overrides.");
+                    throw new InstallerException("PACK_DUPLICATE_PATH", LocalizedText.Get("IndexedFileOverridesConflict"));
 
             return new PackArchive(fullPath, name, version, minecraft, fabric, files, overrideEntries, archiveHash);
         }
         catch (InstallerException) { throw; }
-        catch (InvalidDataException ex) { throw new InstallerException("PACK_INVALID_ARCHIVE", "Архив сборки повреждён или имеет неподдерживаемый формат.", ex); }
-        catch (JsonException ex) { throw new InstallerException("PACK_INVALID_INDEX", "Индекс сборки содержит некорректный JSON.", ex); }
-        catch (IOException ex) { throw new InstallerException("PACK_READ_FAILED", "Не удалось прочитать файл сборки.", ex); }
+        catch (InvalidDataException ex) { throw new InstallerException("PACK_INVALID_ARCHIVE", LocalizedText.Get("PackArchiveInvalid"), ex); }
+        catch (JsonException ex) { throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("PackIndexJsonInvalid"), ex); }
+        catch (IOException ex) { throw new InstallerException("PACK_READ_FAILED", LocalizedText.Get("PackReadFailed"), ex); }
     }
 
     public async Task<IReadOnlyList<ManagedFile>> ExtractOverridesAsync(string stagingRoot, CancellationToken cancellationToken)
@@ -132,7 +132,7 @@ public sealed class PackArchive
         using var file = File.OpenRead(_archivePath);
         var archiveHash = Convert.ToHexString(SHA512.HashData(file));
         if (!FixedTimeHashEquals(archiveHash, ArchiveSha512))
-            throw new InstallerException("PACK_HASH_MISMATCH", "Архив сборки изменился после проверки.");
+            throw new InstallerException("PACK_HASH_MISMATCH", LocalizedText.Get("PackChangedAfterCheck"));
         file.Position = 0;
         if (Overrides.Count == 0) return result;
 
@@ -141,7 +141,7 @@ public sealed class PackArchive
         {
             cancellationToken.ThrowIfCancellationRequested();
             var entry = zip.GetEntry(item.ArchivePath)
-                ?? throw new InstallerException("PACK_INVALID_ARCHIVE", "Файл overrides исчез из архива.");
+                ?? throw new InstallerException("PACK_INVALID_ARCHIVE", LocalizedText.Get("OverrideFileMissing"));
             var target = SafePath.Resolve(stagingRoot, item.Path);
             SafePath.EnsureNoReparsePoints(stagingRoot, target);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
@@ -157,15 +157,15 @@ public sealed class PackArchive
                     if (count == 0) break;
                     copied += count;
                     if (copied > item.Size || copied > MaxOverrideBytes)
-                        throw new InstallerException("OVERRIDE_SIZE_MISMATCH", "Распакованный файл overrides превышает допустимый размер.");
+                        throw new InstallerException("OVERRIDE_SIZE_MISMATCH", LocalizedText.Get("OverrideExtractedTooLarge"));
                     await output.WriteAsync(buffer.AsMemory(0, count), cancellationToken);
                 }
                 if (copied != item.Size)
-                    throw new InstallerException("OVERRIDE_SIZE_MISMATCH", "Размер файла overrides не совпадает с архивом.");
+                    throw new InstallerException("OVERRIDE_SIZE_MISMATCH", LocalizedText.Get("OverrideSizeMismatch"));
             }
 
             var info = new FileInfo(target);
-            if (info.Length != item.Size) throw new InstallerException("OVERRIDE_SIZE_MISMATCH", "Размер файла overrides не совпадает с архивом.");
+            if (info.Length != item.Size) throw new InstallerException("OVERRIDE_SIZE_MISMATCH", LocalizedText.Get("OverrideSizeMismatch"));
             result.Add(new ManagedFile(item.Path, HashFile(target), [], true, info.Length));
         }
         return result;
@@ -181,61 +181,61 @@ public sealed class PackArchive
             var count = stream.Read(buffer, 0, buffer.Length);
             if (count == 0) break;
             if (bounded.Length + count > MaxManifestBytes)
-                throw new InstallerException("PACK_INDEX_TOO_LARGE", "Индекс сборки превышает допустимый размер.");
+                throw new InstallerException("PACK_INDEX_TOO_LARGE", LocalizedText.Get("PackIndexTooLarge"));
             bounded.Write(buffer, 0, count);
         }
         using var document = JsonDocument.Parse(bounded.ToArray(), new JsonDocumentOptions { MaxDepth = 32 });
         var root = document.RootElement;
         if (root.ValueKind != JsonValueKind.Object || RequiredInt(root, "formatVersion") != 1 || RequiredString(root, "game") != "minecraft")
-            throw new InstallerException("PACK_SCHEMA_UNSUPPORTED", "Версия схемы или игра в сборке не поддерживаются.");
+            throw new InstallerException("PACK_SCHEMA_UNSUPPORTED", LocalizedText.Get("PackSchemaUnsupported"));
 
         var name = RequiredString(root, "name");
         var version = RequiredString(root, "versionId");
         if (name.Length > 200 || version.Length > 80 || version.Any(c => !(char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_')))
-            throw new InstallerException("PACK_INVALID_INDEX", "Имя или версия сборки недопустимы.");
+            throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("PackNameOrVersionInvalid"));
 
         var dependencies = RequiredObject(root, "dependencies");
         var minecraft = RequiredString(dependencies, "minecraft");
         var fabric = RequiredString(dependencies, "fabric-loader");
         if (dependencies.EnumerateObject().Any(x => x.Name is not ("minecraft" or "fabric-loader")))
-            throw new InstallerException("PACK_UNSUPPORTED_DEPENDENCY", "Сборка содержит неподдерживаемый тип зависимости.");
+            throw new InstallerException("PACK_UNSUPPORTED_DEPENDENCY", LocalizedText.Get("PackDependencyUnsupported"));
 
         var filesElement = RequiredArray(root, "files");
         if (filesElement.GetArrayLength() > MaxFileCount)
-            throw new InstallerException("PACK_TOO_MANY_FILES", "В сборке слишком много файлов.");
+            throw new InstallerException("PACK_TOO_MANY_FILES", LocalizedText.Get("PackTooManyFiles"));
         var files = new List<PackFile>(filesElement.GetArrayLength());
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in filesElement.EnumerateArray())
         {
             if (item.ValueKind != JsonValueKind.Object)
-                throw new InstallerException("PACK_INVALID_INDEX", "Индекс содержит файл с неподдерживаемой структурой.");
+                throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("IndexedFileStructureUnsupported"));
             var filePath = SafePath.ValidateRelative(RequiredString(item, "path"));
             ValidateManagedTarget(filePath);
-            if (!paths.Add(filePath)) throw new InstallerException("PACK_DUPLICATE_PATH", "Индекс содержит повторяющиеся пути.");
+            if (!paths.Add(filePath)) throw new InstallerException("PACK_DUPLICATE_PATH", LocalizedText.Get("IndexDuplicatePath"));
             var hashes = RequiredObject(item, "hashes");
             var sha512 = RequiredString(hashes, "sha512");
-            if (!IsSha512(sha512)) throw new InstallerException("PACK_INVALID_HASH", "Индекс содержит некорректный SHA-512.");
+            if (!IsSha512(sha512)) throw new InstallerException("PACK_INVALID_HASH", LocalizedText.Get("IndexSha512Invalid"));
             var downloadsElement = RequiredArray(item, "downloads");
             if (downloadsElement.GetArrayLength() is < 1 or > 10)
-                throw new InstallerException("PACK_INVALID_DOWNLOADS", "Для файла не задан допустимый список источников.");
+                throw new InstallerException("PACK_INVALID_DOWNLOADS", LocalizedText.Get("DownloadListInvalid"));
             var downloads = downloadsElement.EnumerateArray().Select(x =>
             {
                 if (x.ValueKind != JsonValueKind.String)
-                    throw new InstallerException("PACK_INVALID_DOWNLOADS", "Адрес загрузки имеет неподдерживаемый формат.");
+                    throw new InstallerException("PACK_INVALID_DOWNLOADS", LocalizedText.Get("DownloadAddressInvalid"));
                 return ValidateDownloadUrl(x.GetString() ?? "");
             }).ToArray();
             var size = -1L;
             if (item.TryGetProperty("fileSize", out var sizeElement) && (!sizeElement.TryGetInt64(out size) || size < 0))
-                throw new InstallerException("PACK_INVALID_INDEX", "В индексе задан некорректный размер файла.");
+                throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("IndexFileSizeInvalid"));
             var clientEnvironment = "required";
             if (item.TryGetProperty("env", out var env))
             {
                 if (env.ValueKind != JsonValueKind.Object || !env.TryGetProperty("client", out var client) || client.ValueKind != JsonValueKind.String)
-                    throw new InstallerException("PACK_INVALID_INDEX", "Среда выполнения файла задана некорректно.");
+                    throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("FileEnvironmentInvalid"));
                 clientEnvironment = client.GetString() ?? "";
             }
             if (clientEnvironment != "required")
-                throw new InstallerException("PACK_OPTIONAL_UNSUPPORTED", "Эта версия установщика поддерживает только обязательные клиентские файлы.");
+                throw new InstallerException("PACK_OPTIONAL_UNSUPPORTED", LocalizedText.Get("OptionalFilesUnsupported"));
             files.Add(new PackFile(filePath, downloads, sha512.ToLowerInvariant(), size));
         }
         return (name, version, minecraft, fabric, files);
@@ -246,7 +246,7 @@ public sealed class PackArchive
         if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps ||
             !uri.Host.Equals("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase) || uri.Port != 443 ||
             !string.IsNullOrEmpty(uri.UserInfo) || !string.IsNullOrEmpty(uri.Fragment))
-            throw new InstallerException("DOWNLOAD_URL_BLOCKED", "Источник файла не входит в список разрешённых HTTPS-адресов.");
+            throw new InstallerException("DOWNLOAD_URL_BLOCKED", LocalizedText.Get("DownloadSourceBlocked"));
         return uri;
     }
 
@@ -257,7 +257,7 @@ public sealed class PackArchive
             path.Equals(".minepack-active.json", StringComparison.OrdinalIgnoreCase) ||
             firstSegment.Equals("saves", StringComparison.OrdinalIgnoreCase) ||
             firstSegment.Equals("screenshots", StringComparison.OrdinalIgnoreCase))
-            throw new InstallerException("PACK_RESERVED_PATH", "Сборка не может управлять marker-файлами, мирами или снимками экрана.");
+            throw new InstallerException("PACK_RESERVED_PATH", LocalizedText.Get("ReservedPackPath"));
     }
 
     internal static bool IsAllowedDownloadUri(Uri uri) =>
@@ -282,22 +282,22 @@ public sealed class PackArchive
     private static string RequiredString(JsonElement parent, string name) =>
         parent.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString())
             ? value.GetString()!
-            : throw new InstallerException("PACK_INVALID_INDEX", $"В индексе отсутствует обязательное поле {name}.");
+            : throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("IndexRequiredFieldMissing", name));
 
     private static int RequiredInt(JsonElement parent, string name) =>
         parent.TryGetProperty(name, out var value) && value.TryGetInt32(out var number)
             ? number
-            : throw new InstallerException("PACK_INVALID_INDEX", $"В индексе отсутствует обязательное поле {name}.");
+            : throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("IndexRequiredFieldMissing", name));
 
     private static JsonElement RequiredObject(JsonElement parent, string name) =>
         parent.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Object
             ? value
-            : throw new InstallerException("PACK_INVALID_INDEX", $"В индексе отсутствует обязательное поле {name}.");
+            : throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("IndexRequiredFieldMissing", name));
 
     private static JsonElement RequiredArray(JsonElement parent, string name) =>
         parent.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Array
             ? value
-            : throw new InstallerException("PACK_INVALID_INDEX", $"В индексе отсутствует обязательное поле {name}.");
+            : throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("IndexRequiredFieldMissing", name));
 
     private static void RejectLink(ZipArchiveEntry entry)
     {
@@ -305,7 +305,7 @@ public sealed class PackArchive
         const int symbolicLink = 0xA000;
         if (((entry.ExternalAttributes >> 16) & fileTypeMask) == symbolicLink ||
             (entry.ExternalAttributes & (int)FileAttributes.ReparsePoint) != 0)
-            throw new InstallerException("PACK_LINK_BLOCKED", "В архиве запрещены ссылки и reparse points.");
+            throw new InstallerException("PACK_LINK_BLOCKED", LocalizedText.Get("ArchiveLinkBlocked"));
     }
 }
 
@@ -314,12 +314,12 @@ internal static class SafePath
     public static string ValidateRelative(string value, bool directory = false)
     {
         if (string.IsNullOrWhiteSpace(value) || value.Length > 1024 || value.StartsWith('/') || value.StartsWith('\\') || value.Contains('\\') || value.Contains(':') || value.Contains('\0'))
-            throw new InstallerException("PATH_BLOCKED", "Путь файла должен быть относительным и безопасным.");
+            throw new InstallerException("PATH_BLOCKED", LocalizedText.Get("FilePathUnsafe"));
         if (directory && value.EndsWith('/')) value = value[..^1];
         var parts = value.Split('/');
         if (parts.Any(part => part.Length is 0 or > 255 || part is "." or ".." || part.EndsWith('.') || part.EndsWith(' ') ||
                               part.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || IsDeviceName(part)))
-            throw new InstallerException("PATH_BLOCKED", "Путь файла содержит запрещённый сегмент.");
+            throw new InstallerException("PATH_BLOCKED", LocalizedText.Get("FilePathSegmentBlocked"));
         return string.Join('/', parts);
     }
 
@@ -330,7 +330,7 @@ internal static class SafePath
         var rootWithSeparator = Path.EndsInDirectorySeparator(fullRoot) ? fullRoot : fullRoot + Path.DirectorySeparatorChar;
         var candidate = Path.GetFullPath(Path.Combine(rootWithSeparator, normalized.Replace('/', Path.DirectorySeparatorChar)));
         if (!candidate.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase))
-            throw new InstallerException("PATH_BLOCKED", "Путь выходит за пределы каталога сборки.");
+            throw new InstallerException("PATH_BLOCKED", LocalizedText.Get("PackPathEscape"));
         return candidate;
     }
 
@@ -349,7 +349,7 @@ internal static class SafePath
         }
         var relative = Path.GetRelativePath(fullRoot, fullTarget);
         if (relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) || Path.IsPathRooted(relative))
-            throw new InstallerException("PATH_BLOCKED", "Путь выходит за пределы каталога сборки.");
+            throw new InstallerException("PATH_BLOCKED", LocalizedText.Get("PackPathEscape"));
         current = fullRoot;
         foreach (var part in relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
         {
@@ -364,7 +364,7 @@ internal static class SafePath
         try
         {
             if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
-                throw new InstallerException("PATH_REPARSE_BLOCKED", "Каталог содержит ссылку или reparse point.");
+                throw new InstallerException("PATH_REPARSE_BLOCKED", LocalizedText.Get("DirectoryReparseBlocked"));
         }
         catch (FileNotFoundException) { }
         catch (DirectoryNotFoundException) { }

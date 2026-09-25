@@ -11,19 +11,19 @@ public static class WorldImportService
         if (!source.EndsWith(Path.DirectorySeparatorChar + "saves", StringComparison.OrdinalIgnoreCase) &&
             Directory.Exists(Path.Combine(source, "saves"))) source = Path.Combine(source, "saves");
         if (!Directory.Exists(source))
-            throw new InstallerException("WORLDS_SOURCE_MISSING", "Папка с мирами не найдена. Выберите каталог saves другого профиля.");
+            throw new InstallerException("WORLDS_SOURCE_MISSING", LocalizedText.Get("WorldSourceMissing"));
 
         var instance = Path.GetFullPath(instancePath);
         var vanilla = Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft"));
         if (instance.Equals(vanilla, StringComparison.OrdinalIgnoreCase) ||
             instance.StartsWith(vanilla + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-            throw new InstallerException("WORLDS_TARGET_UNSAFE", "Нельзя импортировать миры в обычную .minecraft.");
+            throw new InstallerException("WORLDS_TARGET_UNSAFE", LocalizedText.Get("WorldTargetVanilla"));
         _ = InstallationManifest.Load(instance);
         var destination = Path.Combine(instance, "saves");
         if (source.Equals(destination, StringComparison.OrdinalIgnoreCase) ||
             source.StartsWith(destination + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ||
             destination.StartsWith(source + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
-            throw new InstallerException("WORLDS_SAME_FOLDER", "Источник и папка сборки не должны пересекаться.");
+            throw new InstallerException("WORLDS_SAME_FOLDER", LocalizedText.Get("WorldFoldersOverlap"));
         SafePath.EnsureNoReparsePoints(source, source);
         SafePath.EnsureNoReparsePoints(instance, destination);
         Directory.CreateDirectory(destination);
@@ -48,7 +48,7 @@ public static class WorldImportService
             if (File.Exists(lockFile))
             {
                 try { using var probe = new FileStream(lockFile, FileMode.Open, FileAccess.Read, FileShare.None); }
-                catch (IOException ex) { throw new InstallerException("WORLD_OPEN", $"Мир «{name}» открыт. Закройте Minecraft перед импортом.", ex); }
+                catch (IOException ex) { throw new InstallerException("WORLD_OPEN", LocalizedText.Get("WorldIsOpen", name), ex); }
             }
 
             var staging = Path.Combine(destination, ".minepack-import-" + Guid.NewGuid().ToString("N"));
@@ -73,7 +73,7 @@ public static class WorldImportService
                 if (Directory.Exists(target) || File.Exists(target)) { skipped++; continue; }
                 Directory.Move(staging, target);
                 imported++;
-                progress?.Report($"Скопирован мир: {name}");
+                progress?.Report(LocalizedText.Get("WorldCopied", name));
             }
             finally
             {

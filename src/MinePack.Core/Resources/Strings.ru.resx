@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="UiSubtitle" xml:space="preserve"><value>Моды для Minecraft — в один клик</value></data>
+  <data name="UiDescription" xml:space="preserve"><value>MinePack скачает моды и компоненты, создаст отдельный профиль в Minecraft Launcher. Ваши миры останутся отдельно.</value></data>
+  <data name="UiRequirements" xml:space="preserve"><value>Нужны официальный Minecraft Launcher и аккаунт Minecraft: Java Edition. Перед установкой закройте Launcher.</value></data>
+  <data name="UiMinecraftVersion" xml:space="preserve"><value>Для версии 26.2</value></data>
+  <data name="UiBuildInfo" xml:space="preserve"><value>Версия сборки 0.8.0 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
+  <data name="UiPackCounts" xml:space="preserve"><value>26 модов · 8 ресурспаков · 1 шейдер</value></data>
+  <data name="UiCatalogTitle" xml:space="preserve"><value>Что входит в сборку</value></data>
+  <data name="UiOpenOnModrinth" xml:space="preserve"><value>Открыть на Modrinth</value></data>
+  <data name="UiInstallLocation" xml:space="preserve"><value>Куда установить</value></data>
+  <data name="UiBrowse" xml:space="preserve"><value>Обзор...</value></data>
+  <data name="UiInstall" xml:space="preserve"><value>Установить сборку</value></data>
+  <data name="UiCancel" xml:space="preserve"><value>Отмена</value></data>
+  <data name="UiReady" xml:space="preserve"><value>Готово к установке</value></data>
+  <data name="UiWaiting" xml:space="preserve"><value>Ожидание</value></data>
+  <data name="UiInstallPrompt" xml:space="preserve"><value>Нажмите «Установить сборку» — остальное сделаем сами.</value></data>
+  <data name="UiAdditionalActions" xml:space="preserve"><value>Дополнительные действия</value></data>
+  <data name="UiRepair" xml:space="preserve"><value>Проверить и исправить</value></data>
+  <data name="UiImportWorlds" xml:space="preserve"><value>Импортировать миры</value></data>
+  <data name="UiRestoreLauncher" xml:space="preserve"><value>Восстановить профиль Launcher</value></data>
+  <data name="UiUninstall" xml:space="preserve"><value>Удалить сборку</value></data>
+  <data name="UiLauncherHint" xml:space="preserve"><value>Профиль не появился, хотя файлы скачаны? Нажмите «Восстановить профиль Launcher».</value></data>
+  <data name="UiDetails" xml:space="preserve"><value>Подробнее</value></data>
+  <data name="UiOpenFolder" xml:space="preserve"><value>Открыть папку</value></data>
+  <data name="UiOpenLog" xml:space="preserve"><value>Открыть журнал</value></data>
+  <data name="UiWorldFolderDialog" xml:space="preserve"><value>Выберите папку saves профиля, из которого скопировать миры</value></data>
+  <data name="UiInstallFolderDialog" xml:space="preserve"><value>Выберите корневую папку данных MinePack</value></data>
+  <data name="UiUninstallConfirmMessage" xml:space="preserve"><value>Удалить установленные файлы MinePack? Миры, снимки экрана и ваши другие файлы останутся на месте.</value></data>
+  <data name="UiUninstallConfirmTitle" xml:space="preserve"><value>Удалить MinePack</value></data>
+  <data name="CatalogPerformance" xml:space="preserve"><value>Производительность и дальность</value></data>
+  <data name="CatalogGraphics" xml:space="preserve"><value>Графика и анимации</value></data>
+  <data name="CatalogTools" xml:space="preserve"><value>Инструменты и удобство</value></data>
+  <data name="CatalogSound" xml:space="preserve"><value>Звук</value></data>
+  <data name="CatalogTechnical" xml:space="preserve"><value>Техническая основа</value></data>
+  <data name="CatalogResourcePacks" xml:space="preserve"><value>Ресурспаки</value></data>
+  <data name="CatalogShader" xml:space="preserve"><value>Шейдер</value></data>
+  <data name="OperationWait" xml:space="preserve"><value>Подождите, выполняем выбранное действие.</value></data>
+  <data name="OperationInstalling" xml:space="preserve"><value>Устанавливаем сборку</value></data>
+  <data name="OperationWorking" xml:space="preserve"><value>Выполняем действие</value></data>
+  <data name="PreparingFiles" xml:space="preserve"><value>Подготовка файлов…</value></data>
+  <data name="SearchingPack" xml:space="preserve"><value>Поиск установленной сборки…</value></data>
+  <data name="RestoringProfile" xml:space="preserve"><value>Восстанавливаем профиль Launcher…</value></data>
+  <data name="CopyingWorlds" xml:space="preserve"><value>Копирование миров…</value></data>
+  <data name="PreparingUninstall" xml:space="preserve"><value>Подготовка удаления…</value></data>
+  <data name="PublishedPackMissing" xml:space="preserve"><value>В опубликованной папке приложения не найден закреплённый .mrpack релиз.</value></data>
+  <data name="InstallBeforeImport" xml:space="preserve"><value>Сначала установите сборку, в которую хотите скопировать миры.</value></data>
+  <data name="WorldImportComplete" xml:space="preserve"><value>Импорт завершён</value></data>
+  <data name="WorldImportSummary" xml:space="preserve"><value>Скопировано миров: {0}. Пропущено совпадений имён: {1}.</value></data>
+  <data name="WorldImportSafety" xml:space="preserve"><value>Исходные миры сохранены. Мир из другой версии Minecraft открывайте только после резервной копии: сама игра может преобразовать его формат.</value></data>
+  <data name="OperationComplete" xml:space="preserve"><value>Операция завершена</value></data>
+  <data name="InstallBeforeLauncherRepair" xml:space="preserve"><value>Сначала установите сборку.</value></data>
+  <data name="PackNotFoundInFolder" xml:space="preserve"><value>Сборка не найдена в выбранной папке.</value></data>
+  <data name="ProfileRemoved" xml:space="preserve"><value>Профиль удалён</value></data>
+  <data name="NoActivePackProfileRemoved" xml:space="preserve"><value>Активной сборки уже нет. Собственный профиль MinePack удалён из Launcher.</value></data>
+  <data name="OtherProfilesUnchanged" xml:space="preserve"><value>Другие профили Launcher не изменены.</value></data>
+  <data name="PinnedArchiveUnavailable" xml:space="preserve"><value>Для этой установленной версии в приложении нет закреплённого архива.</value></data>
+  <data name="PackUninstalled" xml:space="preserve"><value>Сборка удалена</value></data>
+  <data name="UserFilesPreserved" xml:space="preserve"><value>Миры, снимки экрана и другие личные файлы сохранены, если они были в папке сборки.</value></data>
+  <data name="OperationCancelledHeading" xml:space="preserve"><value>Операция отменена</value></data>
+  <data name="OperationFailedHeading" xml:space="preserve"><value>Не удалось завершить действие</value></data>
+  <data name="OperationStoppedStatus" xml:space="preserve"><value>Операция остановлена. Уже сохранённые файлы остались на месте.</value></data>
+  <data name="WorldImportFailedHeading" xml:space="preserve"><value>Импорт не завершён</value></data>
+  <data name="WorldImportPartialSafety" xml:space="preserve"><value>Ранее скопированные миры остаются на месте; исходные миры не изменены.</value></data>
+  <data name="OperationIncomplete" xml:space="preserve"><value>Операция не завершена</value></data>
+  <data name="FilesRemovedProfileRemains" xml:space="preserve"><value>Файлы удалены, профиль остался</value></data>
+  <data name="PackInstalledProfilePending" xml:space="preserve"><value>Сборка есть, профиль ещё не готов</value></data>
+  <data name="NeedAnotherStep" xml:space="preserve"><value>Нужен ещё один шаг</value></data>
+  <data name="RetryUninstallProfile" xml:space="preserve"><value>После устранения причины нажмите «Удалить сборку» ещё раз — останется убрать только профиль MinePack.</value></data>
+  <data name="RetryConfigureProfile" xml:space="preserve"><value>Файлы сборки сохранены. После устранения причины нажмите «Восстановить профиль Launcher» — скачивать моды заново не потребуется.</value></data>
+  <data name="FixAndRetry" xml:space="preserve"><value>Исправьте указанную причину и повторите действие.</value></data>
+  <data name="WorldImportStopped" xml:space="preserve"><value>Импорт остановлен</value></data>
+  <data name="WorldCopyCancelled" xml:space="preserve"><value>Копирование отменено. Уже скопированные миры сохранены, исходные не изменены.</value></data>
+  <data name="OperationCancelledStatus" xml:space="preserve"><value>Операция отменена.</value></data>
+  <data name="InstalledProfilePendingStatus" xml:space="preserve"><value>Файлы сборки уже установлены, но профиль Launcher не настроен. Нажмите «Восстановить профиль Launcher», когда будете готовы.</value></data>
+  <data name="WorldImportFailedStatus" xml:space="preserve"><value>Не удалось скопировать миры. Проверьте доступ к папке и свободное место.</value></data>
+  <data name="WorldImportFailureSafety" xml:space="preserve"><value>Исходные миры не изменены; уже скопированные миры сохранены.</value></data>
+  <data name="OperationUnexpectedFailure" xml:space="preserve"><value>Не удалось завершить операцию</value></data>
+  <data name="ActionFailedHelp" xml:space="preserve"><value>Не удалось выполнить действие. Проверьте путь к папке, права доступа и журнал.</value></data>
+  <data name="RetryUninstall" xml:space="preserve"><value>Закройте Launcher и нажмите «Удалить сборку» ещё раз.</value></data>
+  <data name="RetryConfigure" xml:space="preserve"><value>Файлы сохранены. Нажмите «Восстановить профиль Launcher» после устранения причины.</value></data>
+  <data name="OperationFailedProgress" xml:space="preserve"><value>Операция завершилась с ошибкой</value></data>
+  <data name="ConfigureLauncherProgress" xml:space="preserve"><value>Загрузка Fabric и создание отдельного профиля Launcher…</value></data>
+  <data name="PackReady" xml:space="preserve"><value>Сборка готова</value></data>
+  <data name="InstallComplete" xml:space="preserve"><value>Установка завершена</value></data>
+  <data name="LaunchInstruction" xml:space="preserve"><value>Откройте официальный Minecraft Launcher, выберите профиль MinePack и нажмите «Играть».</value></data>
+  <data name="FirstLaunchDownload" xml:space="preserve"><value>При первом запуске Launcher сам загрузит базовые файлы Minecraft.</value></data>
+  <data name="GameFolderLabel" xml:space="preserve"><value>Папка игры: {0}</value></data>
+  <data name="InstalledFolderNotFound" xml:space="preserve"><value>Установленная папка игры пока не найдена.</value></data>
+  <data name="OpenFolderFailed" xml:space="preserve"><value>Не удалось открыть папку ({0}).</value></data>
+  <data name="LogAfterFirstOperation" xml:space="preserve"><value>Журнал появится после первой операции.</value></data>
+  <data name="OpenLogFailed" xml:space="preserve"><value>Не удалось открыть журнал ({0}).</value></data>
+  <data name="OpenModrinthFailed" xml:space="preserve"><value>Не удалось открыть страницу Modrinth в браузере.</value></data>
+  <data name="DiagnosticCode" xml:space="preserve"><value>Код: {0}</value></data>
+  <data name="DiagnosticLog" xml:space="preserve"><value>Журнал: {0}</value></data>
+  <data name="NotCreated" xml:space="preserve"><value>не создан</value></data>
+  <data name="CancelCurrentOperation" xml:space="preserve"><value>Отменяю текущую операцию. Закройте окно после завершения отмены.</value></data>
+  <data name="PackFileMissing" xml:space="preserve"><value>Файл сборки не найден.</value></data>
+  <data name="PinnedPackCorrupt" xml:space="preserve"><value>Файл закреплённой сборки повреждён.</value></data>
+  <data name="ArchiveTooManyEntries" xml:space="preserve"><value>В архиве слишком много записей.</value></data>
+  <data name="PackTooManyFiles" xml:space="preserve"><value>В сборке слишком много файлов.</value></data>
+  <data name="ArchiveDuplicatePath" xml:space="preserve"><value>В архиве есть повторяющиеся пути.</value></data>
+  <data name="ArchiveFileParentConflict" xml:space="preserve"><value>Файл в архиве используется как каталог другого файла.</value></data>
+  <data name="ArchiveDirectoryFileConflict" xml:space="preserve"><value>Каталог в архиве используется как файл.</value></data>
+  <data name="PackIndexInvalid" xml:space="preserve"><value>Индекс сборки задан некорректно.</value></data>
+  <data name="PackIndexTooLarge" xml:space="preserve"><value>Индекс сборки превышает допустимый размер.</value></data>
+  <data name="ArchiveUnsupportedDirectory" xml:space="preserve"><value>Архив содержит неподдерживаемый каталог.</value></data>
+  <data name="ArchiveUnsupportedFile" xml:space="preserve"><value>Архив содержит неподдерживаемый файл.</value></data>
+  <data name="PackOverridesConflict" xml:space="preserve"><value>В сборке есть конфликтующие пути overrides.</value></data>
+  <data name="PackOverridesTooLarge" xml:space="preserve"><value>Файлы overrides превышают допустимый размер.</value></data>
+  <data name="ModrinthIndexMissing" xml:space="preserve"><value>В архиве отсутствует modrinth.index.json.</value></data>
+  <data name="IndexedFileOverridesConflict" xml:space="preserve"><value>Файл из индекса конфликтует с overrides.</value></data>
+  <data name="PackArchiveInvalid" xml:space="preserve"><value>Архив сборки повреждён или имеет неподдерживаемый формат.</value></data>
+  <data name="PackIndexJsonInvalid" xml:space="preserve"><value>Индекс сборки содержит некорректный JSON.</value></data>
+  <data name="PackReadFailed" xml:space="preserve"><value>Не удалось прочитать файл сборки.</value></data>
+  <data name="PackChangedAfterCheck" xml:space="preserve"><value>Архив сборки изменился после проверки.</value></data>
+  <data name="OverrideFileMissing" xml:space="preserve"><value>Файл overrides исчез из архива.</value></data>
+  <data name="OverrideExtractedTooLarge" xml:space="preserve"><value>Распакованный файл overrides превышает допустимый размер.</value></data>
+  <data name="OverrideSizeMismatch" xml:space="preserve"><value>Размер файла overrides не совпадает с архивом.</value></data>
+  <data name="PackSchemaUnsupported" xml:space="preserve"><value>Версия схемы или игра в сборке не поддерживаются.</value></data>
+  <data name="PackNameOrVersionInvalid" xml:space="preserve"><value>Имя или версия сборки недопустимы.</value></data>
+  <data name="PackDependencyUnsupported" xml:space="preserve"><value>Сборка содержит неподдерживаемый тип зависимости.</value></data>
+  <data name="IndexedFileStructureUnsupported" xml:space="preserve"><value>Индекс содержит файл с неподдерживаемой структурой.</value></data>
+  <data name="IndexDuplicatePath" xml:space="preserve"><value>Индекс содержит повторяющиеся пути.</value></data>
+  <data name="IndexSha512Invalid" xml:space="preserve"><value>Индекс содержит некорректный SHA-512.</value></data>
+  <data name="DownloadListInvalid" xml:space="preserve"><value>Для файла не задан допустимый список источников.</value></data>
+  <data name="DownloadAddressInvalid" xml:space="preserve"><value>Адрес загрузки имеет неподдерживаемый формат.</value></data>
+  <data name="IndexFileSizeInvalid" xml:space="preserve"><value>В индексе задан некорректный размер файла.</value></data>
+  <data name="FileEnvironmentInvalid" xml:space="preserve"><value>Среда выполнения файла задана некорректно.</value></data>
+  <data name="OptionalFilesUnsupported" xml:space="preserve"><value>Эта версия установщика поддерживает только обязательные клиентские файлы.</value></data>
+  <data name="DownloadSourceBlocked" xml:space="preserve"><value>Источник файла не входит в список разрешённых HTTPS-адресов.</value></data>
+  <data name="ReservedPackPath" xml:space="preserve"><value>Сборка не может управлять marker-файлами, мирами или снимками экрана.</value></data>
+  <data name="IndexRequiredFieldMissing" xml:space="preserve"><value>В индексе отсутствует обязательное поле {0}.</value></data>
+  <data name="ArchiveLinkBlocked" xml:space="preserve"><value>В архиве запрещены ссылки и reparse points.</value></data>
+  <data name="FilePathUnsafe" xml:space="preserve"><value>Путь файла должен быть относительным и безопасным.</value></data>
+  <data name="FilePathSegmentBlocked" xml:space="preserve"><value>Путь файла содержит запрещённый сегмент.</value></data>
+  <data name="PackPathEscape" xml:space="preserve"><value>Путь выходит за пределы каталога сборки.</value></data>
+  <data name="DirectoryReparseBlocked" xml:space="preserve"><value>Каталог содержит ссылку или reparse point.</value></data>
+  <data name="DownloadNetworkFailed" xml:space="preserve"><value>Не удалось загрузить файл из Modrinth.</value></data>
+  <data name="DownloadFailed" xml:space="preserve"><value>Не удалось загрузить файл сборки.</value></data>
+  <data name="DownloadRedirectBlocked" xml:space="preserve"><value>Перенаправление ведёт на неразрешённый адрес.</value></data>
+  <data name="DownloadRedirectInvalid" xml:space="preserve"><value>Слишком много перенаправлений или отсутствует адрес назначения.</value></data>
+  <data name="HttpTemporaryFailure" xml:space="preserve"><value>Сервер временно вернул HTTP {0}.</value></data>
+  <data name="HttpFailure" xml:space="preserve"><value>Сервер вернул HTTP {0}.</value></data>
+  <data name="DownloadSizeMismatch" xml:space="preserve"><value>Размер загружаемого файла не совпадает с индексом.</value></data>
+  <data name="DownloadTooLarge" xml:space="preserve"><value>Загружаемый файл превышает размер из индекса.</value></data>
+  <data name="DownloadTooShort" xml:space="preserve"><value>Загружаемый файл короче размера из индекса.</value></data>
+  <data name="DownloadHashMismatch" xml:space="preserve"><value>SHA-512 загруженного файла не совпадает с индексом.</value></data>
+  <data name="DownloadRedirectLimit" xml:space="preserve"><value>Слишком много перенаправлений.</value></data>
+  <data name="ManifestEmpty" xml:space="preserve"><value>Локальный manifest пуст.</value></data>
+  <data name="ManifestCorrupt" xml:space="preserve"><value>Локальный manifest повреждён.</value></data>
+  <data name="ManifestReadFailed" xml:space="preserve"><value>Не удалось прочитать локальный manifest.</value></data>
+  <data name="ManifestSchemaUnsupported" xml:space="preserve"><value>Версия локального manifest не поддерживается.</value></data>
+  <data name="ManifestVersionsOrHashInvalid" xml:space="preserve"><value>Локальный manifest содержит некорректные версии или хеш.</value></data>
+  <data name="ManifestDuplicateOrReservedPath" xml:space="preserve"><value>Локальный manifest содержит повторяющийся или зарезервированный путь.</value></data>
+  <data name="ManifestHashOrSizeInvalid" xml:space="preserve"><value>Локальный manifest содержит некорректный хеш или размер.</value></data>
+  <data name="ManifestDownloadSourceInvalid" xml:space="preserve"><value>Локальный manifest содержит недопустимый источник загрузки.</value></data>
+  <data name="AlreadyInstalled" xml:space="preserve"><value>Эта версия уже установлена. Используйте Repair.</value></data>
+  <data name="PreparingInstance" xml:space="preserve"><value>Подготовка отдельного каталога</value></data>
+  <data name="DownloadingFile" xml:space="preserve"><value>Загрузка {0}</value></data>
+  <data name="VerifiedFile" xml:space="preserve"><value>Проверен {0}</value></data>
+  <data name="AppliedOverride" xml:space="preserve"><value>Применён {0}</value></data>
+  <data name="PinnedResourcePackMissing" xml:space="preserve"><value>В тестовом релизе отсутствует обязательный ресурспак.</value></data>
+  <data name="PinnedBbeMissing" xml:space="preserve"><value>В тестовом релизе отсутствует Better Block Entities.</value></data>
+  <data name="PinnedBbeConfigExists" xml:space="preserve"><value>Релиз уже содержит настройки Better Block Entities.</value></data>
+  <data name="InstallFilesComplete" xml:space="preserve"><value>Установка файлов завершена</value></data>
+  <data name="PackFilesInstalled" xml:space="preserve"><value>Файлы тестовой сборки установлены.</value></data>
+  <data name="InstallCancelled" xml:space="preserve"><value>Установка отменена. Предыдущая активная версия не изменена.</value></data>
+  <data name="InstallFailed" xml:space="preserve"><value>Не удалось завершить установку. Откройте журнал диагностики.</value></data>
+  <data name="RestoredFile" xml:space="preserve"><value>Восстановлен {0}</value></data>
+  <data name="ManifestOverridesMismatch" xml:space="preserve"><value>Локальный manifest не соответствует overrides релиза.</value></data>
+  <data name="RepairedHashMismatch" xml:space="preserve"><value>Восстановленный файл не совпал с локальным manifest.</value></data>
+  <data name="RepairAllHealthy" xml:space="preserve"><value>Все управляемые файлы исправны.</value></data>
+  <data name="RepairFilesRestored" xml:space="preserve"><value>Восстановлено файлов: {0}.</value></data>
+  <data name="RepairCancelled" xml:space="preserve"><value>Проверка или восстановление отменено.</value></data>
+  <data name="RepairFailed" xml:space="preserve"><value>Не удалось восстановить установку. Откройте журнал диагностики.</value></data>
+  <data name="UninstallFilesRemovedWithData" xml:space="preserve"><value>Управляемые файлы удалены; пользовательские данные сохранены.</value></data>
+  <data name="UninstallFilesRemoved" xml:space="preserve"><value>Управляемые файлы удалены.</value></data>
+  <data name="UninstallFailed" xml:space="preserve"><value>Не удалось удалить установку. Откройте журнал диагностики.</value></data>
+  <data name="VanillaPathBlocked" xml:space="preserve"><value>Для безопасности выберите каталог вне vanilla .minecraft.</value></data>
+  <data name="ActiveMarkerCorrupt" xml:space="preserve"><value>Файл активной установки повреждён; существующий маркер не изменён.</value></data>
+  <data name="InstallFileVerificationFailed" xml:space="preserve"><value>Проверка файла {0} не прошла.</value></data>
+  <data name="InstalledReleaseMismatch" xml:space="preserve"><value>Установленный manifest относится к другой версии сборки.</value></data>
+  <data name="ManifestReleaseMismatch" xml:space="preserve"><value>Локальный manifest не соответствует закреплённому релизу.</value></data>
+  <data name="ManifestUnknownOverride" xml:space="preserve"><value>Локальный manifest содержит неизвестный override.</value></data>
+  <data name="ManifestUnknownManagedFile" xml:space="preserve"><value>Локальный manifest содержит неизвестный managed-файл.</value></data>
+  <data name="DriveRootUnsafe" xml:space="preserve"><value>Нельзя выбрать корень диска как каталог установки.</value></data>
+  <data name="FabricNetworkFailed" xml:space="preserve"><value>Не удалось связаться с официальным сервером Fabric. Проверьте подключение и повторите попытку.</value></data>
+  <data name="PinnedFabricProfileUnavailable" xml:space="preserve"><value>Не удалось получить закреплённый профиль Fabric с официального сервера.</value></data>
+  <data name="FabricProfileHashInvalid" xml:space="preserve"><value>Проверка целостности профиля Fabric не прошла.</value></data>
+  <data name="FabricVersionConflict" xml:space="preserve"><value>Версия Fabric с таким именем уже существует и отличается от закреплённой. Чужие файлы не изменены.</value></data>
+  <data name="OfficialLauncherNotFound" xml:space="preserve"><value>Официальный Minecraft Launcher не найден. Установите и один раз откройте его.</value></data>
+  <data name="LauncherProfilesMissing" xml:space="preserve"><value>Файл профилей Launcher не найден. Откройте официальный Launcher один раз и закройте его.</value></data>
+  <data name="LauncherProfilesAmbiguous" xml:space="preserve"><value>Найдены два варианта профилей Launcher; автоматический выбор невозможен без риска изменить не тот профиль.</value></data>
+  <data name="LauncherRunning" xml:space="preserve"><value>Закройте Minecraft Launcher и повторите настройку. Открытый Launcher может перезаписать профиль.</value></data>
+  <data name="FabricArchiveUnexpected" xml:space="preserve"><value>Официальный пакет Fabric имеет неожиданную структуру.</value></data>
+  <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>Версии в пакете Fabric не соответствуют тестовому релизу.</value></data>
+  <data name="LauncherProfileChanged" xml:space="preserve"><value>Профиль Launcher изменился во время установки. Повторите попытку после закрытия Launcher.</value></data>
+  <data name="LauncherJsonInvalid" xml:space="preserve"><value>Файл профилей Launcher содержит некорректный JSON.</value></data>
+  <data name="LauncherProfileListUnsupported" xml:space="preserve"><value>Список профилей Launcher имеет неподдерживаемый формат.</value></data>
+  <data name="LauncherProfileIdConflict" xml:space="preserve"><value>Идентификатор профиля MinePack уже занят чужим профилем.</value></data>
+  <data name="LauncherProfileUnowned" xml:space="preserve"><value>Профиль не помечен как принадлежащий установщику; он не изменён.</value></data>
+  <data name="WorldSourceMissing" xml:space="preserve"><value>Папка с мирами не найдена. Выберите каталог saves другого профиля.</value></data>
+  <data name="WorldTargetVanilla" xml:space="preserve"><value>Нельзя импортировать миры в обычную .minecraft.</value></data>
+  <data name="WorldFoldersOverlap" xml:space="preserve"><value>Источник и папка сборки не должны пересекаться.</value></data>
+  <data name="WorldIsOpen" xml:space="preserve"><value>Мир «{0}» открыт. Закройте Minecraft перед импортом.</value></data>
+  <data name="WorldCopied" xml:space="preserve"><value>Скопирован мир: {0}</value></data>
+</root>

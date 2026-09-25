@@ -1,8 +1,11 @@
 using System.IO.Compression;
+using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using MinePack.Core;
 
 try
@@ -27,6 +30,7 @@ internal static class Smoke
         {
             VerifyTempCleanupGuard();
             VerifyPinnedRelease();
+            VerifyLocalization();
             VerifyArchiveRejections(tempRoot);
             await VerifyArchiveMutationRejectedAsync(tempRoot);
             await VerifyInstallRepairAndUninstallAsync(tempRoot);
@@ -156,6 +160,69 @@ internal static class Smoke
             "new profile defaults include requested controls, FOV, fullscreen and GUI scale without a fixed monitor mode");
         Pass("pinned .mrpack opens and matches its SHA-512");
     }
+
+    private static void VerifyLocalization()
+    {
+        var originalUiCulture = CultureInfo.CurrentUICulture;
+        var originalCulture = CultureInfo.CurrentCulture;
+        try
+        {
+            foreach (var (name, expected) in new[]
+                     {
+                         ("ru-RU", "ru"), ("ru", "ru"), ("en-US", "en"), ("en-GB", "en"), ("de-DE", "en")
+                     })
+                Equal(expected, LocalizedText.SelectUiCulture(CultureInfo.GetCultureInfo(name)).Name, $"UI culture for {name}");
+
+            var resourceDirectory = Path.Combine(Environment.CurrentDirectory, "src", "MinePack.Core", "Resources");
+            var english = ReadResourceFile(Path.Combine(resourceDirectory, "Strings.resx"));
+            var russian = ReadResourceFile(Path.Combine(resourceDirectory, "Strings.ru.resx"));
+            True(english.Keys.Order().SequenceEqual(russian.Keys.Order()), "English and Russian resource keys match");
+            foreach (var key in english.Keys)
+                True(Placeholders(english[key]).SequenceEqual(Placeholders(russian[key])), $"resource placeholders match for {key}");
+
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en");
+            Equal("Ready to install", LocalizedText.Get("UiReady"), "English startup text");
+            Equal("Preparing a separate game folder", LocalizedText.Get("PreparingInstance"), "English progress text");
+            Equal("Test pack files installed.", LocalizedText.Get("PackFilesInstalled"), "English success text");
+            Equal("The pack file was not found.", LocalizedText.Get("PackFileMissing"), "English error text");
+            Equal("Performance & Render Distance", LocalizedText.Get("CatalogPerformance"), "English catalog text");
+            Equal("Performance & Render Distance — 8|Graphics & Animations — 7|Tools & Quality of Life — 4|Sound — 2|Technical Foundation — 5|Resource Packs — 8|Shader — 1",
+                string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "English catalog headings and counts");
+            Equal("Copied worlds: 2. Skipped existing names: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "English formatted text");
+
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ru");
+            Equal("Готово к установке", LocalizedText.Get("UiReady"), "Russian startup text");
+            Equal("Подготовка отдельного каталога", LocalizedText.Get("PreparingInstance"), "Russian progress text");
+            Equal("Файлы тестовой сборки установлены.", LocalizedText.Get("PackFilesInstalled"), "Russian success text");
+            Equal("Файл сборки не найден.", LocalizedText.Get("PackFileMissing"), "Russian error text");
+            Equal("Производительность и дальность", LocalizedText.Get("CatalogPerformance"), "Russian catalog text");
+            Equal("Производительность и дальность — 8|Графика и анимации — 7|Инструменты и удобство — 4|Звук — 2|Техническая основа — 5|Ресурспаки — 8|Шейдер — 1",
+                string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "Russian catalog headings and counts");
+            Equal("Скопировано миров: 2. Пропущено совпадений имён: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "Russian formatted text");
+
+            try
+            {
+                _ = LocalizedText.Get("MissingLocalizationKey");
+                throw new InvalidOperationException("A missing localization key was not rejected.");
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Missing localization resource", StringComparison.Ordinal)) { }
+            Equal(originalCulture.Name, CultureInfo.CurrentCulture.Name, "localization leaves formatting culture unchanged");
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
+        Pass("UI culture selection, resource keys, placeholders, and localized messages");
+    }
+
+    private static Dictionary<string, string> ReadResourceFile(string path) => XDocument.Load(path).Root!
+        .Elements("data")
+        .ToDictionary(item => (string)item.Attribute("name")!, item => item.Element("value")!.Value, StringComparer.Ordinal);
+
+    private static int[] Placeholders(string value) => Regex.Matches(value, @"\{(\d+)(?:,[^}:]*)?(?::[^}]*)?\}")
+        .Select(match => int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture))
+        .Order()
+        .ToArray();
 
     private static void VerifyArchiveRejections(string tempRoot)
     {

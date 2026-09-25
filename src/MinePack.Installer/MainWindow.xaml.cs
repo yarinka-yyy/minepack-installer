@@ -36,7 +36,7 @@ public partial class MainWindow : Window
         var vanillaSaves = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft", "saves");
         var picker = new OpenFolderDialog
         {
-            Title = "Выберите папку saves профиля, из которого скопировать миры",
+            Title = LocalizedText.Get("UiWorldFolderDialog"),
             InitialDirectory = Directory.Exists(vanillaSaves) ? vanillaSaves : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
         };
         if (picker.ShowDialog(this) == true)
@@ -46,8 +46,8 @@ public partial class MainWindow : Window
     private async void Uninstall_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(this,
-                "Удалить установленные файлы MinePack? Миры, снимки экрана и ваши другие файлы останутся на месте.",
-                "Удалить MinePack", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                LocalizedText.Get("UiUninstallConfirmMessage"),
+                LocalizedText.Get("UiUninstallConfirmTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
         await RunOperationAsync(Operation.Uninstall);
     }
@@ -56,7 +56,7 @@ public partial class MainWindow : Window
     {
         var picker = new OpenFolderDialog
         {
-            Title = "Выберите корневую папку данных MinePack",
+            Title = LocalizedText.Get("UiInstallFolderDialog"),
             InitialDirectory = Directory.Exists(InstallRootBox.Text) ? InstallRootBox.Text : InstallService.DefaultInstallRoot
         };
         if (picker.ShowDialog(this) == true) InstallRootBox.Text = picker.FolderName;
@@ -73,33 +73,33 @@ public partial class MainWindow : Window
         OperationProgress.Value = 0;
         InstructionsBox.Text = "";
         DiagnosticText.Text = "";
-        StatusBox.Text = "Подождите, выполняем выбранное действие.";
-        StateHeading.Text = operation == Operation.Install ? "Устанавливаем сборку" : "Выполняем действие";
+        StatusBox.Text = LocalizedText.Get("OperationWait");
+        StateHeading.Text = LocalizedText.Get(operation == Operation.Install ? "OperationInstalling" : "OperationWorking");
         ProgressLabel.Text = operation switch
         {
-            Operation.Install => "Подготовка файлов…",
-            Operation.Repair => "Поиск установленной сборки…",
-            Operation.ConfigureLauncher => "Восстанавливаем профиль Launcher…",
-            Operation.ImportWorlds => "Копирование миров…",
-            _ => "Подготовка удаления…"
+            Operation.Install => LocalizedText.Get("PreparingFiles"),
+            Operation.Repair => LocalizedText.Get("SearchingPack"),
+            Operation.ConfigureLauncher => LocalizedText.Get("RestoringProfile"),
+            Operation.ImportWorlds => LocalizedText.Get("CopyingWorlds"),
+            _ => LocalizedText.Get("PreparingUninstall")
         };
 
         try
         {
             var root = Path.GetFullPath(InstallRootBox.Text);
             if (operation == Operation.Install && !File.Exists(PackPath))
-                throw new InstallerException("PACK_NOT_FOUND", "В опубликованной папке приложения не найден закреплённый .mrpack релиз.");
+                throw new InstallerException("PACK_NOT_FOUND", LocalizedText.Get("PublishedPackMissing"));
 
             if (operation == Operation.ImportWorlds)
             {
                 var instance = _installer.GetActiveInstancePath(root)
-                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", "Сначала установите сборку, в которую хотите скопировать миры.");
+                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("InstallBeforeImport"));
                 var worldProgress = new Progress<string>(message => ProgressLabel.Text = message);
                 var imported = await WorldImportService.ImportAsync(sourceWorlds!, instance, worldProgress, cancellation.Token);
-                StateHeading.Text = "Импорт завершён";
-                StatusBox.Text = $"Скопировано миров: {imported.Imported}. Пропущено совпадений имён: {imported.Skipped}.";
-                InstructionsBox.Text = "Исходные миры сохранены. Мир из другой версии Minecraft открывайте только после резервной копии: сама игра может преобразовать его формат.";
-                ProgressLabel.Text = "Операция завершена";
+                StateHeading.Text = LocalizedText.Get("WorldImportComplete");
+                StatusBox.Text = LocalizedText.Get("WorldImportSummary", imported.Imported, imported.Skipped);
+                InstructionsBox.Text = LocalizedText.Get("WorldImportSafety");
+                ProgressLabel.Text = LocalizedText.Get("OperationComplete");
                 return;
             }
 
@@ -121,7 +121,7 @@ public partial class MainWindow : Window
             if (operation == Operation.ConfigureLauncher)
             {
                 _gameDirectory = _installer.GetActiveInstancePath(root)
-                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", "Сначала установите сборку.");
+                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("InstallBeforeLauncherRepair"));
                 filesInstalled = true;
                 await ConfigureLauncherAsync(_gameDirectory, cancellation.Token);
                 return;
@@ -144,12 +144,12 @@ public partial class MainWindow : Window
                 if (instance is null)
                 {
                     if (operation != Operation.Uninstall)
-                        throw new InstallerException("INSTANCE_NOT_FOUND", "Сборка не найдена в выбранной папке.");
+                        throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("PackNotFoundInFolder"));
                     _launcher.RemoveOwnProfile();
-                    StateHeading.Text = "Профиль удалён";
-                    ProgressLabel.Text = "Операция завершена";
-                    StatusBox.Text = "Активной сборки уже нет. Собственный профиль MinePack удалён из Launcher.";
-                    InstructionsBox.Text = "Другие профили Launcher не изменены.";
+                    StateHeading.Text = LocalizedText.Get("ProfileRemoved");
+                    ProgressLabel.Text = LocalizedText.Get("OperationComplete");
+                    StatusBox.Text = LocalizedText.Get("NoActivePackProfileRemoved");
+                    InstructionsBox.Text = LocalizedText.Get("OtherProfilesUnchanged");
                     return;
                 }
                 var installedVersion = InstallationManifest.Load(instance).PackVersion;
@@ -163,7 +163,7 @@ public partial class MainWindow : Window
                     "0.3.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VoxyArtifactFileName), TestPackRelease.VoxyArtifactSha512),
                     "0.2.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PreviousArtifactFileName), TestPackRelease.PreviousArtifactSha512),
                     "0.1.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LegacyArtifactFileName), TestPackRelease.LegacyArtifactSha512),
-                    _ => throw new InstallerException("RELEASE_UNKNOWN", "Для этой установленной версии в приложении нет закреплённого архива.")
+                    _ => throw new InstallerException("RELEASE_UNKNOWN", LocalizedText.Get("PinnedArchiveUnavailable"))
                 };
                 if (operation == Operation.Uninstall)
                     _launcher.RemoveOwnProfile(instance);
@@ -183,78 +183,78 @@ public partial class MainWindow : Window
                 else
                 {
                     filesRemoved = true;
-                    StateHeading.Text = "Сборка удалена";
-                    ProgressLabel.Text = "Операция завершена";
+                    StateHeading.Text = LocalizedText.Get("PackUninstalled");
+                    ProgressLabel.Text = LocalizedText.Get("OperationComplete");
                     StatusBox.Text = result.Message;
-                    InstructionsBox.Text = "Миры, снимки экрана и другие личные файлы сохранены, если они были в папке сборки.";
+                    InstructionsBox.Text = LocalizedText.Get("UserFilesPreserved");
                 }
             }
             else
             {
-                StateHeading.Text = result.Code == "CANCELLED" ? "Операция отменена" : "Не удалось завершить действие";
-                StatusBox.Text = result.Code == "CANCELLED" ? "Операция остановлена. Уже сохранённые файлы остались на месте." : result.Message;
-                DiagnosticText.Text = $"Код: {result.Code}\nЖурнал: {result.LogPath ?? _installer.GetLatestLogPath(root) ?? "не создан"}";
-                ProgressLabel.Text = result.Code == "CANCELLED" ? "Операция отменена" : "Операция завершилась с ошибкой";
+                StateHeading.Text = LocalizedText.Get(result.Code == "CANCELLED" ? "OperationCancelledHeading" : "OperationFailedHeading");
+                StatusBox.Text = result.Code == "CANCELLED" ? LocalizedText.Get("OperationStoppedStatus") : result.Message;
+                DiagnosticText.Text = FormatDiagnostic(result.Code, result.LogPath ?? _installer.GetLatestLogPath(root));
+                ProgressLabel.Text = LocalizedText.Get(result.Code == "CANCELLED" ? "OperationCancelledHeading" : "OperationFailedProgress");
             }
         }
         catch (InstallerException ex)
         {
             if (operation == Operation.ImportWorlds)
             {
-                StateHeading.Text = "Импорт не завершён";
+                StateHeading.Text = LocalizedText.Get("WorldImportFailedHeading");
                 StatusBox.Text = ex.Message;
                 ShowDiagnostic(ex.Code);
-                InstructionsBox.Text = "Ранее скопированные миры остаются на месте; исходные миры не изменены.";
-                ProgressLabel.Text = "Операция не завершена";
+                InstructionsBox.Text = LocalizedText.Get("WorldImportPartialSafety");
+                ProgressLabel.Text = LocalizedText.Get("OperationIncomplete");
                 return;
             }
-            StateHeading.Text = filesRemoved ? "Файлы удалены, профиль остался" :
-                filesInstalled ? "Сборка есть, профиль ещё не готов" : "Нужен ещё один шаг";
+            StateHeading.Text = LocalizedText.Get(filesRemoved ? "FilesRemovedProfileRemains" :
+                filesInstalled ? "PackInstalledProfilePending" : "NeedAnotherStep");
             StatusBox.Text = ex.Message;
             ShowDiagnostic(ex.Code);
             InstructionsBox.Text = filesRemoved
-                ? "После устранения причины нажмите «Удалить сборку» ещё раз — останется убрать только профиль MinePack."
+                ? LocalizedText.Get("RetryUninstallProfile")
                 : filesInstalled
-                ? "Файлы сборки сохранены. После устранения причины нажмите «Восстановить профиль Launcher» — скачивать моды заново не потребуется."
-                : "Исправьте указанную причину и повторите действие.";
-            ProgressLabel.Text = "Операция не завершена";
+                ? LocalizedText.Get("RetryConfigureProfile")
+                : LocalizedText.Get("FixAndRetry");
+            ProgressLabel.Text = LocalizedText.Get("OperationIncomplete");
         }
         catch (OperationCanceledException)
         {
             if (operation == Operation.ImportWorlds)
             {
-                StateHeading.Text = "Импорт остановлен";
-                StatusBox.Text = "Копирование отменено. Уже скопированные миры сохранены, исходные не изменены.";
-                ProgressLabel.Text = "Операция отменена";
+                StateHeading.Text = LocalizedText.Get("WorldImportStopped");
+                StatusBox.Text = LocalizedText.Get("WorldCopyCancelled");
+                ProgressLabel.Text = LocalizedText.Get("OperationCancelledHeading");
                 return;
             }
-            StateHeading.Text = "Операция отменена";
+            StateHeading.Text = LocalizedText.Get("OperationCancelledHeading");
             StatusBox.Text = filesInstalled
-                ? "Файлы сборки уже установлены, но профиль Launcher не настроен. Нажмите «Восстановить профиль Launcher», когда будете готовы."
-                : "Операция отменена.";
-            ProgressLabel.Text = "Операция отменена";
+                ? LocalizedText.Get("InstalledProfilePendingStatus")
+                : LocalizedText.Get("OperationCancelledStatus");
+            ProgressLabel.Text = LocalizedText.Get("OperationCancelledHeading");
         }
         catch (Exception ex)
         {
             if (operation == Operation.ImportWorlds)
             {
-                StateHeading.Text = "Импорт не завершён";
-                StatusBox.Text = "Не удалось скопировать миры. Проверьте доступ к папке и свободное место.";
+                StateHeading.Text = LocalizedText.Get("WorldImportFailedHeading");
+                StatusBox.Text = LocalizedText.Get("WorldImportFailedStatus");
                 ShowDiagnostic(ex.GetType().Name);
-                InstructionsBox.Text = "Исходные миры не изменены; уже скопированные миры сохранены.";
-                ProgressLabel.Text = "Операция завершилась с ошибкой";
+                InstructionsBox.Text = LocalizedText.Get("WorldImportFailureSafety");
+                ProgressLabel.Text = LocalizedText.Get("OperationFailedProgress");
                 return;
             }
-            StateHeading.Text = filesRemoved ? "Файлы удалены, профиль остался" :
-                filesInstalled ? "Сборка есть, профиль ещё не готов" : "Не удалось завершить операцию";
-            StatusBox.Text = "Не удалось выполнить действие. Проверьте путь к папке, права доступа и журнал.";
+            StateHeading.Text = LocalizedText.Get(filesRemoved ? "FilesRemovedProfileRemains" :
+                filesInstalled ? "PackInstalledProfilePending" : "OperationUnexpectedFailure");
+            StatusBox.Text = LocalizedText.Get("ActionFailedHelp");
             ShowDiagnostic(ex.GetType().Name);
             InstructionsBox.Text = filesRemoved
-                ? "Закройте Launcher и нажмите «Удалить сборку» ещё раз."
+                ? LocalizedText.Get("RetryUninstall")
                 : filesInstalled
-                ? "Файлы сохранены. Нажмите «Восстановить профиль Launcher» после устранения причины."
-                : "Исправьте указанную причину и повторите действие.";
-            ProgressLabel.Text = "Операция завершилась с ошибкой";
+                ? LocalizedText.Get("RetryConfigure")
+                : LocalizedText.Get("FixAndRetry");
+            ProgressLabel.Text = LocalizedText.Get("OperationFailedProgress");
         }
         finally
         {
@@ -266,7 +266,7 @@ public partial class MainWindow : Window
 
     private async Task ConfigureLauncherAsync(string gameDirectory, CancellationToken cancellationToken)
     {
-        ProgressLabel.Text = "Загрузка Fabric и создание отдельного профиля Launcher…";
+        ProgressLabel.Text = LocalizedText.Get("ConfigureLauncherProgress");
         var manifest = InstallationManifest.Load(gameDirectory);
         if (manifest.MinecraftVersion == TestPackRelease.MinecraftVersion)
             await _launcher.ConfigureAsync(gameDirectory, cancellationToken);
@@ -275,11 +275,11 @@ public partial class MainWindow : Window
             using var previousLauncher = new FabricLauncherService(minecraftVersion: manifest.MinecraftVersion);
             await previousLauncher.ConfigureAsync(gameDirectory, cancellationToken);
         }
-        StateHeading.Text = "Сборка готова";
-        ProgressLabel.Text = "Установка завершена";
-        StatusBox.Text = "Откройте официальный Minecraft Launcher, выберите профиль MinePack и нажмите «Играть».";
-        InstructionsBox.Text = "При первом запуске Launcher сам загрузит базовые файлы Minecraft.";
-        DiagnosticText.Text = $"Папка игры: {gameDirectory}";
+        StateHeading.Text = LocalizedText.Get("PackReady");
+        ProgressLabel.Text = LocalizedText.Get("InstallComplete");
+        StatusBox.Text = LocalizedText.Get("LaunchInstruction");
+        InstructionsBox.Text = LocalizedText.Get("FirstLaunchDownload");
+        DiagnosticText.Text = LocalizedText.Get("GameFolderLabel", gameDirectory);
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
@@ -289,14 +289,14 @@ public partial class MainWindow : Window
             var path = _gameDirectory ?? _installer.GetActiveInstancePath(Path.GetFullPath(InstallRootBox.Text));
             if (path is null || !Directory.Exists(path))
             {
-                StatusBox.Text = "Установленная папка игры пока не найдена.";
+                StatusBox.Text = LocalizedText.Get("InstalledFolderNotFound");
                 return;
             }
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            StatusBox.Text = $"Не удалось открыть папку ({ex.GetType().Name}).";
+            StatusBox.Text = LocalizedText.Get("OpenFolderFailed", ex.GetType().Name);
         }
     }
 
@@ -307,14 +307,14 @@ public partial class MainWindow : Window
             var path = _installer.GetLatestLogPath(Path.GetFullPath(InstallRootBox.Text));
             if (path is null)
             {
-                StatusBox.Text = "Журнал появится после первой операции.";
+                StatusBox.Text = LocalizedText.Get("LogAfterFirstOperation");
                 return;
             }
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            StatusBox.Text = $"Не удалось открыть журнал ({ex.GetType().Name}).";
+            StatusBox.Text = LocalizedText.Get("OpenLogFailed", ex.GetType().Name);
         }
     }
 
@@ -329,7 +329,7 @@ public partial class MainWindow : Window
         }
         catch
         {
-            StatusBox.Text = "Не удалось открыть страницу Modrinth в браузере.";
+            StatusBox.Text = LocalizedText.Get("OpenModrinthFailed");
         }
         e.Handled = true;
     }
@@ -339,8 +339,11 @@ public partial class MainWindow : Window
         string? log = null;
         try { log = _installer.GetLatestLogPath(Path.GetFullPath(InstallRootBox.Text)); }
         catch (Exception) { }
-        DiagnosticText.Text = $"Код: {code}\nЖурнал: {log ?? "не создан"}";
+        DiagnosticText.Text = FormatDiagnostic(code, log);
     }
+
+    private static string FormatDiagnostic(string code, string? logPath) =>
+        $"{LocalizedText.Get("DiagnosticCode", code)}\n{LocalizedText.Get("DiagnosticLog", logPath ?? LocalizedText.Get("NotCreated"))}";
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => _operationCancellation?.Cancel();
 
@@ -349,7 +352,7 @@ public partial class MainWindow : Window
         if (_operationCancellation is not null)
         {
             e.Cancel = true;
-            StatusBox.Text = "Отменяю текущую операцию. Закройте окно после завершения отмены.";
+            StatusBox.Text = LocalizedText.Get("CancelCurrentOperation");
             _operationCancellation.Cancel();
             return;
         }

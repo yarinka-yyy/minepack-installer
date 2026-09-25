@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="UiSubtitle" xml:space="preserve"><value>Minecraft mods in one click</value></data>
+  <data name="UiDescription" xml:space="preserve"><value>MinePack downloads mods and components and creates a separate profile in Minecraft Launcher. Your worlds remain separate.</value></data>
+  <data name="UiRequirements" xml:space="preserve"><value>Requires the official Minecraft Launcher and a Minecraft: Java Edition account. Close the Launcher before installation.</value></data>
+  <data name="UiMinecraftVersion" xml:space="preserve"><value>For Minecraft 26.2</value></data>
+  <data name="UiBuildInfo" xml:space="preserve"><value>Pack version 0.8.0 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
+  <data name="UiPackCounts" xml:space="preserve"><value>26 mods · 8 resource packs · 1 shader</value></data>
+  <data name="UiCatalogTitle" xml:space="preserve"><value>Included in the pack</value></data>
+  <data name="UiOpenOnModrinth" xml:space="preserve"><value>Open on Modrinth</value></data>
+  <data name="UiInstallLocation" xml:space="preserve"><value>Install location</value></data>
+  <data name="UiBrowse" xml:space="preserve"><value>Browse...</value></data>
+  <data name="UiInstall" xml:space="preserve"><value>Install pack</value></data>
+  <data name="UiCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="UiReady" xml:space="preserve"><value>Ready to install</value></data>
+  <data name="UiWaiting" xml:space="preserve"><value>Waiting</value></data>
+  <data name="UiInstallPrompt" xml:space="preserve"><value>Click “Install pack” to begin.</value></data>
+  <data name="UiAdditionalActions" xml:space="preserve"><value>More actions</value></data>
+  <data name="UiRepair" xml:space="preserve"><value>Check and repair</value></data>
+  <data name="UiImportWorlds" xml:space="preserve"><value>Import worlds</value></data>
+  <data name="UiRestoreLauncher" xml:space="preserve"><value>Restore Launcher profile</value></data>
+  <data name="UiUninstall" xml:space="preserve"><value>Uninstall pack</value></data>
+  <data name="UiLauncherHint" xml:space="preserve"><value>If the profile does not appear after the files are downloaded, click “Restore Launcher profile.”</value></data>
+  <data name="UiDetails" xml:space="preserve"><value>Details</value></data>
+  <data name="UiOpenFolder" xml:space="preserve"><value>Open folder</value></data>
+  <data name="UiOpenLog" xml:space="preserve"><value>Open log</value></data>
+  <data name="UiWorldFolderDialog" xml:space="preserve"><value>Select the profile's saves folder to copy worlds from</value></data>
+  <data name="UiInstallFolderDialog" xml:space="preserve"><value>Select the MinePack data folder</value></data>
+  <data name="UiUninstallConfirmMessage" xml:space="preserve"><value>Remove installed MinePack files? Worlds, screenshots, and your other files will be kept.</value></data>
+  <data name="UiUninstallConfirmTitle" xml:space="preserve"><value>Uninstall MinePack</value></data>
+  <data name="CatalogPerformance" xml:space="preserve"><value>Performance &amp; Render Distance</value></data>
+  <data name="CatalogGraphics" xml:space="preserve"><value>Graphics &amp; Animations</value></data>
+  <data name="CatalogTools" xml:space="preserve"><value>Tools &amp; Quality of Life</value></data>
+  <data name="CatalogSound" xml:space="preserve"><value>Sound</value></data>
+  <data name="CatalogTechnical" xml:space="preserve"><value>Technical Foundation</value></data>
+  <data name="CatalogResourcePacks" xml:space="preserve"><value>Resource Packs</value></data>
+  <data name="CatalogShader" xml:space="preserve"><value>Shader</value></data>
+  <data name="OperationWait" xml:space="preserve"><value>Please wait while we perform the selected action.</value></data>
+  <data name="OperationInstalling" xml:space="preserve"><value>Installing the pack</value></data>
+  <data name="OperationWorking" xml:space="preserve"><value>Working</value></data>
+  <data name="PreparingFiles" xml:space="preserve"><value>Preparing files…</value></data>
+  <data name="SearchingPack" xml:space="preserve"><value>Looking for the installed pack…</value></data>
+  <data name="RestoringProfile" xml:space="preserve"><value>Restoring Launcher profile…</value></data>
+  <data name="CopyingWorlds" xml:space="preserve"><value>Copying worlds…</value></data>
+  <data name="PreparingUninstall" xml:space="preserve"><value>Preparing to uninstall…</value></data>
+  <data name="PublishedPackMissing" xml:space="preserve"><value>The pinned .mrpack release was not found in the published app folder.</value></data>
+  <data name="InstallBeforeImport" xml:space="preserve"><value>Install the pack you want to copy the worlds into first.</value></data>
+  <data name="WorldImportComplete" xml:space="preserve"><value>World import complete</value></data>
+  <data name="WorldImportSummary" xml:space="preserve"><value>Copied worlds: {0}. Skipped existing names: {1}.</value></data>
+  <data name="WorldImportSafety" xml:space="preserve"><value>Source worlds were left unchanged. Before opening a world from another Minecraft version, make a backup: the game may convert its format.</value></data>
+  <data name="OperationComplete" xml:space="preserve"><value>Operation complete</value></data>
+  <data name="InstallBeforeLauncherRepair" xml:space="preserve"><value>Install the pack first.</value></data>
+  <data name="PackNotFoundInFolder" xml:space="preserve"><value>The pack was not found in the selected folder.</value></data>
+  <data name="ProfileRemoved" xml:space="preserve"><value>Profile removed</value></data>
+  <data name="NoActivePackProfileRemoved" xml:space="preserve"><value>There is no active pack. The MinePack profile was removed from Launcher.</value></data>
+  <data name="OtherProfilesUnchanged" xml:space="preserve"><value>Other Launcher profiles were not changed.</value></data>
+  <data name="PinnedArchiveUnavailable" xml:space="preserve"><value>The app does not contain the pinned archive for this installed version.</value></data>
+  <data name="PackUninstalled" xml:space="preserve"><value>Pack uninstalled</value></data>
+  <data name="UserFilesPreserved" xml:space="preserve"><value>Worlds, screenshots, and other personal files were kept if they were in the pack folder.</value></data>
+  <data name="OperationCancelledHeading" xml:space="preserve"><value>Operation canceled</value></data>
+  <data name="OperationFailedHeading" xml:space="preserve"><value>Could not complete the action</value></data>
+  <data name="OperationStoppedStatus" xml:space="preserve"><value>Operation stopped. Files already saved remain in place.</value></data>
+  <data name="WorldImportFailedHeading" xml:space="preserve"><value>World import did not complete</value></data>
+  <data name="WorldImportPartialSafety" xml:space="preserve"><value>Worlds already copied remain in place; source worlds were not changed.</value></data>
+  <data name="OperationIncomplete" xml:space="preserve"><value>Operation did not complete</value></data>
+  <data name="FilesRemovedProfileRemains" xml:space="preserve"><value>Files removed, but the profile remains</value></data>
+  <data name="PackInstalledProfilePending" xml:space="preserve"><value>The pack is installed, but the profile is not ready</value></data>
+  <data name="NeedAnotherStep" xml:space="preserve"><value>One more step is needed</value></data>
+  <data name="RetryUninstallProfile" xml:space="preserve"><value>After fixing the issue, click “Uninstall pack” again to remove the MinePack profile.</value></data>
+  <data name="RetryConfigureProfile" xml:space="preserve"><value>The pack files are saved. After fixing the issue, click “Restore Launcher profile”; the mods do not need to be downloaded again.</value></data>
+  <data name="FixAndRetry" xml:space="preserve"><value>Fix the issue shown and try again.</value></data>
+  <data name="WorldImportStopped" xml:space="preserve"><value>World import stopped</value></data>
+  <data name="WorldCopyCancelled" xml:space="preserve"><value>Copying was canceled. Worlds already copied were kept; source worlds were not changed.</value></data>
+  <data name="OperationCancelledStatus" xml:space="preserve"><value>Operation canceled.</value></data>
+  <data name="InstalledProfilePendingStatus" xml:space="preserve"><value>The pack files are installed, but the Launcher profile is not configured. Click “Restore Launcher profile” when you are ready.</value></data>
+  <data name="WorldImportFailedStatus" xml:space="preserve"><value>Could not copy the worlds. Check folder access and free disk space.</value></data>
+  <data name="WorldImportFailureSafety" xml:space="preserve"><value>Source worlds were not changed; worlds already copied were kept.</value></data>
+  <data name="OperationUnexpectedFailure" xml:space="preserve"><value>Could not complete the operation.</value></data>
+  <data name="ActionFailedHelp" xml:space="preserve"><value>Could not perform the action. Check the folder path, access permissions, and log.</value></data>
+  <data name="RetryUninstall" xml:space="preserve"><value>Close Launcher and click “Uninstall pack” again.</value></data>
+  <data name="RetryConfigure" xml:space="preserve"><value>The files are saved. After fixing the issue, click “Restore Launcher profile.”</value></data>
+  <data name="OperationFailedProgress" xml:space="preserve"><value>Operation failed</value></data>
+  <data name="ConfigureLauncherProgress" xml:space="preserve"><value>Downloading Fabric and creating a separate Launcher profile…</value></data>
+  <data name="PackReady" xml:space="preserve"><value>Pack is ready</value></data>
+  <data name="InstallComplete" xml:space="preserve"><value>Installation complete</value></data>
+  <data name="LaunchInstruction" xml:space="preserve"><value>Open the official Minecraft Launcher, select the MinePack profile, and click “Play”.</value></data>
+  <data name="FirstLaunchDownload" xml:space="preserve"><value>On the first launch, Launcher will download the Minecraft base files.</value></data>
+  <data name="GameFolderLabel" xml:space="preserve"><value>Game folder: {0}</value></data>
+  <data name="InstalledFolderNotFound" xml:space="preserve"><value>The installed game folder was not found yet.</value></data>
+  <data name="OpenFolderFailed" xml:space="preserve"><value>Could not open the folder ({0}).</value></data>
+  <data name="LogAfterFirstOperation" xml:space="preserve"><value>The log will appear after the first operation.</value></data>
+  <data name="OpenLogFailed" xml:space="preserve"><value>Could not open the log ({0}).</value></data>
+  <data name="OpenModrinthFailed" xml:space="preserve"><value>Could not open the Modrinth page in your browser.</value></data>
+  <data name="DiagnosticCode" xml:space="preserve"><value>Code: {0}</value></data>
+  <data name="DiagnosticLog" xml:space="preserve"><value>Log: {0}</value></data>
+  <data name="NotCreated" xml:space="preserve"><value>not created</value></data>
+  <data name="CancelCurrentOperation" xml:space="preserve"><value>Canceling the current operation. Close the window after cancellation finishes.</value></data>
+  <data name="PackFileMissing" xml:space="preserve"><value>The pack file was not found.</value></data>
+  <data name="PinnedPackCorrupt" xml:space="preserve"><value>The pinned pack file is corrupted.</value></data>
+  <data name="ArchiveTooManyEntries" xml:space="preserve"><value>The archive contains too many entries.</value></data>
+  <data name="PackTooManyFiles" xml:space="preserve"><value>The pack contains too many files.</value></data>
+  <data name="ArchiveDuplicatePath" xml:space="preserve"><value>The archive contains duplicate paths.</value></data>
+  <data name="ArchiveFileParentConflict" xml:space="preserve"><value>An archive file is used as the parent directory of another file.</value></data>
+  <data name="ArchiveDirectoryFileConflict" xml:space="preserve"><value>An archive directory is used as a file.</value></data>
+  <data name="PackIndexInvalid" xml:space="preserve"><value>The pack index is invalid.</value></data>
+  <data name="PackIndexTooLarge" xml:space="preserve"><value>The pack index exceeds the allowed size.</value></data>
+  <data name="ArchiveUnsupportedDirectory" xml:space="preserve"><value>The archive contains an unsupported directory.</value></data>
+  <data name="ArchiveUnsupportedFile" xml:space="preserve"><value>The archive contains an unsupported file.</value></data>
+  <data name="PackOverridesConflict" xml:space="preserve"><value>The pack contains conflicting override paths.</value></data>
+  <data name="PackOverridesTooLarge" xml:space="preserve"><value>Override files exceed the allowed size.</value></data>
+  <data name="ModrinthIndexMissing" xml:space="preserve"><value>modrinth.index.json is missing from the archive.</value></data>
+  <data name="IndexedFileOverridesConflict" xml:space="preserve"><value>An indexed file conflicts with an override.</value></data>
+  <data name="PackArchiveInvalid" xml:space="preserve"><value>The pack archive is corrupted or uses an unsupported format.</value></data>
+  <data name="PackIndexJsonInvalid" xml:space="preserve"><value>The pack index contains invalid JSON.</value></data>
+  <data name="PackReadFailed" xml:space="preserve"><value>Could not read the pack file.</value></data>
+  <data name="PackChangedAfterCheck" xml:space="preserve"><value>The pack archive changed after verification.</value></data>
+  <data name="OverrideFileMissing" xml:space="preserve"><value>An override file disappeared from the archive.</value></data>
+  <data name="OverrideExtractedTooLarge" xml:space="preserve"><value>The extracted override exceeds the allowed size.</value></data>
+  <data name="OverrideSizeMismatch" xml:space="preserve"><value>The override file size does not match the archive.</value></data>
+  <data name="PackSchemaUnsupported" xml:space="preserve"><value>The pack schema version or game is not supported.</value></data>
+  <data name="PackNameOrVersionInvalid" xml:space="preserve"><value>The pack name or version is invalid.</value></data>
+  <data name="PackDependencyUnsupported" xml:space="preserve"><value>The pack contains an unsupported dependency type.</value></data>
+  <data name="IndexedFileStructureUnsupported" xml:space="preserve"><value>The index contains a file with an unsupported structure.</value></data>
+  <data name="IndexDuplicatePath" xml:space="preserve"><value>The index contains duplicate paths.</value></data>
+  <data name="IndexSha512Invalid" xml:space="preserve"><value>The index contains an invalid SHA-512 hash.</value></data>
+  <data name="DownloadListInvalid" xml:space="preserve"><value>No allowed download sources are specified for this file.</value></data>
+  <data name="DownloadAddressInvalid" xml:space="preserve"><value>The download address uses an unsupported format.</value></data>
+  <data name="IndexFileSizeInvalid" xml:space="preserve"><value>The index specifies an invalid file size.</value></data>
+  <data name="FileEnvironmentInvalid" xml:space="preserve"><value>The file environment is invalid.</value></data>
+  <data name="OptionalFilesUnsupported" xml:space="preserve"><value>This installer version supports only required client files.</value></data>
+  <data name="DownloadSourceBlocked" xml:space="preserve"><value>The file source is not in the allowed HTTPS address list.</value></data>
+  <data name="ReservedPackPath" xml:space="preserve"><value>The pack cannot manage marker files, worlds, or screenshots.</value></data>
+  <data name="IndexRequiredFieldMissing" xml:space="preserve"><value>The index is missing the required field {0}.</value></data>
+  <data name="ArchiveLinkBlocked" xml:space="preserve"><value>Links and reparse points are not allowed in the archive.</value></data>
+  <data name="FilePathUnsafe" xml:space="preserve"><value>The file path must be relative and safe.</value></data>
+  <data name="FilePathSegmentBlocked" xml:space="preserve"><value>The file path contains a forbidden segment.</value></data>
+  <data name="PackPathEscape" xml:space="preserve"><value>The path points outside the pack folder.</value></data>
+  <data name="DirectoryReparseBlocked" xml:space="preserve"><value>The directory contains a link or reparse point.</value></data>
+  <data name="DownloadNetworkFailed" xml:space="preserve"><value>Could not download the file from Modrinth.</value></data>
+  <data name="DownloadFailed" xml:space="preserve"><value>Could not download a pack file.</value></data>
+  <data name="DownloadRedirectBlocked" xml:space="preserve"><value>The redirect points to an unapproved address.</value></data>
+  <data name="DownloadRedirectInvalid" xml:space="preserve"><value>There are too many redirects or the destination address is missing.</value></data>
+  <data name="HttpTemporaryFailure" xml:space="preserve"><value>The server temporarily returned HTTP {0}.</value></data>
+  <data name="HttpFailure" xml:space="preserve"><value>The server returned HTTP {0}.</value></data>
+  <data name="DownloadSizeMismatch" xml:space="preserve"><value>The downloaded file size does not match the index.</value></data>
+  <data name="DownloadTooLarge" xml:space="preserve"><value>The downloaded file exceeds the size in the index.</value></data>
+  <data name="DownloadTooShort" xml:space="preserve"><value>The downloaded file is smaller than the size in the index.</value></data>
+  <data name="DownloadHashMismatch" xml:space="preserve"><value>The downloaded file's SHA-512 hash does not match the index.</value></data>
+  <data name="DownloadRedirectLimit" xml:space="preserve"><value>There are too many redirects.</value></data>
+  <data name="ManifestEmpty" xml:space="preserve"><value>The local manifest is empty.</value></data>
+  <data name="ManifestCorrupt" xml:space="preserve"><value>The local manifest is corrupted.</value></data>
+  <data name="ManifestReadFailed" xml:space="preserve"><value>Could not read the local manifest.</value></data>
+  <data name="ManifestSchemaUnsupported" xml:space="preserve"><value>This local manifest version is not supported.</value></data>
+  <data name="ManifestVersionsOrHashInvalid" xml:space="preserve"><value>The local manifest contains invalid versions or a hash.</value></data>
+  <data name="ManifestDuplicateOrReservedPath" xml:space="preserve"><value>The local manifest contains a duplicate or reserved path.</value></data>
+  <data name="ManifestHashOrSizeInvalid" xml:space="preserve"><value>The local manifest contains an invalid hash or size.</value></data>
+  <data name="ManifestDownloadSourceInvalid" xml:space="preserve"><value>The local manifest contains an invalid download source.</value></data>
+  <data name="AlreadyInstalled" xml:space="preserve"><value>This version is already installed. Use Repair.</value></data>
+  <data name="PreparingInstance" xml:space="preserve"><value>Preparing a separate game folder</value></data>
+  <data name="DownloadingFile" xml:space="preserve"><value>Downloading {0}</value></data>
+  <data name="VerifiedFile" xml:space="preserve"><value>Verified {0}</value></data>
+  <data name="AppliedOverride" xml:space="preserve"><value>Applied {0}</value></data>
+  <data name="PinnedResourcePackMissing" xml:space="preserve"><value>The pinned release is missing a required resource pack.</value></data>
+  <data name="PinnedBbeMissing" xml:space="preserve"><value>The pinned release is missing Better Block Entities.</value></data>
+  <data name="PinnedBbeConfigExists" xml:space="preserve"><value>The release already contains Better Block Entities settings.</value></data>
+  <data name="InstallFilesComplete" xml:space="preserve"><value>File installation complete</value></data>
+  <data name="PackFilesInstalled" xml:space="preserve"><value>Test pack files installed.</value></data>
+  <data name="InstallCancelled" xml:space="preserve"><value>Installation canceled. The previous active version was not changed.</value></data>
+  <data name="InstallFailed" xml:space="preserve"><value>Could not complete the installation. Open the diagnostic log.</value></data>
+  <data name="RestoredFile" xml:space="preserve"><value>Restored {0}</value></data>
+  <data name="ManifestOverridesMismatch" xml:space="preserve"><value>The local manifest does not match the release overrides.</value></data>
+  <data name="RepairedHashMismatch" xml:space="preserve"><value>The restored file does not match the local manifest.</value></data>
+  <data name="RepairAllHealthy" xml:space="preserve"><value>All managed files are healthy.</value></data>
+  <data name="RepairFilesRestored" xml:space="preserve"><value>Files restored: {0}.</value></data>
+  <data name="RepairCancelled" xml:space="preserve"><value>Check or repair was canceled.</value></data>
+  <data name="RepairFailed" xml:space="preserve"><value>Could not repair the installation. Open the diagnostic log.</value></data>
+  <data name="UninstallFilesRemovedWithData" xml:space="preserve"><value>Managed files were removed; user data was kept.</value></data>
+  <data name="UninstallFilesRemoved" xml:space="preserve"><value>Managed files were removed.</value></data>
+  <data name="UninstallFailed" xml:space="preserve"><value>Could not uninstall the pack. Open the diagnostic log.</value></data>
+  <data name="VanillaPathBlocked" xml:space="preserve"><value>For safety, choose a folder outside vanilla .minecraft.</value></data>
+  <data name="ActiveMarkerCorrupt" xml:space="preserve"><value>The active installation file is corrupted; the existing marker was not changed.</value></data>
+  <data name="InstallFileVerificationFailed" xml:space="preserve"><value>File verification failed for {0}.</value></data>
+  <data name="InstalledReleaseMismatch" xml:space="preserve"><value>The installed manifest belongs to a different pack version.</value></data>
+  <data name="ManifestReleaseMismatch" xml:space="preserve"><value>The local manifest does not match the pinned release.</value></data>
+  <data name="ManifestUnknownOverride" xml:space="preserve"><value>The local manifest contains an unknown override.</value></data>
+  <data name="ManifestUnknownManagedFile" xml:space="preserve"><value>The local manifest contains an unknown managed file.</value></data>
+  <data name="DriveRootUnsafe" xml:space="preserve"><value>A drive root cannot be selected as the install folder.</value></data>
+  <data name="FabricNetworkFailed" xml:space="preserve"><value>Could not connect to the official Fabric server. Check your connection and try again.</value></data>
+  <data name="PinnedFabricProfileUnavailable" xml:space="preserve"><value>Could not get the pinned Fabric profile from the official server.</value></data>
+  <data name="FabricProfileHashInvalid" xml:space="preserve"><value>Fabric profile integrity verification failed.</value></data>
+  <data name="FabricVersionConflict" xml:space="preserve"><value>A Fabric version with this name already exists and differs from the pinned version. Other files were not changed.</value></data>
+  <data name="OfficialLauncherNotFound" xml:space="preserve"><value>The official Minecraft Launcher was not found. Install it and open it once.</value></data>
+  <data name="LauncherProfilesMissing" xml:space="preserve"><value>The Launcher profile file was not found. Open the official Launcher once, then close it.</value></data>
+  <data name="LauncherProfilesAmbiguous" xml:space="preserve"><value>Two Launcher profile files were found. Choosing one automatically could change the wrong profile.</value></data>
+  <data name="LauncherRunning" xml:space="preserve"><value>Close Minecraft Launcher and try again. An open Launcher may overwrite the profile.</value></data>
+  <data name="FabricArchiveUnexpected" xml:space="preserve"><value>The official Fabric package has an unexpected structure.</value></data>
+  <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>The versions in the Fabric package do not match the pinned release.</value></data>
+  <data name="LauncherProfileChanged" xml:space="preserve"><value>The Launcher profile changed during installation. Close Launcher and try again.</value></data>
+  <data name="LauncherJsonInvalid" xml:space="preserve"><value>The Launcher profile file contains invalid JSON.</value></data>
+  <data name="LauncherProfileListUnsupported" xml:space="preserve"><value>The Launcher profile list uses an unsupported format.</value></data>
+  <data name="LauncherProfileIdConflict" xml:space="preserve"><value>The MinePack profile ID is already used by another profile.</value></data>
+  <data name="LauncherProfileUnowned" xml:space="preserve"><value>The profile is not marked as owned by the installer; it was not changed.</value></data>
+  <data name="WorldSourceMissing" xml:space="preserve"><value>The world folder was not found. Select the saves folder of another profile.</value></data>
+  <data name="WorldTargetVanilla" xml:space="preserve"><value>Worlds cannot be imported into the regular .minecraft folder.</value></data>
+  <data name="WorldFoldersOverlap" xml:space="preserve"><value>The source folder and pack folder must not overlap.</value></data>
+  <data name="WorldIsOpen" xml:space="preserve"><value>The world “{0}” is open. Close Minecraft before importing it.</value></data>
+  <data name="WorldCopied" xml:space="preserve"><value>Copied world: {0}</value></data>
+</root>

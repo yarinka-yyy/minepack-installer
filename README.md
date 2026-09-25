@@ -1,53 +1,109 @@
 # MinePack Installer
 
-Windows WPF prototype for installing one pinned Fabric test pack into an isolated Minecraft game directory and creating its own official Launcher profile. This repository is a development prototype, not a player-ready public release.
+English · [Русский](README.ru.md)
 
-## Запуск
+MinePack installs the pinned 0.8.0 Minecraft 26.2 modpack in a few clicks. **Requires the official Minecraft: Java Edition and the official Minecraft Launcher; your account stays in the Launcher.**
 
-Откройте `artifacts/publish-0.8.0/MinePack.Installer.exe`, оставив рядом всю папку `artifacts/publish-0.8.0`. Закройте Minecraft Launcher, нажмите **Установить сборку** и дождитесь сообщения **Сборка готова**. Установщик скачает закреплённые моды, шейдер и ресурспаки, проверит их и переключит профиль **MinePack** на новый отдельный Game Directory. Предыдущая папка сборки `0.7.0` и её мир останутся на диске. Затем откройте официальный Minecraft Launcher, выберите этот профиль и нажмите **Играть**. Для первого запуска Launcher сам загрузит базовые файлы Minecraft и библиотеки Fabric; вход в аккаунт остаётся в официальном Launcher.
+For Windows · Fabric · Minecraft 26.2 · Release 0.8.0
 
-Новая установка заранее меняет бег на левый Shift, приседание на левый Ctrl, поле зрения на 80, режим экрана на Exclusive и масштаб интерфейса на 4×. Разрешение монитора не фиксируется. Проверка и исправление сборки не перезаписывает последующие настройки игрока.
-Для Minecraft `26.2` начальный `options.txt` содержит `version:4903`: без версии игра пытается мигрировать новые названия клавиш как старые числовые коды и сбрасывает весь файл, включая выбор ресурспаков.
+The pack includes 26 mods, 8 resource packs, and 1 shader. The installer downloads the pinned files, checks them, and creates a separate MinePack profile and game folder in the official Launcher.
 
-Тестовый кандидат `0.8.0` остаётся на Minecraft `26.2` и сохраняет все компоненты проверенной вами сборки `0.7.0`. Добавлен Punchy! `2.8a` с анимациями от первого лица; его встроенный ресурспак включается в новом профиле вместе с прежними восемью. При Repair выбор ресурспаков игрока не перезаписывается. Чистая установка, запуск игры, начальные настройки и выбор ресурспаков проверены пользователем. Миры `26.3` не открывайте в `26.2` без резервной копии.
+## Install
 
-Если сборка скачалась, а профиль создать не удалось, исправьте причину в сообщении и нажмите **Восстановить профиль Launcher**. Повторная загрузка мода не требуется. По умолчанию данные сборки находятся в `%LOCALAPPDATA%\MinePack`.
+1. A public installer download has not been confirmed yet, so there is no download link here.
+2. When a complete installer package is published, download and extract it. Keep all files from the package together.
+3. Close Minecraft Launcher, run `MinePack.Installer.exe`, click **Install pack**, and wait for **Pack is ready**.
+4. Open the official Minecraft Launcher, choose the **MinePack** profile, and click **Play**. On the first launch, the Launcher downloads the Minecraft base files.
 
-Если после первого запуска появилась прежняя ошибка `FABRIC_VERSION_CONFLICT`, откройте обновлённый EXE из этой папки и нажмите **Восстановить профиль Launcher**. Официальный Launcher должен быть закрыт. Исправленный установщик распознаёт клиентский JAR, которым Launcher заполняет Fabric-профиль после запуска, и не удаляет его.
+## Game files and worlds
 
-Чтобы перенести миры, сначала установите новую сборку, закройте Minecraft, нажмите **Импортировать миры** и выберите папку `saves` прежнего профиля (например `%APPDATA%\.minecraft\saves`). Установщик копирует каждый мир целиком; исходные миры не удаляются, совпадающие имена пропускаются. Перед открытием старого мира в Minecraft другой версии сохраните его резервную копию: сама игра может изменить формат мира.
+By default, MinePack stores its data in `%LOCALAPPDATA%\MinePack`; you can choose another folder in the installer. Release 0.8.0 gets its own folder under `instances`, with separate `mods`, `resourcepacks`, `shaderpacks`, `saves`, and game settings.
 
-## Layout
+The vanilla `.minecraft` folder, its worlds, and other Launcher profiles are left alone. An older MinePack version stays in its own folder until a new installation succeeds. Repair and uninstall keep worlds and other user files. World import copies worlds and leaves the originals in place. Back up a world before opening it in a different Minecraft version.
 
-- `src/MinePack.Installer` — WPF application.
-- `src/MinePack.Core` — archive validation, verified downloads, Fabric/Launcher integration, install state, repair, and managed-file removal.
-- `tests/MinePack.Smoke` — dependency-free runnable checks.
-- `pack/test-pack` — Packwiz source for the test pack.
-- `releases/test-pack` — exported immutable `.mrpack` artifact and its metadata.
+## Included mods and files
 
-## Build and checks
+<details>
+<summary>Performance &amp; Render Distance (8)</summary>
 
-Run from this directory with the .NET 10 SDK on Windows:
+- [Sodium](https://modrinth.com/mod/AANobbMI)
+- [Voxy](https://modrinth.com/mod/fxxUqruK)
+- [C2ME](https://modrinth.com/mod/VSNURh3q)
+- [ImmediatelyFast](https://modrinth.com/mod/5ZwdcRci)
+- [FerriteCore](https://modrinth.com/mod/uXXizFIs)
+- [Entity Culling](https://modrinth.com/mod/NNAgCjsB)
+- [Better Block Entities](https://modrinth.com/mod/ONZm0H7Y)
+- [Clumps](https://modrinth.com/mod/Wnxd13zP)
+
+</details>
+
+<details>
+<summary>Graphics &amp; Animations (7)</summary>
+
+- [Iris](https://modrinth.com/mod/YL57xq9U)
+- [EMF](https://modrinth.com/mod/4I1XuqiY)
+- [ETF](https://modrinth.com/mod/BVzZfTc1)
+- [Punchy!](https://modrinth.com/mod/8aoMKplv)
+- [Explosive Enhancement](https://modrinth.com/mod/OSQ8mw2r)
+- [Dense Flowers](https://modrinth.com/mod/Ud3A1Fat)
+- [Inventory Particles](https://modrinth.com/mod/XYnKrsxH)
+
+</details>
+
+<details>
+<summary>Tools &amp; Quality of Life (4)</summary>
+
+- [Chunky](https://modrinth.com/mod/fALzjamp)
+- [Inventory Sorting](https://modrinth.com/mod/5ibSyLAz)
+- [Held Item Info](https://modrinth.com/mod/tEcWzCZz)
+- [Pick Up Notifier](https://modrinth.com/mod/ZX66K16c)
+
+</details>
+
+<details>
+<summary>Sound (2)</summary>
+
+- [Cool Rain](https://modrinth.com/mod/iDyqnQLT)
+- [Sound Physics Remastered](https://modrinth.com/mod/qyVF9oeo)
+
+</details>
+
+<details>
+<summary>Technical Foundation (5)</summary>
+
+- [Fabric API](https://modrinth.com/mod/P7dR8mSH)
+- [Cloth Config API](https://modrinth.com/mod/9s6osm5g)
+- [Forge Config API Port](https://modrinth.com/mod/ohNO6lps)
+- [MossyLib](https://modrinth.com/mod/ffLDUGbm)
+- [Puzzles Lib](https://modrinth.com/mod/QAGBst4M)
+
+</details>
+
+<details>
+<summary>Resource Packs (8)</summary>
+
+- [Fresh Animations](https://modrinth.com/resourcepack/50dA9Sha)
+- [Fresh Animations: Extensions](https://modrinth.com/resourcepack/YAVTU8mK)
+- [Low On Fire](https://modrinth.com/resourcepack/RRxvWKNC)
+- [Fancy Crops](https://modrinth.com/resourcepack/UGEVQ6t9)
+- [Better Flame Particles](https://modrinth.com/resourcepack/ivUZsvzp)
+- [Os' Colorful Grasses](https://modrinth.com/resourcepack/O2zhH8n8)
+- [GUI Retextures — Dark](https://modrinth.com/resourcepack/ZM5PH9W6)
+- [Better Click Sounds](https://modrinth.com/resourcepack/XWQ6jMjk)
+
+</details>
+
+<details>
+<summary>Shader (1)</summary>
+
+- [Complementary Reimagined](https://modrinth.com/shader/HVnmMxH1)
+
+</details>
+
+## Build from source
+
+On Windows with the .NET 10 SDK, publish the installer with:
 
 ```powershell
-dotnet build MinePack.slnx -c Release
-dotnet run --project tests/MinePack.Smoke -c Release
-dotnet run --project tests/MinePack.Smoke -c Release -- --live-fabric
-dotnet run --project tests/MinePack.Smoke -c Release -- --live-profile-copy
 dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.8.0
 ```
-
-The pinned Packwiz source is exported with the portable tool (run from `pack/test-pack`):
-
-```powershell
-& 'C:\Users\Yarin\AppData\Local\Temp\minepack-tools\packwiz\packwiz.exe' --cache ../../artifacts/packwiz-cache modrinth export -o ../../releases/test-pack/test-pack-0.8.0.mrpack
-```
-
-## Pack and Fabric tools
-
-- Packwiz: portable executable from the official Packwiz GitHub Actions run `34043101039`, source revision `ef87d964f8cbd52b3b13ea42453ef322290e2b9e`; downloaded ZIP SHA-256 `C59CD1AB7B8FB6A09CD00CC9BECBCA5467731CA2DA37C14E8166CFE360FCB31E`. It is kept outside this repository and invoked by full path.
-- Fabric Installer CLI `1.1.2` was inspected during research, but the application uses the official Fabric Meta API profile ZIP directly. The pinned ZIP SHA-512 is in `FabricLauncherService.cs`; the installer verifies it before touching Launcher files.
-
-The test pack is pinned to Minecraft `26.2` and Fabric Loader `0.19.5`. Its exact Modrinth project/version IDs are recorded in `releases/test-pack/README.md`; source URLs and file hashes are pinned in `pack/test-pack`, and the `.mrpack` SHA-512 is recorded in the release README. Mod JARs and pack ZIPs are downloaded from Modrinth CDN after SHA-512 verification; they are not bundled in the app.
-
-Install stages and verifies files before marking the instance active. Repair checks managed files and reconfigures the MinePack profile; uninstall removes managed files and only that profile, preserving worlds, screenshots, unknown user data, and shared Fabric versions. If the profile cannot be removed after the pack files, **Удалить сборку** can be run again to remove only the remaining MinePack profile. Launcher profile changes require the Launcher to be closed. The installer handles one detected official profile file (`launcher_profiles.json` or `launcher_profiles_microsoft_store.json`); if both are present, it stops instead of guessing. The live Launcher and gameplay still need a manual acceptance run. Automated checks use isolated profile fixtures and never write to the user's Launcher.
