@@ -24,12 +24,12 @@ public static class LauncherProfile
         if (profiles[ProfileKey] is JsonNode existingNode)
         {
             if (existingNode is not JsonObject existing || !IsOurs(existing))
-                throw new InstallerException("LAUNCHER_PROFILE_CONFLICT", "Идентификатор тестового профиля уже занят чужим профилем.");
+                throw new InstallerException("LAUNCHER_PROFILE_CONFLICT", "Идентификатор профиля MinePack уже занят чужим профилем.");
         }
 
         var profile = (JsonObject?)profiles[ProfileKey] ?? new JsonObject();
         profile[MarkerName] = ProfileKey;
-        profile["name"] = "MinePack Test Pack";
+        profile["name"] = "MinePack";
         profile["type"] = "custom";
         profile["lastVersionId"] = $"fabric-loader-{loaderVersion}-{minecraftVersion}";
         profile["gameDir"] = Path.GetFullPath(gameDirectory);
@@ -64,7 +64,7 @@ public static class LauncherProfile
 
         static string? Text(JsonNode? node) =>
             node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
-        if (Text(profile["name"]) != "MinePack Test Pack" || Text(profile["type"]) != "custom" ||
+        if (Text(profile["name"]) is not ("MinePack Test Pack" or "MinePack") || Text(profile["type"]) != "custom" ||
             Text(profile["gameDir"]) is not { } gameDir)
             return false;
 

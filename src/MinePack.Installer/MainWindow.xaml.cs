@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Navigation;
 using MinePack.Core;
 using Microsoft.Win32;
 
@@ -17,6 +18,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        CatalogList.ItemsSource = PackCatalog.Groups;
         InstallRootBox.Text = InstallService.DefaultInstallRoot;
     }
 
@@ -44,8 +46,8 @@ public partial class MainWindow : Window
     private async void Uninstall_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(this,
-                "Будут удалены только файлы, записанные в manifest этой сборки. Миры, снимки экрана и неизвестные файлы сохранятся. Продолжить?",
-                "Удалить MinePack Test Pack", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                "Удалить установленные файлы MinePack? Миры, снимки экрана и ваши другие файлы останутся на месте.",
+                "Удалить MinePack", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
         await RunOperationAsync(Operation.Uninstall);
     }
@@ -69,12 +71,15 @@ public partial class MainWindow : Window
         var filesInstalled = false;
         var filesRemoved = false;
         OperationProgress.Value = 0;
-        StateHeading.Text = "Выполняется операция";
+        InstructionsBox.Text = "";
+        DiagnosticText.Text = "";
+        StatusBox.Text = "Подождите, выполняем выбранное действие.";
+        StateHeading.Text = operation == Operation.Install ? "Устанавливаем сборку" : "Выполняем действие";
         ProgressLabel.Text = operation switch
         {
-            Operation.Install => "Проверка закреплённого релиза…",
+            Operation.Install => "Подготовка файлов…",
             Operation.Repair => "Поиск установленной сборки…",
-            Operation.ConfigureLauncher => "Настройка Fabric и Launcher…",
+            Operation.ConfigureLauncher => "Восстанавливаем профиль Launcher…",
             Operation.ImportWorlds => "Копирование миров…",
             _ => "Подготовка удаления…"
         };
@@ -116,7 +121,7 @@ public partial class MainWindow : Window
             if (operation == Operation.ConfigureLauncher)
             {
                 _gameDirectory = _installer.GetActiveInstancePath(root)
-                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", "Сначала установите тестовую сборку.");
+                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", "Сначала установите сборку.");
                 filesInstalled = true;
                 await ConfigureLauncherAsync(_gameDirectory, cancellation.Token);
                 return;
@@ -139,7 +144,7 @@ public partial class MainWindow : Window
                 if (instance is null)
                 {
                     if (operation != Operation.Uninstall)
-                        throw new InstallerException("INSTANCE_NOT_FOUND", "Активная установка тестового релиза не найдена в выбранной папке.");
+                        throw new InstallerException("INSTANCE_NOT_FOUND", "Сборка не найдена в выбранной папке.");
                     _launcher.RemoveOwnProfile();
                     StateHeading.Text = "Профиль удалён";
                     ProgressLabel.Text = "Операция завершена";
@@ -186,9 +191,9 @@ public partial class MainWindow : Window
             }
             else
             {
-                StateHeading.Text = "Не удалось завершить операцию";
-                StatusBox.Text = $"{result.Code}: {result.Message}";
-                InstructionsBox.Text = $"Журнал: {result.LogPath ?? _installer.GetLatestLogPath(root) ?? "не создан"}";
+                StateHeading.Text = result.Code == "CANCELLED" ? "Операция отменена" : "Не удалось завершить действие";
+                StatusBox.Text = result.Code == "CANCELLED" ? "Операция остановлена. Уже сохранённые файлы остались на месте." : result.Message;
+                DiagnosticText.Text = $"Код: {result.Code}\nЖурнал: {result.LogPath ?? _installer.GetLatestLogPath(root) ?? "не создан"}";
                 ProgressLabel.Text = result.Code == "CANCELLED" ? "Операция отменена" : "Операция завершилась с ошибкой";
             }
         }
@@ -197,18 +202,20 @@ public partial class MainWindow : Window
             if (operation == Operation.ImportWorlds)
             {
                 StateHeading.Text = "Импорт не завершён";
-                StatusBox.Text = $"{ex.Code}: {ex.Message}";
+                StatusBox.Text = ex.Message;
+                ShowDiagnostic(ex.Code);
                 InstructionsBox.Text = "Ранее скопированные миры остаются на месте; исходные миры не изменены.";
                 ProgressLabel.Text = "Операция не завершена";
                 return;
             }
             StateHeading.Text = filesRemoved ? "Файлы удалены, профиль остался" :
                 filesInstalled ? "Сборка есть, профиль ещё не готов" : "Нужен ещё один шаг";
-            StatusBox.Text = $"{ex.Code}: {ex.Message}";
+            StatusBox.Text = ex.Message;
+            ShowDiagnostic(ex.Code);
             InstructionsBox.Text = filesRemoved
                 ? "После устранения причины нажмите «Удалить сборку» ещё раз — останется убрать только профиль MinePack."
                 : filesInstalled
-                ? "Файлы сборки сохранены. После устранения причины нажмите «Настроить Launcher» — скачивать мод заново не потребуется."
+                ? "Файлы сборки сохранены. После устранения причины нажмите «Восстановить профиль Launcher» — скачивать моды заново не потребуется."
                 : "Исправьте указанную причину и повторите действие.";
             ProgressLabel.Text = "Операция не завершена";
         }
@@ -223,7 +230,7 @@ public partial class MainWindow : Window
             }
             StateHeading.Text = "Операция отменена";
             StatusBox.Text = filesInstalled
-                ? "Файлы сборки уже установлены, но профиль Launcher не настроен. Нажмите «Настроить Launcher», когда будете готовы."
+                ? "Файлы сборки уже установлены, но профиль Launcher не настроен. Нажмите «Восстановить профиль Launcher», когда будете готовы."
                 : "Операция отменена.";
             ProgressLabel.Text = "Операция отменена";
         }
@@ -232,18 +239,20 @@ public partial class MainWindow : Window
             if (operation == Operation.ImportWorlds)
             {
                 StateHeading.Text = "Импорт не завершён";
-                StatusBox.Text = $"Не удалось скопировать миры ({ex.GetType().Name}). Проверьте доступ к папке и свободное место.";
+                StatusBox.Text = "Не удалось скопировать миры. Проверьте доступ к папке и свободное место.";
+                ShowDiagnostic(ex.GetType().Name);
                 InstructionsBox.Text = "Исходные миры не изменены; уже скопированные миры сохранены.";
                 ProgressLabel.Text = "Операция завершилась с ошибкой";
                 return;
             }
             StateHeading.Text = filesRemoved ? "Файлы удалены, профиль остался" :
                 filesInstalled ? "Сборка есть, профиль ещё не готов" : "Не удалось завершить операцию";
-            StatusBox.Text = $"Не удалось выполнить действие ({ex.GetType().Name}). Проверьте права на папку и журнал диагностики.";
+            StatusBox.Text = "Не удалось выполнить действие. Проверьте путь к папке, права доступа и журнал.";
+            ShowDiagnostic(ex.GetType().Name);
             InstructionsBox.Text = filesRemoved
                 ? "Закройте Launcher и нажмите «Удалить сборку» ещё раз."
                 : filesInstalled
-                ? "Файлы сохранены. Нажмите «Настроить Launcher» после устранения причины."
+                ? "Файлы сохранены. Нажмите «Восстановить профиль Launcher» после устранения причины."
                 : "Исправьте указанную причину и повторите действие.";
             ProgressLabel.Text = "Операция завершилась с ошибкой";
         }
@@ -266,25 +275,11 @@ public partial class MainWindow : Window
             using var previousLauncher = new FabricLauncherService(minecraftVersion: manifest.MinecraftVersion);
             await previousLauncher.ConfigureAsync(gameDirectory, cancellationToken);
         }
-        var version = manifest.PackVersion;
         StateHeading.Text = "Сборка готова";
         ProgressLabel.Text = "Установка завершена";
-        StatusBox.Text = version == TestPackRelease.PackVersion
-            ? "Тестовая сборка 0.8.0 готова: добавлен Punchy с анимациями от первого лица. Откройте официальный Minecraft Launcher, выберите MinePack Test Pack и нажмите «Играть»."
-            : version == "0.7.0"
-                ? "Сборка 0.7.0 готова. Для теста Punchy нажмите «Установить сборку»."
-            : version == "0.6.0"
-                ? "Сборка 0.6.0 готова. Smooth Swapping в ней остаётся; для теста без него нажмите «Установить сборку»."
-            : version == "0.5.0"
-                ? "Проверенная сборка с визуальными модами готова. Для следующего теста нажмите «Установить сборку»."
-            : version == "0.4.0"
-                ? "Сборка с C2ME готова. Для теста новых модов нажмите «Установить сборку»."
-            : version == "0.3.0"
-                ? "Проверенная сборка с Voxy и Chunky готова. Для отдельного теста C2ME нажмите «Установить сборку»."
-                : "Прежняя тестовая сборка и её профиль готовы. Для Voxy нажмите «Установить сборку».";
-        InstructionsBox.Text = version == TestPackRelease.PackVersion
-            ? $"Папка игры: {gameDirectory}\nПроверьте движения рук с мечом, топором и едой, добычу блоков, сундуки и мобов с Fresh Animations, работу шейдера и FPS. Punchy и его встроенный набор анимаций включены для новой сборки. Предыдущие сборки и миры сохранены отдельно."
-            : $"Папка игры: {gameDirectory}\nПри первом запуске Launcher сам загрузит необходимые файлы Minecraft и библиотеки Fabric.";
+        StatusBox.Text = "Откройте официальный Minecraft Launcher, выберите профиль MinePack и нажмите «Играть».";
+        InstructionsBox.Text = "При первом запуске Launcher сам загрузит базовые файлы Minecraft.";
+        DiagnosticText.Text = $"Папка игры: {gameDirectory}";
     }
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e)
@@ -323,6 +318,30 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ModrinthLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
+    {
+        if (e.Uri.Scheme != Uri.UriSchemeHttps || e.Uri.Host != "modrinth.com" ||
+            !PackCatalog.Items.Any(item => item.ModrinthUrl == e.Uri))
+            return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch
+        {
+            StatusBox.Text = "Не удалось открыть страницу Modrinth в браузере.";
+        }
+        e.Handled = true;
+    }
+
+    private void ShowDiagnostic(string code)
+    {
+        string? log = null;
+        try { log = _installer.GetLatestLogPath(Path.GetFullPath(InstallRootBox.Text)); }
+        catch (Exception) { }
+        DiagnosticText.Text = $"Код: {code}\nЖурнал: {log ?? "не создан"}";
+    }
+
     private void Cancel_Click(object sender, RoutedEventArgs e) => _operationCancellation?.Cancel();
 
     protected override void OnClosing(CancelEventArgs e)
@@ -345,6 +364,7 @@ public partial class MainWindow : Window
         RepairButton.IsEnabled = !busy;
         UninstallButton.IsEnabled = !busy;
         CancelButton.IsEnabled = busy;
+        CancelButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         RetryLauncherButton.IsEnabled = !busy;
         ImportWorldsButton.IsEnabled = !busy;
         OpenFolderButton.IsEnabled = !busy;

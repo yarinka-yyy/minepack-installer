@@ -136,6 +136,17 @@ internal static class Smoke
         True(pack.Files.All(file => file.Sha512.Length == 128 && file.Sha512.All(Uri.IsHexDigit) &&
                                    file.Downloads.All(uri => uri.Scheme == Uri.UriSchemeHttps && uri.Host == "cdn.modrinth.com")),
             "pinned release hashes and URLs are valid");
+        var catalog = PackCatalog.Items;
+        True(catalog.Count == 35 &&
+             catalog.Count(item => item.Kind == "mod") == 26 &&
+             catalog.Count(item => item.Kind == "resourcepack") == 8 &&
+             catalog.Count(item => item.Kind == "shader") == 1 &&
+             catalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal).SetEquals(pack.Files.Select(file => file.Path)) &&
+             catalog.Select(item => item.FilePath).Distinct(StringComparer.Ordinal).Count() == 35 &&
+             catalog.All(item => item.ModrinthUrl.Scheme == Uri.UriSchemeHttps &&
+                                 item.ModrinthUrl.Host == "modrinth.com" &&
+                                 !string.IsNullOrWhiteSpace(item.ProjectId)),
+            "UI catalog exactly matches all 35 files in pinned release");
         Pass("pinned .mrpack opens and matches its SHA-512");
     }
 
@@ -413,6 +424,7 @@ internal static class Smoke
         True(root.GetProperty("profiles").GetProperty("vanilla").GetProperty("customField").GetInt32() == 17,
             "unowned Launcher profile fields are preserved");
         var own = root.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey);
+        Equal("MinePack", own.GetProperty("name").GetString(), "new Launcher profile has MinePack display name");
         Equal(Path.GetFullPath(Path.Combine(Path.GetTempPath(), "minepack-game")), own.GetProperty("gameDir").GetString(), "fixture profile gameDir");
         var removed = LauncherProfile.RemoveFixtureCandidate(candidate);
         using var removedJson = JsonDocument.Parse(removed);
@@ -436,13 +448,13 @@ internal static class Smoke
             FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
             PackArchiveSha512 = TestPackRelease.GraphicsArtifactSha512
         }.SaveAtomic(oldInstance);
-        string ProfileWithoutMarker(string gameDir) => JsonSerializer.Serialize(new
+        string ProfileWithoutMarker(string gameDir, string name = "MinePack Test Pack") => JsonSerializer.Serialize(new
         {
             profiles = new Dictionary<string, object>
             {
                 [LauncherProfile.ProfileKey] = new
                 {
-                    name = "MinePack Test Pack", type = "custom",
+                    name, type = "custom",
                     lastVersionId = "fabric-loader-0.19.5-26.2", gameDir
                 }
             }
@@ -450,9 +462,20 @@ internal static class Smoke
         var markerless = ProfileWithoutMarker(oldInstance);
         var reconfigured = LauncherProfile.BuildFixtureCandidate(markerless, Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
         using (var parsed = JsonDocument.Parse(reconfigured))
+        {
             Equal(Path.Combine(tempRoot, "new-instance"), parsed.RootElement.GetProperty("profiles")
                 .GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString(),
                 "Launcher-stripped marker can be recovered from a pinned MinePack manifest");
+            Equal("MinePack", parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+                .GetProperty("name").GetString(), "old profile is renamed in place");
+            Equal(1, parsed.RootElement.GetProperty("profiles").EnumerateObject().Count(),
+                "renaming does not create a second profile");
+        }
+        var newNamed = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(oldInstance, "MinePack"),
+            Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
+        using (var parsed = JsonDocument.Parse(newNamed))
+            Equal("MinePack", parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+                .GetProperty("name").GetString(), "new markerless name is recognized with pinned manifest");
         using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveFixtureCandidate(markerless)))
             True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
                 "markerless MinePack profile can be removed while its manifest exists");
@@ -463,6 +486,13 @@ internal static class Smoke
             _ = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(Path.Combine(tempRoot, "foreign-instance")),
                 Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
             throw new InvalidOperationException("Expected unowned markerless profile rejection.");
+        }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
+        try
+        {
+            _ = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(oldInstance, "Someone else's profile"),
+                Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
+            throw new InvalidOperationException("Expected foreign-name profile rejection.");
         }
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
         Pass("Launcher fixture changes only the marked profile and preserves other JSON fields");
