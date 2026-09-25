@@ -107,6 +107,8 @@
             <Setter Property="MinHeight" Value="66"/>
         </Style>
         <Style x:Key="CatalogExpander" TargetType="Expander">
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="MinHeight" Value="44"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Expander">
@@ -114,15 +116,17 @@
                             <ToggleButton x:Name="HeaderToggle" Content="{TemplateBinding Header}"
                                           IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                                           Background="#4A3826" Foreground="{StaticResource Ink}"
-                                          BorderBrush="#1B150F" BorderThickness="2" MinHeight="44"
-                                          FontSize="20" Cursor="Hand">
+                                          BorderBrush="#1B150F" BorderThickness="2"
+                                          MinHeight="{TemplateBinding MinHeight}"
+                                          FontSize="{TemplateBinding FontSize}" Cursor="Hand">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border x:Name="HeaderSurface" Background="{TemplateBinding Background}"
                                                 BorderBrush="{TemplateBinding BorderBrush}"
                                                 BorderThickness="{TemplateBinding BorderThickness}">
                                             <DockPanel Margin="10,5">
-                                                <TextBlock x:Name="Sign" Text="+" Width="26" FontSize="21" FontWeight="Bold"
+                                                <TextBlock x:Name="Sign" Text="+" Width="26"
+                                                           FontSize="{TemplateBinding FontSize}" FontWeight="Bold"
                                                            Foreground="#9AE56B" VerticalAlignment="Center"/>
                                                 <ContentPresenter VerticalAlignment="Center"/>
                                             </DockPanel>
@@ -179,7 +183,7 @@
                         <TextBlock Text="MINEPACK" FontSize="34" FontWeight="Bold" Foreground="#B5F18B"/>
                         <TextBlock Text="Моды для Minecraft — в один клик" FontSize="22"
                                    FontWeight="Bold" Margin="0,5,0,7"/>
-                        <TextBlock Text="Скачаем нужные моды и компоненты, создадим отдельный профиль в официальном Minecraft Launcher. Ваши миры и обычная игра останутся отдельно."
+                        <TextBlock Text="MinePack скачает моды и компоненты, создаст отдельный профиль в Minecraft Launcher. Ваши миры останутся отдельно."
                                    FontSize="17" LineHeight="25"/>
                         <Border Background="#231B15" BorderBrush="#5E5438" BorderThickness="2"
                                 Margin="0,13,0,0" Padding="10,7">
@@ -191,7 +195,7 @@
 
                 <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12" Padding="16,11">
                     <DockPanel>
-                        <TextBlock Text="MINECRAFT 26.2" FontSize="21" FontWeight="Bold"
+                        <TextBlock Text="Для версии 26.2" FontSize="21" FontWeight="Bold"
                                    Foreground="#C8F5A8" DockPanel.Dock="Left"/>
                         <TextBlock Text="26 модов · 8 ресурспаков · 1 шейдер" FontSize="16"
                                    HorizontalAlignment="Right" Foreground="{StaticResource SoftInk}"/>
@@ -206,7 +210,8 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Expander Header="{Binding Heading}" IsExpanded="False"
-                                              Style="{StaticResource CatalogExpander}" Margin="0,0,0,5">
+                                              Style="{StaticResource CatalogExpander}" FontSize="15"
+                                              MinHeight="32" Margin="0,0,0,3">
                                         <ItemsControl ItemsSource="{Binding Items}" Margin="8,2,8,9">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>

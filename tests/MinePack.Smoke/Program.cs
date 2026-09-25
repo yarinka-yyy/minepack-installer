@@ -147,6 +147,13 @@ internal static class Smoke
                                  item.ModrinthUrl.Host == "modrinth.com" &&
                                  !string.IsNullOrWhiteSpace(item.ProjectId)),
             "UI catalog exactly matches all 35 files in pinned release");
+        var initialOptions = TestPackRelease.InitialOptions.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        True(initialOptions[0] == "version:4903" && new[]
+        {
+            "key_key.sprint:key.keyboard.left.shift", "key_key.sneak:key.keyboard.left.control",
+            "fov:0.25", "fullscreen:true", "exclusiveFullscreen:true", "guiScale:4"
+        }.All(initialOptions.Contains) && !initialOptions.Any(line => line.StartsWith("fullscreenResolution:", StringComparison.Ordinal)),
+            "new profile defaults include requested controls, FOV, fullscreen and GUI scale without a fixed monitor mode");
         Pass("pinned .mrpack opens and matches its SHA-512");
     }
 
@@ -358,6 +365,13 @@ internal static class Smoke
         var expectedPacks = new[] { "vanilla" }.Concat(TestPackRelease.InitialResourcePacks.Select(name => "file/" + name)).Append("punchy:punchy");
         True(File.ReadAllText(optionsPath).Contains("resourcePacks:" + JsonSerializer.Serialize(expectedPacks), StringComparison.Ordinal),
             "all resource packs are selected on first launch in the pinned order");
+        var options = File.ReadAllLines(optionsPath);
+        True(new[]
+        {
+            "key_key.sprint:key.keyboard.left.shift", "key_key.sneak:key.keyboard.left.control",
+            "fov:0.25", "fullscreen:true", "exclusiveFullscreen:true", "guiScale:4"
+        }.All(options.Contains) && !options.Any(line => line.StartsWith("fullscreenResolution:", StringComparison.Ordinal)),
+            "new instance starts with requested controls, FOV, fullscreen, and GUI scale without a fixed monitor mode");
         var bbeConfigPath = Path.Combine(instance, "config", "BBEConfig.json");
         using (var document = JsonDocument.Parse(File.ReadAllText(bbeConfigPath)))
         {

@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace MinePack.Core;
 
 public static class TestPackRelease
@@ -34,4 +36,16 @@ public static class TestPackRelease
         "FA+All_Extensions-v1.9.2.zip",
         "GUIRetextures-Dark-2.1.zip"
     ];
+
+    public static string InitialOptions =>
+        "version:4903" + Environment.NewLine +
+        "resourcePacks:" + JsonSerializer.Serialize(new[] { "vanilla" }
+            .Concat(InitialResourcePacks.Select(name => "file/" + name)).Append("punchy:punchy")) + Environment.NewLine +
+        "incompatibleResourcePacks:[]" + Environment.NewLine +
+        "key_key.sprint:key.keyboard.left.shift" + Environment.NewLine +
+        "key_key.sneak:key.keyboard.left.control" + Environment.NewLine +
+        "fov:0.25" + Environment.NewLine +
+        "fullscreen:true" + Environment.NewLine +
+        "exclusiveFullscreen:true" + Environment.NewLine +
+        "guiScale:4" + Environment.NewLine;
 }
