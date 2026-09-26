@@ -11,7 +11,7 @@
   <data name="UiBuildInfo" xml:space="preserve"><value>Minecraft 26.2 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
   <data name="UiPackVersion" xml:space="preserve"><value>Pack version {0}</value></data>
   <data name="UiPackCountsVanillaPlus" xml:space="preserve"><value>38 mods · 8 resource packs · 1 shader</value></data>
-  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>50 mods · 10 resource packs · 1 shader</value></data>
+  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>53 mods · 10 resource packs · 1 shader</value></data>
   <data name="UiChoosePack" xml:space="preserve"><value>Choose a pack to install</value></data>
   <data name="UiCatalogTitle" xml:space="preserve"><value>Included in the pack</value></data>
   <data name="UiOpenOnModrinth" xml:space="preserve"><value>Open on Modrinth</value></data>

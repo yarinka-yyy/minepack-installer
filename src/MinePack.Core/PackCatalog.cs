@@ -76,11 +76,14 @@ public static class PackCatalog
     ];
 
     public static IReadOnlyList<CatalogGroup> Vanilla2PlusGroups { get; } = VanillaPlusGroups
-        .Select(group => group.Key == "CatalogTechnical"
+        .Select(group => group.Key == "CatalogPerformance"
+            ? group with { Items = group.Items.Append(new CatalogItem("Voxy WorldGen", "CatalogPerformance", "mod", "xT0lnNE9", "mods/Voxy World Gen V2-fabric-26.2-2.4.3.jar")).ToArray() }
+            : group.Key == "CatalogTechnical"
             ? group with { Items = group.Items.Concat(new[]
                 {
                     new CatalogItem("Library Ferret", "CatalogTechnical", "mod", "DOB2l4oJ", "mods/libraryferret-fabric-26.2-5.0.0.jar"),
-                    new CatalogItem("Moog's Structure Lib", "CatalogTechnical", "mod", "1oUDhxuy", "mods/MoogsStructureLib-fabric-26.2-3.3.0.jar")
+                    new CatalogItem("Moog's Structure Lib", "CatalogTechnical", "mod", "1oUDhxuy", "mods/MoogsStructureLib-fabric-26.2-3.3.0.jar"),
+                    new CatalogItem("Resourceful Lib", "CatalogTechnical", "mod", "G1hIVOrD", "mods/ResourcefulLib-5.0.4.jar")
                 }).ToArray() }
             : group.Key == "CatalogResourcePacks"
                 ? group with { Items = group.Items.Concat(new[]
@@ -101,7 +104,8 @@ public static class PackCatalog
             new CatalogItem("MNS - Moog's Nether Structures", "CatalogWorldgen", "mod", "nGUXvjTa", "mods/MoogsNetherStructures-universal-1.21-3.1.1.jar"),
             new CatalogItem("MVS - Moog's Voyager Structures", "CatalogWorldgen", "mod", "OQAgZMH1", "mods/MoogsVoyagerStructures-universal-1.21-5.1.3.jar"),
             new CatalogItem("Structory", "CatalogWorldgen", "datapack", "aKCwCJlY", "mods/Structory_26.2_v1.3.7.jar"),
-            new CatalogItem("Guard Villagers (Fabric/Quilt)", "CatalogWorldgen", "mod", "59rkB3YY", "mods/guardvillagers-2.1.3-26.2.jar")
+            new CatalogItem("Guard Villagers (Fabric/Quilt)", "CatalogWorldgen", "mod", "59rkB3YY", "mods/guardvillagers-2.1.3-26.2.jar"),
+            new CatalogItem("It Takes a Pillage Continuation", "CatalogWorldgen", "mod", "QOJOg1gE", "mods/takesapillage-fabric-1.0.12+mc26.2.jar")
         ])).ToArray();
 
     public static IReadOnlyList<CatalogGroup> Groups => VanillaPlusGroups;

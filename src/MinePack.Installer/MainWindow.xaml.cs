@@ -129,8 +129,15 @@ public partial class MainWindow : Window
                 return;
             }
 
+            var lastByteUpdate = 0L;
             var progress = new Progress<InstallProgress>(item =>
             {
+                if (item.Stage == "download" && item.ExpectedBytes is > 0 && item.BytesReceived > 0)
+                {
+                    var now = Stopwatch.GetTimestamp();
+                    if (now - lastByteUpdate < Stopwatch.Frequency / 10) return;
+                    lastByteUpdate = now;
+                }
                 if (item.ExpectedBytes is > 0 && item.BytesReceived > 0)
                 {
                     OperationProgress.Maximum = item.ExpectedBytes.Value;
@@ -158,14 +165,14 @@ public partial class MainWindow : Window
             {
                 _launcher.CheckProfileReady();
                 ProgressLabel.Text = LocalizedText.Get("ClosingLauncherProgress");
-                launcherTarget = await _launcherController.CloseBeforeInstallAsync(cancellation.Token);
-                _launcher.CheckReady();
+                launcherTarget = await Task.Run(() => _launcherController.CloseBeforeInstallAsync(cancellation.Token), cancellation.Token);
+                await Task.Run(_launcher.CheckReady, cancellation.Token);
                 var active = _installer.GetActiveInstancePath(root);
                 var current = active is null ? null : InstallationManifest.Load(active);
                 result = current?.PackVersion == selectedPack.Version &&
                          current.PackArchiveSha512.Equals(selectedPack.Hash, StringComparison.OrdinalIgnoreCase)
-                    ? await _installer.RepairAsync(active!, selectedPack.Path, selectedPack.Hash, progress, cancellation.Token)
-                    : await _installer.InstallAsync(selectedPack.Path, selectedPack.Hash, root, progress, cancellation.Token);
+                    ? await Task.Run(() => _installer.RepairAsync(active!, selectedPack.Path, selectedPack.Hash, progress, cancellation.Token), cancellation.Token)
+                    : await Task.Run(() => _installer.InstallAsync(selectedPack.Path, selectedPack.Hash, root, progress, cancellation.Token), cancellation.Token);
             }
             else
             {
@@ -186,6 +193,8 @@ public partial class MainWindow : Window
                 {
                     TestPackRelease.PackVersion => (VanillaPlusPackPath, TestPackRelease.ArtifactSha512),
                     Vanilla2PlusRelease.PackVersion => (Vanilla2PlusPackPath, Vanilla2PlusRelease.ArtifactSha512),
+                    "0.16.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.GuardArtifactFileName), Vanilla2PlusRelease.GuardArtifactSha512),
+                    "0.14.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PriorArtifactFileName), Vanilla2PlusRelease.PriorArtifactSha512),
                     "0.13.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PreviousArtifactFileName), Vanilla2PlusRelease.PreviousArtifactSha512),
                     "0.12.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.LegacyArtifactFileName), Vanilla2PlusRelease.LegacyArtifactSha512),
                     "0.11.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.OriginalArtifactFileName), Vanilla2PlusRelease.OriginalArtifactSha512),
@@ -204,8 +213,8 @@ public partial class MainWindow : Window
                 if (operation == Operation.Uninstall)
                     _launcher.RemoveOwnProfile(instance);
                 result = operation == Operation.Repair
-                    ? await _installer.RepairAsync(instance, installedPackPath, installedPackHash, progress, cancellation.Token)
-                    : await _installer.UninstallAsync(instance, installedPackPath, installedPackHash);
+                    ? await Task.Run(() => _installer.RepairAsync(instance, installedPackPath, installedPackHash, progress, cancellation.Token), cancellation.Token)
+                    : await Task.Run(() => _installer.UninstallAsync(instance, installedPackPath, installedPackHash), cancellation.Token);
             }
 
             if (result.Success)
@@ -320,12 +329,12 @@ public partial class MainWindow : Window
         ProgressLabel.Text = LocalizedText.Get("ConfigureLauncherProgress");
         var manifest = InstallationManifest.Load(gameDirectory);
         if (manifest.MinecraftVersion == TestPackRelease.MinecraftVersion)
-            await _launcher.ConfigureAsync(gameDirectory, cancellationToken);
+            await Task.Run(() => _launcher.ConfigureAsync(gameDirectory, cancellationToken), cancellationToken);
         else
         {
             using var previousLauncher = new FabricLauncherService(minecraftVersion: manifest.MinecraftVersion,
                 ensureLauncherClosed: _launcherController.EnsureClosed);
-            await previousLauncher.ConfigureAsync(gameDirectory, cancellationToken);
+            await Task.Run(() => previousLauncher.ConfigureAsync(gameDirectory, cancellationToken), cancellationToken);
         }
         StateHeading.Text = LocalizedText.Get("PackReady");
         ProgressLabel.Text = LocalizedText.Get("InstallComplete");

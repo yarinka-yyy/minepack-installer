@@ -1,4 +1,20 @@
-# Vanilla 2 Plus 0.14.0
+# Vanilla 2 Plus 0.17.0
+
+Minecraft `26.2` · Fabric Loader `0.19.5` · 53 mods, 10 resource packs, 1 shader.
+
+This release preserves all 61 downloads and Guard Villagers settings from [0.16.0](vanilla-2-plus-0.16.0.mrpack). It adds [It Takes a Pillage Continuation `1.0.12`](https://modrinth.com/mod/it-takes-a-pillage-continuation), its required Resourceful Lib `5.0.4`, and [Voxy WorldGen `2.4.3`](https://modrinth.com/mod/voxy-worldgen). The existing F.M.R.P `3.0.5` archive contains Archer, Legioner, and Skirmisher models under `assets/takesapillage/`; its priority remains above Fresh Animations. The new `config/voxyworldgenv2.json` sets `generationRadius` to the supported maximum of `512` chunks, preserving the other first-run defaults. Both Guard Villagers and Voxy WorldGen configs are initial overrides and stay unmanaged after installation so player changes survive Repair and Uninstall.
+
+The `.mrpack` contains 64 pinned downloads and three overrides. SHA-512: `4631317E04F547AD72E93B9C40E8C6BEB2FDDDD081D9A63F36C62D24BB9EAD6A0FFC52257260FE584223C6E134120DF7E8B4B05C1E3D5BF24631EDB37F488014`. Packwiz export, deterministic smoke, clean temporary downloads with SHA-512 checks, Install/Repair/Uninstall, and Release publish passed. The local `0.17.0` instance has 65 verified managed files, both initial configs, and is selected in the MinePack Launcher profile; `0.16.0` remains installed. The WPF installer now runs Launcher checks and install/repair work off its UI thread and limits progress redraws to ten per second. Gameplay, generation at radius 512, animation appearance, and visible UI responsiveness require user observation. Upstream has open reports of [high idle CPU](https://github.com/iSeeEthan/voxy_worldgen_v2/issues/98) and [hanging on world exit](https://github.com/iSeeEthan/voxy_worldgen_v2/issues/99) with Voxy WorldGen; keep the previous 0.16.0 instance available during testing.
+
+## Previous candidate: 0.16.0
+
+Minecraft `26.2` · Fabric Loader `0.19.5` · Fabric API `0.161.0+26.2`.
+
+This release preserves all 61 pinned downloads from [0.14.0](vanilla-2-plus-0.14.0.mrpack) and adds `config/guardvillagers.json` as an initial override. Guard Villagers `2.1.3-26.2` starts with `followHero=false` and `reputationRequirement=-2147483648`, allowing guard inventory access, equipment changes, patrol, and following without Hero of the Village. The existing `giveGuardStuffHotv=false` and `setGuardPatrolHotv=false` remain unchanged. The config is installed before first launch and is intentionally absent from the managed-file manifest, so Repair and Uninstall preserve later player edits. A dedicated server needs the same server-side config.
+
+The archive has 61 pinned downloads and two overrides (Iris and Guard Villagers). Archive SHA-512: `19E98E3D10001E163FEA20870B0D63B462F62B717A0422D4DD87F7AF11B07160325BDBF851D3B3E581F13F389741A239B88CA9630C17927A96DCC7D83951B0AD`. Packwiz export, deterministic smoke, real temporary downloads and SHA-512 checks, Install/Repair/Uninstall, and Release publish passed. The local `0.16.0` instance was installed with 62 managed files; the user confirmed in-game that the guard interactions work without Hero of the Village.
+
+## Previous candidate: 0.14.0
 
 Minecraft `26.2` · Fabric Loader `0.19.5` · Fabric API `0.161.0+26.2`.
 

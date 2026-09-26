@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace MinePack.Core;
@@ -90,8 +91,14 @@ public sealed class InstallService : IDisposable
 
             var tasks = pack.Files.Select(async file =>
             {
+                var lastByteReport = 0L;
                 var downloaded = await _downloads.DownloadVerifiedAsync(file, stagingRoot, (bytes, expected) =>
-                    progress?.Report(new InstallProgress("download", LocalizedText.Get("DownloadingFile", Path.GetFileName(file.Path)), Volatile.Read(ref completed), total, bytes, expected)), cancellationToken);
+                {
+                    var now = Stopwatch.GetTimestamp();
+                    if (now - lastByteReport < Stopwatch.Frequency / 5) return;
+                    lastByteReport = now;
+                    progress?.Report(new InstallProgress("download", LocalizedText.Get("DownloadingFile", Path.GetFileName(file.Path)), Volatile.Read(ref completed), total, bytes, expected));
+                }, cancellationToken);
                 var size = new FileInfo(downloaded).Length;
                 managed.Add(new ManagedFile(file.Path, file.Sha512, file.Downloads.Select(x => x.AbsoluteUri).ToArray(), false, size));
                 Log("download_verified", new { path = file.Path, source = file.Downloads[0].GetLeftPart(UriPartial.Authority), file.Sha512, size });
@@ -102,7 +109,8 @@ public sealed class InstallService : IDisposable
             var overrides = await pack.ExtractOverridesAsync(stagingRoot, cancellationToken);
             foreach (var file in overrides)
             {
-                managed.Add(file);
+                if (!IsInitialUserConfig(pack, file.Path))
+                    managed.Add(file);
                 Log("override_applied", new { path = file.Path, file.Sha512, file.Size });
                 progress?.Report(new InstallProgress("override", LocalizedText.Get("AppliedOverride", Path.GetFileName(file.Path)), Interlocked.Increment(ref completed), total));
             }
@@ -120,17 +128,21 @@ public sealed class InstallService : IDisposable
             if (pack.ArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(TestPackRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.GuardArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PreviousArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.LegacyArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.OriginalArtifactSha512, StringComparison.OrdinalIgnoreCase))
             {
-                var latestVanilla2Plus = pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase);
-                var resourcePacks = latestVanilla2Plus ? Vanilla2PlusRelease.InitialResourcePacks : TestPackRelease.InitialResourcePacks;
+                var guardAnimationPacks = pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                    pack.ArchiveSha512.Equals(Vanilla2PlusRelease.GuardArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                    pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase);
+                var resourcePacks = guardAnimationPacks ? Vanilla2PlusRelease.InitialResourcePacks : TestPackRelease.InitialResourcePacks;
                 if (resourcePacks.Any(name => !manifest.Files.Any(file =>
                     file.Path.Equals("resourcepacks/" + name, StringComparison.OrdinalIgnoreCase))))
                     throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedResourcePackMissing"));
                 await File.WriteAllTextAsync(Path.Combine(stagingRoot, "options.txt"),
-                    latestVanilla2Plus ? Vanilla2PlusRelease.InitialOptions : TestPackRelease.InitialOptions, cancellationToken);
+                    guardAnimationPacks ? Vanilla2PlusRelease.InitialOptions : TestPackRelease.InitialOptions, cancellationToken);
                 if (!manifest.Files.Any(file => file.Path.Equals("mods/bbe-fabric-1.3.7+mc26.2.jar", StringComparison.OrdinalIgnoreCase)))
                     throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedBbeMissing"));
                 var bbeConfig = SafePath.Resolve(stagingRoot, "config/BBEConfig.json");
@@ -410,7 +422,8 @@ public sealed class InstallService : IDisposable
             throw new InstallerException("RELEASE_MISMATCH", LocalizedText.Get("InstalledReleaseMismatch"));
 
         var packFiles = pack.Files.ToDictionary(x => x.Path, StringComparer.OrdinalIgnoreCase);
-        var overrides = pack.Overrides.ToDictionary(x => x.Path, StringComparer.OrdinalIgnoreCase);
+        var overrides = pack.Overrides.Where(x => !IsInitialUserConfig(pack, x.Path))
+            .ToDictionary(x => x.Path, StringComparer.OrdinalIgnoreCase);
         if (manifest.Files.Count != packFiles.Count + overrides.Count)
             throw new InstallerException("MANIFEST_INVALID", LocalizedText.Get("ManifestReleaseMismatch"));
         foreach (var item in manifest.Files)
@@ -425,6 +438,13 @@ public sealed class InstallService : IDisposable
                 throw new InstallerException("MANIFEST_INVALID", LocalizedText.Get("ManifestUnknownManagedFile"));
         }
     }
+
+    private static bool IsInitialUserConfig(PackArchive pack, string path) =>
+        (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) &&
+         (path.Equals("config/guardvillagers.json", StringComparison.OrdinalIgnoreCase) ||
+          path.Equals("config/voxyworldgenv2.json", StringComparison.OrdinalIgnoreCase))) ||
+        (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.GuardArtifactSha512, StringComparison.OrdinalIgnoreCase) &&
+         path.Equals("config/guardvillagers.json", StringComparison.OrdinalIgnoreCase));
 
     private void RemoveEmptyParents(string root, string directory)
     {

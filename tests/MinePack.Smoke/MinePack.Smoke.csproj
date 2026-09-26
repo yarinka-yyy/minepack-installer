@@ -17,6 +17,8 @@
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.14.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.14.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.16.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.16.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.17.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.17.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <PropertyGroup>

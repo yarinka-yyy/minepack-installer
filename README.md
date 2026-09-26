@@ -6,7 +6,7 @@ MinePack installs a pinned modpack for **official Minecraft: Java Edition** thro
 
 For Windows · Fabric · Minecraft 26.2 · Official Minecraft Launcher
 
-Choose one build: **Vanilla Plus 0.15.0** has 38 mods, 8 resource packs, and 1 shader, including Smooth Swapping and Subtle Effects. **Vanilla 2 Plus 0.14.0** includes those files and settings, five Macaw's building mods, four world and structure projects, Guard Villagers, and their required libraries (50 mods total). It also has two extra resource packs for animated guards (10 resource packs total). The installer downloads pinned files, checks their hashes, and uses one MinePack profile with a separate game folder for the active build.
+Choose one build: **Vanilla Plus 0.15.0** has 38 mods, 8 resource packs, and 1 shader. **Vanilla 2 Plus 0.17.0** has 53 mods, 10 resource packs, and 1 shader. It includes Guard Villagers, It Takes a Pillage Continuation, Voxy WorldGen, and Freshly Modded animations. Guard Villagers works without Hero of the Village, and Voxy WorldGen starts with a 512-chunk generation radius. The installer downloads pinned files, checks their hashes, and uses one MinePack profile with a separate game folder for the active build.
 
 ## Install
 

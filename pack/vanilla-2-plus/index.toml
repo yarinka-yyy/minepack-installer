@@ -1,8 +1,16 @@
 hash-format = "sha256"
 
 [[files]]
+file = "config/guardvillagers.json"
+hash = "dd5bdd22e69bb13afe8ce97f215807b405bcae48522c7750d50fddca5cfa9333"
+
+[[files]]
 file = "config/iris.properties"
 hash = "ecdc47e26c1b274613251b8935d35c7225b4e1b12b7671388999dacd0f7178cb"
+
+[[files]]
+file = "config/voxyworldgenv2.json"
+hash = "336dbb61b9a0733a4e6b23d770ddd3453f4d53fc74cecc195b6751208d76b2e4"
 
 [[files]]
 file = "mods/advancement-plaques.pw.toml"
@@ -140,6 +148,11 @@ hash = "7262c5dea44f3ef66051c5300f498d03ad64f97cc5c920dd04ec8f0ba607bb92"
 metafile = true
 
 [[files]]
+file = "mods/it-takes-a-pillage-continuation.pw.toml"
+hash = "044ed525096b53f4f0f1140e98fdb16d13594f4b3d95b272c0f6dae5af3a0631"
+metafile = true
+
+[[files]]
 file = "mods/leaf-me-alone.pw.toml"
 hash = "93d7e285effc0163ef901fb27bf82027b0d907a501be88f4bca87ffed3ced6b7"
 metafile = true
@@ -220,6 +233,11 @@ hash = "5587d752a3b30750512779e21e0a5eb400d0657593d9ba8c392e157ec74c251c"
 metafile = true
 
 [[files]]
+file = "mods/resourceful-lib.pw.toml"
+hash = "85abccaee90ea0b213687eaacafde09bcd30fb3fbcf6404e8e31245929f2e69b"
+metafile = true
+
+[[files]]
 file = "mods/smooth-swapping.pw.toml"
 hash = "750c36eda8614eee8517b9f3872e490da51da850752afe1ecc3860d3e6d56347"
 metafile = true
@@ -242,6 +260,11 @@ metafile = true
 [[files]]
 file = "mods/subtle-effects.pw.toml"
 hash = "38e2b038c4a76bd772f7f1fde2325a5bbe94bedb4ff152cc87fdd16f2fa0f869"
+metafile = true
+
+[[files]]
+file = "mods/voxy-worldgen.pw.toml"
+hash = "f89410d8372438d00a05b5f6dcfa4d73de70b444172ead4768b93e40b183caa7"
 metafile = true
 
 [[files]]
