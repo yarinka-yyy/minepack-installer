@@ -6,7 +6,7 @@ MinePack installs a pinned modpack for **official Minecraft: Java Edition** thro
 
 For Windows · Fabric · Minecraft 26.2 · Official Minecraft Launcher
 
-Choose one build: **Vanilla Plus 0.10.0** has 34 mods, 8 resource packs, and 1 shader. **Vanilla 2 Plus 0.12.0** includes the same files and settings, five Macaw's building mods, and four world and structure projects with their required libraries (45 mods total). The installer downloads pinned files, checks their hashes, and uses one MinePack profile with a separate game folder for the active build.
+Choose one build: **Vanilla Plus 0.15.0** has 38 mods, 8 resource packs, and 1 shader, including Smooth Swapping and Subtle Effects. **Vanilla 2 Plus 0.14.0** includes those files and settings, five Macaw's building mods, four world and structure projects, Guard Villagers, and their required libraries (50 mods total). It also has two extra resource packs for animated guards (10 resource packs total). The installer downloads pinned files, checks their hashes, and uses one MinePack profile with a separate game folder for the active build.
 
 ## Install
 
@@ -38,7 +38,7 @@ The vanilla `.minecraft` folder, its worlds, and other Launcher profiles are lef
 </details>
 
 <details>
-<summary>Graphics &amp; Animations (8)</summary>
+<summary>Graphics &amp; Animations (9)</summary>
 
 - [Iris](https://modrinth.com/mod/YL57xq9U)
 - [EMF](https://modrinth.com/mod/4I1XuqiY)
@@ -48,11 +48,12 @@ The vanilla `.minecraft` folder, its worlds, and other Launcher profiles are lef
 - [Dense Flowers](https://modrinth.com/mod/Ud3A1Fat)
 - [Inventory Particles](https://modrinth.com/mod/XYnKrsxH)
 - [Advancement Plaques](https://modrinth.com/mod/9NM0dXub)
+- [Subtle Effects](https://modrinth.com/mod/4q8UOK1d) — optional ambient particles and visual effects
 
 </details>
 
 <details>
-<summary>Tools &amp; Quality of Life (9)</summary>
+<summary>Tools &amp; Quality of Life (10)</summary>
 
 - [Chunky](https://modrinth.com/mod/fALzjamp)
 - [Inventory Sorting](https://modrinth.com/mod/5ibSyLAz)
@@ -63,6 +64,7 @@ The vanilla `.minecraft` folder, its worlds, and other Launcher profiles are lef
 - [Leaf Me Alone](https://modrinth.com/mod/ppMUvsIg)
 - [InvMove](https://modrinth.com/mod/REfW2AEX)
 - [Mod Menu](https://modrinth.com/mod/mOgUt4GM)
+- [Smooth Swapping](https://modrinth.com/mod/ydZic5r4) — animated item movement in inventories
 
 </details>
 
@@ -75,7 +77,7 @@ The vanilla `.minecraft` folder, its worlds, and other Launcher profiles are lef
 </details>
 
 <details>
-<summary>Technical Foundation (7)</summary>
+<summary>Technical Foundation (9)</summary>
 
 - [Fabric API](https://modrinth.com/mod/P7dR8mSH)
 - [Cloth Config API](https://modrinth.com/mod/9s6osm5g)
@@ -84,6 +86,8 @@ The vanilla `.minecraft` folder, its worlds, and other Launcher profiles are lef
 - [Puzzles Lib](https://modrinth.com/mod/QAGBst4M)
 - [Iceberg](https://modrinth.com/mod/5faXoLqX)
 - [Text Placeholder API](https://modrinth.com/mod/eXts2L7r)
+- [Fzzy Config](https://modrinth.com/mod/hYykXjDp)
+- [Fabric Language Kotlin](https://modrinth.com/mod/Ha28R6CL)
 
 </details>
 
@@ -137,10 +141,21 @@ The required libraries [Library Ferret](https://modrinth.com/mod/DOB2l4oJ) and [
 
 </details>
 
+<details>
+<summary>Vanilla 2 Plus addition — villagers (1)</summary>
+
+- [Guard Villagers (Fabric/Quilt)](https://modrinth.com/mod/59rkB3YY) — village guards
+
+Smooth Swapping and Subtle Effects are included in both builds, with Fzzy Config and Fabric Language Kotlin for Subtle Effects. Smooth Swapping is being retested after it did not work in an earlier build; Mod Menu provides its settings. Multiplayer servers need Guard Villagers installed for its gameplay.
+
+Vanilla 2 Plus also enables [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) for Guard Villagers models and [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) for the detailed movements. These are client-side resource packs; their appearance still needs an in-game check.
+
+</details>
+
 ## Build from source
 
 On Windows with the .NET 10 SDK, publish the installer with:
 
 ```powershell
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.12.0
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.15.0
 ```

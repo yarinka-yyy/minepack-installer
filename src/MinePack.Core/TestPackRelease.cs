@@ -4,9 +4,11 @@ namespace MinePack.Core;
 
 public static class TestPackRelease
 {
-    public const string ArtifactFileName = "test-pack-0.10.0.mrpack";
+    public const string ArtifactFileName = "test-pack-0.15.0.mrpack";
     public const string ArtifactRelativePath = "releases/test-pack/" + ArtifactFileName;
-    public const string ArtifactSha512 = "FDEA02362FB025310E26C3DE14DE18B907574BB412A0ADEC800881ECD6D8F31095D4021691EB0A35DCECB318E042F56360A36EDA79372453F658BC46090327E1";
+    public const string ArtifactSha512 = "9698BCBFE76BC6072ADB2609F2EDF17D4E823A5DB850BA0B54BE16E2EA39A967F6536C3FF025E7363BC6DED76D28BA1280DA1ACB8BD09D9FDA209889524ED45A";
+    public const string PriorArtifactFileName = "test-pack-0.10.0.mrpack";
+    public const string PriorArtifactSha512 = "FDEA02362FB025310E26C3DE14DE18B907574BB412A0ADEC800881ECD6D8F31095D4021691EB0A35DCECB318E042F56360A36EDA79372453F658BC46090327E1";
     public const string MapArtifactFileName = "test-pack-0.9.0.mrpack";
     public const string MapArtifactSha512 = "FDA99C8A9545A17890643E1BECCE9914176F1D53CB4DF81A762AB60B7B315EC233952181D2D10BE9B5555E74A89561803580D5E5AFFD7993BD16C79F48C9C648";
     public const string AnimationArtifactFileName = "test-pack-0.8.0.mrpack";
@@ -25,7 +27,7 @@ public static class TestPackRelease
     public const string PreviousArtifactSha512 = "76320C3EBB6B32D53EB0E58B8E4DD3FF721CEB2F718E2D18CB976A020DC2C4104F2E586277314DCC24227DC0DEA18CF6661835F01E04F61AEB51D22F88A8FF83";
     public const string LegacyArtifactFileName = "test-pack-0.1.0.mrpack";
     public const string LegacyArtifactSha512 = "453fc54446e6d7b379c7c07ca6f995998d6cba01791b0749d6929fce98bce59561aaa598b255344b342396251877a0e7aceccc3100ea179484d0a967ceba0ff5";
-    public const string PackVersion = "0.10.0";
+    public const string PackVersion = "0.15.0";
     public const string MinecraftVersion = "26.2";
     public const string FabricLoaderVersion = "0.19.5";
     public const string FabricApiVersion = "0.161.0+26.2";
@@ -41,10 +43,12 @@ public static class TestPackRelease
         "GUIRetextures-Dark-2.1.zip"
     ];
 
-    public static string InitialOptions =>
+    public static string InitialOptions => BuildInitialOptions(InitialResourcePacks);
+
+    public static string BuildInitialOptions(IEnumerable<string> resourcePacks) =>
         "version:4903" + Environment.NewLine +
         "resourcePacks:" + JsonSerializer.Serialize(new[] { "vanilla" }
-            .Concat(InitialResourcePacks.Select(name => "file/" + name)).Append("punchy:punchy")) + Environment.NewLine +
+            .Concat(resourcePacks.Select(name => "file/" + name)).Append("punchy:punchy")) + Environment.NewLine +
         "incompatibleResourcePacks:[]" + Environment.NewLine +
         "key_key.sprint:key.keyboard.left.shift" + Environment.NewLine +
         "key_key.sneak:key.keyboard.left.control" + Environment.NewLine +

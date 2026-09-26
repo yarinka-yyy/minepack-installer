@@ -1,5 +1,20 @@
 # Test pack releases
 
+## 0.15.0 — Smooth Swapping and Subtle Effects in Vanilla Plus
+
+Minecraft `26.2`, Fabric Loader `0.19.5`. This release preserves all 43 downloads in `0.10.0` and adds the exact files already present in Vanilla 2 Plus `0.14.0`:
+
+| Project | Pinned version | Downloaded file |
+| --- | --- | --- |
+| [Smooth Swapping](https://modrinth.com/mod/smooth-swapping) | `0.9.10-26.2` | `smoothswapping-0.9.10-26.2-fabric.jar` |
+| [Subtle Effects](https://modrinth.com/mod/subtle-effects) | `1.14.3` | `SubtleEffects-fabric-26.2-1.14.3.jar` |
+| [Fzzy Config](https://modrinth.com/mod/fzzy-config), required by Subtle Effects | `0.7.6+26.2` | `fzzy_config-0.7.6+26.2.jar` |
+| [Fabric Language Kotlin](https://modrinth.com/mod/fabric-language-kotlin), required by Fzzy Config | `1.14.1+kotlin.2.4.20` | `fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar` |
+
+The archive has 47 pinned Modrinth downloads: 38 mod JARs, 8 resource packs, and 1 shader, plus the Iris config override. Vanilla 2 Plus `0.14.0` remains unchanged and contains all 47 of these exact downloads. SHA-512: `9698BCBFE76BC6072ADB2609F2EDF17D4E823A5DB850BA0B54BE16E2EA39A967F6536C3FF025E7363BC6DED76D28BA1280DA1ACB8BD09D9FDA209889524ED45A`.
+
+Packwiz export, deterministic smoke checks, Release publish, and installation in a separate local instance passed. Minecraft `26.2` launched through the MinePack Launcher profile; its log lists Smooth Swapping, Subtle Effects, Fzzy Config, and Fabric Language Kotlin during resource reload. Visual effects and inventory animations remain for the user's in-game check. The prior `0.10.0` archive and the installed Vanilla 2 Plus `0.14.0` instance remain intact.
+
 ## 0.10.0 — Vanilla Plus with Mod Menu candidate
 
 Minecraft `26.2`, Fabric Loader `0.19.5`. Preserves all 41 files from `0.9.0` and adds [Mod Menu 20.0.2](https://modrinth.com/mod/modmenu/version/WdLLrOzD) (`mOgUt4GM` / `WdLLrOzD`, `modmenu-20.0.2.jar`) and its required [Text Placeholder API 3.1.0-beta.1+26.2](https://modrinth.com/mod/placeholder-api/version/NDqH16LT) (`eXts2L7r` / `NDqH16LT`, `placeholder-api-3.1.0-beta.1+26.2.jar`). Modrinth metadata explicitly lists Minecraft `26.2` and Fabric for both versions. The existing Fabric API satisfies Mod Menu's other required dependency. Both JARs are downloaded by pinned Modrinth CDN URL and SHA-512; neither is bundled in the `.mrpack`.

@@ -118,15 +118,19 @@ public sealed class InstallService : IDisposable
             };
             await VerifyManagedFilesAsync(stagingRoot, manifest.Files, cancellationToken);
             if (pack.ArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(TestPackRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
-                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PreviousArtifactSha512, StringComparison.OrdinalIgnoreCase))
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PreviousArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.LegacyArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.OriginalArtifactSha512, StringComparison.OrdinalIgnoreCase))
             {
-                var resourcePacks = TestPackRelease.InitialResourcePacks;
+                var latestVanilla2Plus = pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase);
+                var resourcePacks = latestVanilla2Plus ? Vanilla2PlusRelease.InitialResourcePacks : TestPackRelease.InitialResourcePacks;
                 if (resourcePacks.Any(name => !manifest.Files.Any(file =>
                     file.Path.Equals("resourcepacks/" + name, StringComparison.OrdinalIgnoreCase))))
                     throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedResourcePackMissing"));
                 await File.WriteAllTextAsync(Path.Combine(stagingRoot, "options.txt"),
-                    TestPackRelease.InitialOptions, cancellationToken);
+                    latestVanilla2Plus ? Vanilla2PlusRelease.InitialOptions : TestPackRelease.InitialOptions, cancellationToken);
                 if (!manifest.Files.Any(file => file.Path.Equals("mods/bbe-fabric-1.3.7+mc26.2.jar", StringComparison.OrdinalIgnoreCase)))
                     throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedBbeMissing"));
                 var bbeConfig = SafePath.Resolve(stagingRoot, "config/BBEConfig.json");

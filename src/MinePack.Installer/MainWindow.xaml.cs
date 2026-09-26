@@ -186,7 +186,10 @@ public partial class MainWindow : Window
                 {
                     TestPackRelease.PackVersion => (VanillaPlusPackPath, TestPackRelease.ArtifactSha512),
                     Vanilla2PlusRelease.PackVersion => (Vanilla2PlusPackPath, Vanilla2PlusRelease.ArtifactSha512),
-                    "0.11.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PreviousArtifactFileName), Vanilla2PlusRelease.PreviousArtifactSha512),
+                    "0.13.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PreviousArtifactFileName), Vanilla2PlusRelease.PreviousArtifactSha512),
+                    "0.12.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.LegacyArtifactFileName), Vanilla2PlusRelease.LegacyArtifactSha512),
+                    "0.11.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.OriginalArtifactFileName), Vanilla2PlusRelease.OriginalArtifactSha512),
+                    "0.10.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PriorArtifactFileName), TestPackRelease.PriorArtifactSha512),
                     "0.9.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.MapArtifactFileName), TestPackRelease.MapArtifactSha512),
                     "0.8.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.AnimationArtifactFileName), TestPackRelease.AnimationArtifactSha512),
                     "0.7.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.GraphicsArtifactFileName), TestPackRelease.GraphicsArtifactSha512),

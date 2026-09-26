@@ -36,7 +36,8 @@ public static class PackCatalog
             ("Explosive Enhancement", "OSQ8mw2r", "mods/explosive-enhancement-1.4.2-26.2.jar"),
             ("Dense Flowers", "Ud3A1Fat", "mods/dense-flowers-0.3.1+mc26.2.jar"),
             ("Inventory Particles", "XYnKrsxH", "mods/InventoryParticles-3.2.0+26.2+fabric.jar"),
-            ("Advancement Plaques", "9NM0dXub", "mods/AdvancementPlaques-26.2-fabric-1.7.2.jar")),
+            ("Advancement Plaques", "9NM0dXub", "mods/AdvancementPlaques-26.2-fabric-1.7.2.jar"),
+            ("Subtle Effects", "4q8UOK1d", "mods/SubtleEffects-fabric-26.2-1.14.3.jar")),
         Group("CatalogTools", "mod",
             ("Chunky", "fALzjamp", "mods/Chunky-Fabric-1.5.3.jar"),
             ("Inventory Sorting", "5ibSyLAz", "mods/inventorysorter-fabric-3.0.1+mc26.2.jar"),
@@ -46,7 +47,8 @@ public static class PackCatalog
             ("Cherished Worlds", "3azQ6p0W", "mods/cherishedworlds-fabric-17.0.0+26.2.jar"),
             ("Leaf Me Alone", "ppMUvsIg", "mods/leafmealone-1.2.0.jar"),
             ("InvMove", "REfW2AEX", "mods/InvMove-0.9.6+26.2-Fabric.jar"),
-            ("Mod Menu", "mOgUt4GM", "mods/modmenu-20.0.2.jar")),
+            ("Mod Menu", "mOgUt4GM", "mods/modmenu-20.0.2.jar"),
+            ("Smooth Swapping", "ydZic5r4", "mods/smoothswapping-0.9.10-26.2-fabric.jar")),
         Group("CatalogSound", "mod",
             ("Cool Rain", "iDyqnQLT", "mods/coolrain-1.4.0-26.2.jar"),
             ("Sound Physics Remastered", "qyVF9oeo", "mods/sound-physics-remastered-fabric-1.5.1+26.2.jar")),
@@ -57,7 +59,9 @@ public static class PackCatalog
             ("MossyLib", "ffLDUGbm", "mods/MossyLib-1.6.0+26.2+fabric.jar"),
             ("Puzzles Lib", "QAGBst4M", "mods/PuzzlesLib-v26.2.4-mc26.2.x-Fabric.jar"),
             ("Iceberg", "5faXoLqX", "mods/Iceberg-26.2-fabric-1.4.2.2.jar"),
-            ("Text Placeholder API", "eXts2L7r", "mods/placeholder-api-3.1.0-beta.1+26.2.jar")),
+            ("Text Placeholder API", "eXts2L7r", "mods/placeholder-api-3.1.0-beta.1+26.2.jar"),
+            ("Fzzy Config", "hYykXjDp", "mods/fzzy_config-0.7.6+26.2.jar"),
+            ("Fabric Language Kotlin", "Ha28R6CL", "mods/fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar")),
         Group("CatalogResourcePacks", "resourcepack",
             ("Fresh Animations", "50dA9Sha", "resourcepacks/FreshAnimations_v1.10.5.zip"),
             ("Fresh Animations: Extensions", "YAVTU8mK", "resourcepacks/FA+All_Extensions-v1.9.2.zip"),
@@ -78,6 +82,12 @@ public static class PackCatalog
                     new CatalogItem("Library Ferret", "CatalogTechnical", "mod", "DOB2l4oJ", "mods/libraryferret-fabric-26.2-5.0.0.jar"),
                     new CatalogItem("Moog's Structure Lib", "CatalogTechnical", "mod", "1oUDhxuy", "mods/MoogsStructureLib-fabric-26.2-3.3.0.jar")
                 }).ToArray() }
+            : group.Key == "CatalogResourcePacks"
+                ? group with { Items = group.Items.Concat(new[]
+                {
+                    new CatalogItem("Semos Animations Lib", "CatalogResourcePacks", "resourcepack", "SY2QNRYK", "resourcepacks/Semos Animations Lib 2.0.4.zip"),
+                    new CatalogItem("F.M.R.P", "CatalogResourcePacks", "resourcepack", "u4nhiAdP", "resourcepacks/Freshly Modded 3.0.5.zip")
+                }).ToArray() }
             : group)
         .Append(Group("CatalogBuilding", "mod",
             ("Macaw's Windows", "C7I0BCni", "mods/mcw-windows-2.4.2-mc26.2fabric.jar"),
@@ -90,7 +100,8 @@ public static class PackCatalog
             new CatalogItem("Better Villages", "CatalogWorldgen", "mod", "dGVX5JbJ", "mods/bettervillage-fabric-26.2-4.0.0.jar"),
             new CatalogItem("MNS - Moog's Nether Structures", "CatalogWorldgen", "mod", "nGUXvjTa", "mods/MoogsNetherStructures-universal-1.21-3.1.1.jar"),
             new CatalogItem("MVS - Moog's Voyager Structures", "CatalogWorldgen", "mod", "OQAgZMH1", "mods/MoogsVoyagerStructures-universal-1.21-5.1.3.jar"),
-            new CatalogItem("Structory", "CatalogWorldgen", "datapack", "aKCwCJlY", "mods/Structory_26.2_v1.3.7.jar")
+            new CatalogItem("Structory", "CatalogWorldgen", "datapack", "aKCwCJlY", "mods/Structory_26.2_v1.3.7.jar"),
+            new CatalogItem("Guard Villagers (Fabric/Quilt)", "CatalogWorldgen", "mod", "59rkB3YY", "mods/guardvillagers-2.1.3-26.2.jar")
         ])).ToArray();
 
     public static IReadOnlyList<CatalogGroup> Groups => VanillaPlusGroups;

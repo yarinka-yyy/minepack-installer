@@ -6,7 +6,7 @@ MinePack устанавливает закреплённую сборку для
 
 Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 
-Выберите одну сборку: в **Vanilla Plus 0.10.0** — 34 мода, 8 ресурспаков и 1 шейдер. **Vanilla 2 Plus 0.12.0** включает тот же состав и настройки, пять строительных модов Macaw's, а также четыре проекта для генерации мира и структур с обязательными библиотеками (всего 45 модов). Установщик скачивает закреплённые файлы, проверяет их хеши и использует один профиль MinePack с отдельной папкой игры для активной сборки.
+Выберите одну сборку: в **Vanilla Plus 0.15.0** — 38 модов, 8 ресурспаков и 1 шейдер, включая Smooth Swapping и Subtle Effects. **Vanilla 2 Plus 0.14.0** включает этот состав и настройки, пять строительных модов Macaw's, четыре проекта для генерации мира и структур, Guard Villagers и обязательные библиотеки (всего 50 модов). Ещё два ресурспака добавляют анимации охранников (итого 10 ресурспаков). Установщик скачивает закреплённые файлы, проверяет их хеши и использует один профиль MinePack с отдельной папкой игры для активной сборки.
 
 ## Установка
 
@@ -38,7 +38,7 @@ Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 </details>
 
 <details>
-<summary>Графика и анимации (8)</summary>
+<summary>Графика и анимации (9)</summary>
 
 - [Iris](https://modrinth.com/mod/YL57xq9U)
 - [EMF](https://modrinth.com/mod/4I1XuqiY)
@@ -48,11 +48,12 @@ Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 - [Dense Flowers](https://modrinth.com/mod/Ud3A1Fat)
 - [Inventory Particles](https://modrinth.com/mod/XYnKrsxH)
 - [Advancement Plaques](https://modrinth.com/mod/9NM0dXub)
+- [Subtle Effects](https://modrinth.com/mod/4q8UOK1d) — настраиваемые частицы и визуальные эффекты
 
 </details>
 
 <details>
-<summary>Инструменты и удобство (9)</summary>
+<summary>Инструменты и удобство (10)</summary>
 
 - [Chunky](https://modrinth.com/mod/fALzjamp)
 - [Inventory Sorting](https://modrinth.com/mod/5ibSyLAz)
@@ -63,6 +64,7 @@ Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 - [Leaf Me Alone](https://modrinth.com/mod/ppMUvsIg)
 - [InvMove](https://modrinth.com/mod/REfW2AEX)
 - [Mod Menu](https://modrinth.com/mod/mOgUt4GM)
+- [Smooth Swapping](https://modrinth.com/mod/ydZic5r4) — анимация перемещения предметов в инвентаре
 
 </details>
 
@@ -75,7 +77,7 @@ Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 </details>
 
 <details>
-<summary>Техническая основа (7)</summary>
+<summary>Техническая основа (9)</summary>
 
 - [Fabric API](https://modrinth.com/mod/P7dR8mSH)
 - [Cloth Config API](https://modrinth.com/mod/9s6osm5g)
@@ -84,6 +86,8 @@ Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 - [Puzzles Lib](https://modrinth.com/mod/QAGBst4M)
 - [Iceberg](https://modrinth.com/mod/5faXoLqX)
 - [Text Placeholder API](https://modrinth.com/mod/eXts2L7r)
+- [Fzzy Config](https://modrinth.com/mod/hYykXjDp)
+- [Fabric Language Kotlin](https://modrinth.com/mod/Ha28R6CL)
 
 </details>
 
@@ -137,10 +141,21 @@ Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 
 </details>
 
+<details>
+<summary>Дополнение Vanilla 2 Plus — жители (1)</summary>
+
+- [Guard Villagers (Fabric/Quilt)](https://modrinth.com/mod/59rkB3YY) — охранники деревень
+
+Smooth Swapping и Subtle Effects входят в обе сборки вместе с Fzzy Config и Fabric Language Kotlin для Subtle Effects. Smooth Swapping повторно проверяется после того, как не заработал в ранней сборке; Mod Menu открывает его настройки. Для охранников на внешнем сервере требуется серверная установка Guard Villagers.
+
+Vanilla 2 Plus также включает [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) с моделями охранников и [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) с подробными движениями. Оба ресурспака работают на стороне игрока; их внешний вид ещё нужно проверить в игре.
+
+</details>
+
 ## Сборка из исходного кода
 
 Для сборки в Windows нужен .NET 10 SDK. Команда публикации:
 
 ```powershell
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.12.0
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.15.0
 ```
