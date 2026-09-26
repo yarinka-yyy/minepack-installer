@@ -11,19 +11,43 @@ namespace MinePack.Installer;
 public partial class MainWindow : Window
 {
     private readonly InstallService _installer = new();
-    private readonly FabricLauncherService _launcher = new();
+    private readonly MinecraftLauncherController _launcherController;
+    private readonly FabricLauncherService _launcher;
     private CancellationTokenSource? _operationCancellation;
     private string? _gameDirectory;
 
     public MainWindow()
     {
         InitializeComponent();
-        CatalogList.ItemsSource = PackCatalog.Groups;
+        _launcherController = new MinecraftLauncherController();
+        _launcher = new FabricLauncherService(ensureLauncherClosed: _launcherController.EnsureClosed);
+        VanillaPlusOption.Checked += PackChoice_Changed;
+        Vanilla2PlusOption.Checked += PackChoice_Changed;
+        UpdatePackSelection();
         InstallRootBox.Text = InstallService.DefaultInstallRoot;
     }
 
-    private string PackPath => Path.Combine(AppContext.BaseDirectory,
-        TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
+    private static string ReleasePath(string relativePath) => Path.Combine(AppContext.BaseDirectory,
+        relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+    private string VanillaPlusPackPath => ReleasePath(TestPackRelease.ArtifactRelativePath);
+
+    private string Vanilla2PlusPackPath => ReleasePath(Vanilla2PlusRelease.ArtifactRelativePath);
+
+    private (string Path, string Hash, string Version) SelectedPack => Vanilla2PlusOption.IsChecked == true
+        ? (Vanilla2PlusPackPath, Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.PackVersion)
+        : (VanillaPlusPackPath, TestPackRelease.ArtifactSha512, TestPackRelease.PackVersion);
+
+    private void PackChoice_Changed(object sender, RoutedEventArgs e) => UpdatePackSelection();
+
+    private void UpdatePackSelection()
+    {
+        var vanilla2Plus = Vanilla2PlusOption.IsChecked == true;
+        CatalogList.ItemsSource = vanilla2Plus ? PackCatalog.Vanilla2PlusGroups : PackCatalog.VanillaPlusGroups;
+        PackVersionText.Text = LocalizedText.Get("UiPackVersion",
+            vanilla2Plus ? Vanilla2PlusRelease.PackVersion : TestPackRelease.PackVersion);
+        PackCountsText.Text = LocalizedText.Get(vanilla2Plus ? "UiPackCountsVanilla2Plus" : "UiPackCountsVanillaPlus");
+    }
 
     private async void Install_Click(object sender, RoutedEventArgs e) => await RunOperationAsync(Operation.Install);
 
@@ -70,6 +94,7 @@ public partial class MainWindow : Window
         SetBusy(true);
         var filesInstalled = false;
         var filesRemoved = false;
+        MinecraftLauncherTarget? launcherTarget = null;
         OperationProgress.Value = 0;
         InstructionsBox.Text = "";
         DiagnosticText.Text = "";
@@ -87,7 +112,8 @@ public partial class MainWindow : Window
         try
         {
             var root = Path.GetFullPath(InstallRootBox.Text);
-            if (operation == Operation.Install && !File.Exists(PackPath))
+            var selectedPack = SelectedPack;
+            if (operation == Operation.Install && !File.Exists(selectedPack.Path))
                 throw new InstallerException("PACK_NOT_FOUND", LocalizedText.Get("PublishedPackMissing"));
 
             if (operation == Operation.ImportWorlds)
@@ -130,13 +156,16 @@ public partial class MainWindow : Window
             InstallResult result;
             if (operation == Operation.Install)
             {
+                _launcher.CheckProfileReady();
+                ProgressLabel.Text = LocalizedText.Get("ClosingLauncherProgress");
+                launcherTarget = await _launcherController.CloseBeforeInstallAsync(cancellation.Token);
                 _launcher.CheckReady();
                 var active = _installer.GetActiveInstancePath(root);
                 var current = active is null ? null : InstallationManifest.Load(active);
-                result = current?.PackVersion == TestPackRelease.PackVersion &&
-                         current.PackArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase)
-                    ? await _installer.RepairAsync(active!, PackPath, TestPackRelease.ArtifactSha512, progress, cancellation.Token)
-                    : await _installer.InstallAsync(PackPath, TestPackRelease.ArtifactSha512, root, progress, cancellation.Token);
+                result = current?.PackVersion == selectedPack.Version &&
+                         current.PackArchiveSha512.Equals(selectedPack.Hash, StringComparison.OrdinalIgnoreCase)
+                    ? await _installer.RepairAsync(active!, selectedPack.Path, selectedPack.Hash, progress, cancellation.Token)
+                    : await _installer.InstallAsync(selectedPack.Path, selectedPack.Hash, root, progress, cancellation.Token);
             }
             else
             {
@@ -155,7 +184,11 @@ public partial class MainWindow : Window
                 var installedVersion = InstallationManifest.Load(instance).PackVersion;
                 var (installedPackPath, installedPackHash) = installedVersion switch
                 {
-                    TestPackRelease.PackVersion => (PackPath, TestPackRelease.ArtifactSha512),
+                    TestPackRelease.PackVersion => (VanillaPlusPackPath, TestPackRelease.ArtifactSha512),
+                    Vanilla2PlusRelease.PackVersion => (Vanilla2PlusPackPath, Vanilla2PlusRelease.ArtifactSha512),
+                    "0.11.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PreviousArtifactFileName), Vanilla2PlusRelease.PreviousArtifactSha512),
+                    "0.9.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.MapArtifactFileName), TestPackRelease.MapArtifactSha512),
+                    "0.8.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.AnimationArtifactFileName), TestPackRelease.AnimationArtifactSha512),
                     "0.7.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.GraphicsArtifactFileName), TestPackRelease.GraphicsArtifactSha512),
                     "0.6.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.InventoryArtifactFileName), TestPackRelease.InventoryArtifactSha512),
                     "0.5.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VisualArtifactFileName), TestPackRelease.VisualArtifactSha512),
@@ -178,7 +211,22 @@ public partial class MainWindow : Window
                 if (operation != Operation.Uninstall)
                 {
                     filesInstalled = true;
-                    await ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token);
+                    if (operation == Operation.Install)
+                    {
+                        var launch = await _launcherController.ConfigureAndStartAsync(launcherTarget,
+                            () => ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token));
+                        if (launch.Status == MinecraftLauncherStartStatus.Requested)
+                            StatusBox.Text = LocalizedText.Get("LauncherStartRequestedStatus");
+                        else
+                        {
+                            StatusBox.Text = LocalizedText.Get(launch.Status == MinecraftLauncherStartStatus.Failed
+                                ? "LauncherStartFailedStatus" : "LauncherStartUnavailableStatus");
+                            InstructionsBox.Text = LocalizedText.Get("LaunchInstruction");
+                            DiagnosticText.Text = launch.Diagnostic;
+                        }
+                    }
+                    else
+                        await ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token);
                 }
                 else
                 {
@@ -272,7 +320,8 @@ public partial class MainWindow : Window
             await _launcher.ConfigureAsync(gameDirectory, cancellationToken);
         else
         {
-            using var previousLauncher = new FabricLauncherService(minecraftVersion: manifest.MinecraftVersion);
+            using var previousLauncher = new FabricLauncherService(minecraftVersion: manifest.MinecraftVersion,
+                ensureLauncherClosed: _launcherController.EnsureClosed);
             await previousLauncher.ConfigureAsync(gameDirectory, cancellationToken);
         }
         StateHeading.Text = LocalizedText.Get("PackReady");
@@ -361,6 +410,8 @@ public partial class MainWindow : Window
 
     private void SetBusy(bool busy)
     {
+        VanillaPlusOption.IsEnabled = !busy;
+        Vanilla2PlusOption.IsEnabled = !busy;
         BrowseButton.IsEnabled = !busy;
         InstallRootBox.IsEnabled = !busy;
         InstallButton.IsEnabled = !busy;

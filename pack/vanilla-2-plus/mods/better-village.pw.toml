@@ -1,0 +1,13 @@
+name = "Better Villages"
+filename = "bettervillage-fabric-26.2-4.0.0.jar"
+side = "both"
+
+[download]
+url = "https://cdn.modrinth.com/data/dGVX5JbJ/versions/ALHOnFvJ/bettervillage-fabric-26.2-4.0.0.jar"
+hash-format = "sha512"
+hash = "4e1f0fd995f3ef76680feb626c091d069886afaa921a35f678e7ba5e3e5a20616abfe07ca5c2da4dbeece8d602292f27778e71985a1b050bb8266f1869c7f423"
+
+[update]
+[update.modrinth]
+mod-id = "dGVX5JbJ"
+version = "ALHOnFvJ"

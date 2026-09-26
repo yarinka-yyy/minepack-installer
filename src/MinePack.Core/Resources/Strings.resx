@@ -6,10 +6,13 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="UiSubtitle" xml:space="preserve"><value>Minecraft mods in one click</value></data>
   <data name="UiDescription" xml:space="preserve"><value>MinePack downloads mods and components and creates a separate profile in Minecraft Launcher. Your worlds remain separate.</value></data>
-  <data name="UiRequirements" xml:space="preserve"><value>Requires the official Minecraft Launcher and a Minecraft: Java Edition account. Close the Launcher before installation.</value></data>
+  <data name="UiRequirements" xml:space="preserve"><value>Requires the official Minecraft Launcher and a Minecraft: Java Edition account.</value></data>
   <data name="UiMinecraftVersion" xml:space="preserve"><value>For Minecraft 26.2</value></data>
-  <data name="UiBuildInfo" xml:space="preserve"><value>Pack version 0.8.0 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
-  <data name="UiPackCounts" xml:space="preserve"><value>26 mods · 8 resource packs · 1 shader</value></data>
+  <data name="UiBuildInfo" xml:space="preserve"><value>Minecraft 26.2 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
+  <data name="UiPackVersion" xml:space="preserve"><value>Pack version {0}</value></data>
+  <data name="UiPackCountsVanillaPlus" xml:space="preserve"><value>34 mods · 8 resource packs · 1 shader</value></data>
+  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>45 mods · 8 resource packs · 1 shader</value></data>
+  <data name="UiChoosePack" xml:space="preserve"><value>Choose a pack to install</value></data>
   <data name="UiCatalogTitle" xml:space="preserve"><value>Included in the pack</value></data>
   <data name="UiOpenOnModrinth" xml:space="preserve"><value>Open on Modrinth</value></data>
   <data name="UiInstallLocation" xml:space="preserve"><value>Install location</value></data>
@@ -39,6 +42,8 @@
   <data name="CatalogTechnical" xml:space="preserve"><value>Technical Foundation</value></data>
   <data name="CatalogResourcePacks" xml:space="preserve"><value>Resource Packs</value></data>
   <data name="CatalogShader" xml:space="preserve"><value>Shader</value></data>
+  <data name="CatalogBuilding" xml:space="preserve"><value>Building Blocks</value></data>
+  <data name="CatalogWorldgen" xml:space="preserve"><value>World &amp; Structures</value></data>
   <data name="OperationWait" xml:space="preserve"><value>Please wait while we perform the selected action.</value></data>
   <data name="OperationInstalling" xml:space="preserve"><value>Installing the pack</value></data>
   <data name="OperationWorking" xml:space="preserve"><value>Working</value></data>
@@ -85,9 +90,13 @@
   <data name="RetryConfigure" xml:space="preserve"><value>The files are saved. After fixing the issue, click “Restore Launcher profile.”</value></data>
   <data name="OperationFailedProgress" xml:space="preserve"><value>Operation failed</value></data>
   <data name="ConfigureLauncherProgress" xml:space="preserve"><value>Downloading Fabric and creating a separate Launcher profile…</value></data>
+  <data name="ClosingLauncherProgress" xml:space="preserve"><value>Checking Minecraft Launcher and closing it if needed…</value></data>
   <data name="PackReady" xml:space="preserve"><value>Pack is ready</value></data>
   <data name="InstallComplete" xml:space="preserve"><value>Installation complete</value></data>
   <data name="LaunchInstruction" xml:space="preserve"><value>Open the official Minecraft Launcher, select the MinePack profile, and click “Play”.</value></data>
+  <data name="LauncherStartRequestedStatus" xml:space="preserve"><value>Minecraft Launcher launch request sent. Select the MinePack profile and click “Play”.</value></data>
+  <data name="LauncherStartFailedStatus" xml:space="preserve"><value>The pack is ready, but Minecraft Launcher could not be opened. Open it manually and select MinePack.</value></data>
+  <data name="LauncherStartUnavailableStatus" xml:space="preserve"><value>The pack is ready. MinePack could not find a registered official Launcher app to open. Open it manually and select MinePack.</value></data>
   <data name="FirstLaunchDownload" xml:space="preserve"><value>On the first launch, Launcher will download the Minecraft base files.</value></data>
   <data name="GameFolderLabel" xml:space="preserve"><value>Game folder: {0}</value></data>
   <data name="InstalledFolderNotFound" xml:space="preserve"><value>The installed game folder was not found yet.</value></data>
@@ -168,7 +177,7 @@
   <data name="PinnedBbeMissing" xml:space="preserve"><value>The pinned release is missing Better Block Entities.</value></data>
   <data name="PinnedBbeConfigExists" xml:space="preserve"><value>The release already contains Better Block Entities settings.</value></data>
   <data name="InstallFilesComplete" xml:space="preserve"><value>File installation complete</value></data>
-  <data name="PackFilesInstalled" xml:space="preserve"><value>Test pack files installed.</value></data>
+  <data name="PackFilesInstalled" xml:space="preserve"><value>Pack files installed.</value></data>
   <data name="InstallCancelled" xml:space="preserve"><value>Installation canceled. The previous active version was not changed.</value></data>
   <data name="InstallFailed" xml:space="preserve"><value>Could not complete the installation. Open the diagnostic log.</value></data>
   <data name="RestoredFile" xml:space="preserve"><value>Restored {0}</value></data>
@@ -196,7 +205,12 @@
   <data name="OfficialLauncherNotFound" xml:space="preserve"><value>The official Minecraft Launcher was not found. Install it and open it once.</value></data>
   <data name="LauncherProfilesMissing" xml:space="preserve"><value>The Launcher profile file was not found. Open the official Launcher once, then close it.</value></data>
   <data name="LauncherProfilesAmbiguous" xml:space="preserve"><value>Two Launcher profile files were found. Choosing one automatically could change the wrong profile.</value></data>
-  <data name="LauncherRunning" xml:space="preserve"><value>Close Minecraft Launcher and try again. An open Launcher may overwrite the profile.</value></data>
+  <data name="LauncherRunning" xml:space="preserve"><value>Minecraft Launcher is running. MinePack did not change the profile. Close it and try again.</value></data>
+  <data name="LauncherCloseTimeout" xml:space="preserve"><value>Minecraft Launcher did not close in time. Installation did not start. Close it and try again.</value></data>
+  <data name="LauncherCloseFailed" xml:space="preserve"><value>MinePack could not safely ask Minecraft Launcher to close. Installation did not start.</value></data>
+  <data name="LauncherIdentityUnknown" xml:space="preserve"><value>A process that may be Minecraft Launcher is running, but its official identity could not be verified. MinePack left it running and did not start installation.</value></data>
+  <data name="LauncherTargetsAmbiguous" xml:space="preserve"><value>More than one official Minecraft Launcher installation is registered. MinePack could not choose safely, so installation did not start.</value></data>
+  <data name="LauncherDiscoveryFailed" xml:space="preserve"><value>Windows could not read the registered apps list, so MinePack could not safely check Minecraft Launcher.</value></data>
   <data name="FabricArchiveUnexpected" xml:space="preserve"><value>The official Fabric package has an unexpected structure.</value></data>
   <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>The versions in the Fabric package do not match the pinned release.</value></data>
   <data name="LauncherProfileChanged" xml:space="preserve"><value>The Launcher profile changed during installation. Close Launcher and try again.</value></data>

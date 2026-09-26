@@ -1,0 +1,13 @@
+name = "Explosive Enhancement"
+filename = "explosive-enhancement-1.4.2-26.2.jar"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/OSQ8mw2r/versions/q9vZmPqg/explosive-enhancement-1.4.2-26.2.jar"
+hash-format = "sha512"
+hash = "c500699ec9b9059b2e7a40f216694dadd9d7d54cf7cb7b556e9cdc650cd842ee61bcef462cc31fc5884261ae64976dde13c57588938666cbc2caf8c3af9f9f3a"
+
+[update]
+[update.modrinth]
+mod-id = "OSQ8mw2r"
+version = "q9vZmPqg"

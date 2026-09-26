@@ -2,22 +2,22 @@
 
 [English](README.md) · Русский
 
-MinePack устанавливает закреплённую сборку Minecraft 26.2 версии 0.8.0 за несколько кликов. **Для работы нужны официальные Minecraft: Java Edition и Minecraft Launcher; аккаунт остаётся в Launcher.**
+MinePack устанавливает закреплённую сборку для **официальной Minecraft: Java Edition** через официальный Minecraft Launcher. Аккаунт остаётся в Launcher.
 
-Windows · Minecraft 26.2 · Fabric · релиз 0.8.0
+Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 
-В сборке 26 модов, 8 ресурспаков и 1 шейдер. Установщик скачивает закреплённые файлы, проверяет их и создаёт отдельный профиль MinePack и каталог игры для официального Launcher.
+Выберите одну сборку: в **Vanilla Plus 0.10.0** — 34 мода, 8 ресурспаков и 1 шейдер. **Vanilla 2 Plus 0.12.0** включает тот же состав и настройки, пять строительных модов Macaw's, а также четыре проекта для генерации мира и структур с обязательными библиотеками (всего 45 модов). Установщик скачивает закреплённые файлы, проверяет их хеши и использует один профиль MinePack с отдельной папкой игры для активной сборки.
 
 ## Установка
 
 1. Публичную загрузку установщика пока не удалось подтвердить; ссылка пока не опубликована.
 2. Когда появится полный пакет установщика, скачайте и распакуйте его. Все файлы пакета должны остаться рядом.
-3. Закройте Minecraft Launcher, запустите `MinePack.Installer.exe`, нажмите **«Установить сборку»** и дождитесь сообщения **«Сборка готова»**.
-4. Откройте официальный Minecraft Launcher, выберите профиль **MinePack** и нажмите **«Играть»**. При первом запуске Launcher загрузит базовые файлы Minecraft.
+3. Запустите `MinePack.Installer.exe`, выберите **Vanilla Plus** или **Vanilla 2 Plus** и нажмите **«Установить сборку»**. MinePack сам закроет открытый официальный Launcher, установит выбранную сборку и обновит профиль MinePack, затем отправит запрос на запуск Launcher.
+4. Выберите профиль **MinePack** и нажмите **«Играть»**. При первом запуске Launcher загрузит базовые файлы Minecraft.
 
 ## Файлы игры и миры
 
-По умолчанию MinePack хранит данные в `%LOCALAPPDATA%\MinePack`; в установщике можно выбрать другую папку. Для релиза 0.8.0 создаётся отдельный каталог внутри `instances` со своими папками `mods`, `resourcepacks`, `shaderpacks`, `saves` и настройками игры.
+По умолчанию MinePack хранит данные в `%LOCALAPPDATA%\MinePack`; в установщике можно выбрать другую папку. Для каждой сборки создаётся отдельный каталог внутри `instances` со своими папками `mods`, `resourcepacks`, `shaderpacks`, `saves` и настройками игры. Профиль MinePack указывает на активный каталог. При переключении прежняя папка и её миры сохраняются; MinePack не копирует миры между сборками.
 
 Обычная `.minecraft`, её миры и другие профили Launcher не затрагиваются. Старая версия MinePack хранится отдельно, пока новая не установится успешно. Проверка и исправление, а также удаление сборки сохраняют миры и другие пользовательские файлы. Импорт миров копирует их, исходные файлы остаются на месте. Перед открытием мира в другой версии Minecraft сделайте резервную копию.
 
@@ -38,7 +38,7 @@ Windows · Minecraft 26.2 · Fabric · релиз 0.8.0
 </details>
 
 <details>
-<summary>Графика и анимации (7)</summary>
+<summary>Графика и анимации (8)</summary>
 
 - [Iris](https://modrinth.com/mod/YL57xq9U)
 - [EMF](https://modrinth.com/mod/4I1XuqiY)
@@ -47,16 +47,22 @@ Windows · Minecraft 26.2 · Fabric · релиз 0.8.0
 - [Explosive Enhancement](https://modrinth.com/mod/OSQ8mw2r)
 - [Dense Flowers](https://modrinth.com/mod/Ud3A1Fat)
 - [Inventory Particles](https://modrinth.com/mod/XYnKrsxH)
+- [Advancement Plaques](https://modrinth.com/mod/9NM0dXub)
 
 </details>
 
 <details>
-<summary>Инструменты и удобство (4)</summary>
+<summary>Инструменты и удобство (9)</summary>
 
 - [Chunky](https://modrinth.com/mod/fALzjamp)
 - [Inventory Sorting](https://modrinth.com/mod/5ibSyLAz)
 - [Held Item Info](https://modrinth.com/mod/tEcWzCZz)
 - [Pick Up Notifier](https://modrinth.com/mod/ZX66K16c)
+- [Xaero's World Map](https://modrinth.com/mod/NcUtCpym)
+- [Cherished Worlds](https://modrinth.com/mod/3azQ6p0W)
+- [Leaf Me Alone](https://modrinth.com/mod/ppMUvsIg)
+- [InvMove](https://modrinth.com/mod/REfW2AEX)
+- [Mod Menu](https://modrinth.com/mod/mOgUt4GM)
 
 </details>
 
@@ -69,13 +75,15 @@ Windows · Minecraft 26.2 · Fabric · релиз 0.8.0
 </details>
 
 <details>
-<summary>Техническая основа (5)</summary>
+<summary>Техническая основа (7)</summary>
 
 - [Fabric API](https://modrinth.com/mod/P7dR8mSH)
 - [Cloth Config API](https://modrinth.com/mod/9s6osm5g)
 - [Forge Config API Port](https://modrinth.com/mod/ohNO6lps)
 - [MossyLib](https://modrinth.com/mod/ffLDUGbm)
 - [Puzzles Lib](https://modrinth.com/mod/QAGBst4M)
+- [Iceberg](https://modrinth.com/mod/5faXoLqX)
+- [Text Placeholder API](https://modrinth.com/mod/eXts2L7r)
 
 </details>
 
@@ -100,10 +108,39 @@ Windows · Minecraft 26.2 · Fabric · релиз 0.8.0
 
 </details>
 
+<details>
+<summary>Дополнения Vanilla 2 Plus — строительные моды (5)</summary>
+
+Они добавляются ко всему составу Vanilla Plus выше.
+
+- [Macaw's Windows](https://modrinth.com/mod/C7I0BCni)
+- [Macaw's Fences and Walls](https://modrinth.com/mod/GmwLse2I)
+- [Macaw's Bridges](https://modrinth.com/mod/GURcjz8O)
+- [Macaw's Doors](https://modrinth.com/mod/kNxa8z3e)
+- [Macaw's Stairs](https://modrinth.com/mod/iP3wH1ha)
+
+Для игры на внешнем многопользовательском сервере эти моды блоков нужно установить и на сервере. В одиночной игре используется встроенный сервер.
+
+</details>
+
+<details>
+<summary>Дополнения Vanilla 2 Plus — мир и структуры (4)</summary>
+
+Они добавляются ко всему составу Vanilla Plus и пяти модам Macaw's выше.
+
+- [Better Villages](https://modrinth.com/mod/dGVX5JbJ)
+- [MNS — Moog's Nether Structures](https://modrinth.com/mod/nGUXvjTa)
+- [MVS — Moog's Voyager Structures](https://modrinth.com/mod/OQAgZMH1)
+- [Structory](https://modrinth.com/datapack/aKCwCJlY) (вариант мода для Fabric)
+
+В сборку включены обязательные библиотеки [Library Ferret](https://modrinth.com/mod/DOB2l4oJ) и [Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy). Новые структуры появляются в ещё не исследованных чанках. Для игры на внешнем сервере эти моды генерации и библиотеки нужны также на сервере; одиночная игра использует встроенный сервер.
+
+</details>
+
 ## Сборка из исходного кода
 
 Для сборки в Windows нужен .NET 10 SDK. Команда публикации:
 
 ```powershell
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.8.0
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.12.0
 ```

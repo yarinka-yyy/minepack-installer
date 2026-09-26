@@ -12,6 +12,10 @@
     <Content Include="..\..\releases\test-pack\test-pack-0.6.0.mrpack" Link="releases\test-pack\test-pack-0.6.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="..\..\releases\test-pack\test-pack-0.7.0.mrpack" Link="releases\test-pack\test-pack-0.7.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="..\..\releases\test-pack\test-pack-0.8.0.mrpack" Link="releases\test-pack\test-pack-0.8.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.9.0.mrpack" Link="releases\test-pack\test-pack-0.9.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.10.0.mrpack" Link="releases\test-pack\test-pack-0.10.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
     <Content Include="..\..\releases\test-pack\README.md" Link="releases\test-pack\README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
   </ItemGroup>
 

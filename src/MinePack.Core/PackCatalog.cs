@@ -17,7 +17,7 @@ public static class PackCatalog
     private static CatalogGroup Group(string key, string kind, params (string Name, string Id, string Path)[] items) =>
         new(key, items.Select(item => new CatalogItem(item.Name, key, kind, item.Id, item.Path)).ToArray());
 
-    public static IReadOnlyList<CatalogGroup> Groups { get; } =
+    public static IReadOnlyList<CatalogGroup> VanillaPlusGroups { get; } =
     [
         Group("CatalogPerformance", "mod",
             ("Sodium", "AANobbMI", "mods/sodium-fabric-0.9.1+mc26.2.jar"),
@@ -35,12 +35,18 @@ public static class PackCatalog
             ("Punchy!", "8aoMKplv", "mods/punchy-2.8a-fabric-26.2.jar"),
             ("Explosive Enhancement", "OSQ8mw2r", "mods/explosive-enhancement-1.4.2-26.2.jar"),
             ("Dense Flowers", "Ud3A1Fat", "mods/dense-flowers-0.3.1+mc26.2.jar"),
-            ("Inventory Particles", "XYnKrsxH", "mods/InventoryParticles-3.2.0+26.2+fabric.jar")),
+            ("Inventory Particles", "XYnKrsxH", "mods/InventoryParticles-3.2.0+26.2+fabric.jar"),
+            ("Advancement Plaques", "9NM0dXub", "mods/AdvancementPlaques-26.2-fabric-1.7.2.jar")),
         Group("CatalogTools", "mod",
             ("Chunky", "fALzjamp", "mods/Chunky-Fabric-1.5.3.jar"),
             ("Inventory Sorting", "5ibSyLAz", "mods/inventorysorter-fabric-3.0.1+mc26.2.jar"),
             ("Held Item Info", "tEcWzCZz", "mods/held-item-info-1.9.2.jar"),
-            ("Pick Up Notifier", "ZX66K16c", "mods/PickUpNotifier-v26.2.0-mc26.2.x-Fabric.jar")),
+            ("Pick Up Notifier", "ZX66K16c", "mods/PickUpNotifier-v26.2.0-mc26.2.x-Fabric.jar"),
+            ("Xaero's World Map", "NcUtCpym", "mods/xaeroworldmap-fabric-26.2-1.46.1.jar"),
+            ("Cherished Worlds", "3azQ6p0W", "mods/cherishedworlds-fabric-17.0.0+26.2.jar"),
+            ("Leaf Me Alone", "ppMUvsIg", "mods/leafmealone-1.2.0.jar"),
+            ("InvMove", "REfW2AEX", "mods/InvMove-0.9.6+26.2-Fabric.jar"),
+            ("Mod Menu", "mOgUt4GM", "mods/modmenu-20.0.2.jar")),
         Group("CatalogSound", "mod",
             ("Cool Rain", "iDyqnQLT", "mods/coolrain-1.4.0-26.2.jar"),
             ("Sound Physics Remastered", "qyVF9oeo", "mods/sound-physics-remastered-fabric-1.5.1+26.2.jar")),
@@ -49,7 +55,9 @@ public static class PackCatalog
             ("Cloth Config API", "9s6osm5g", "mods/cloth-config-26.2.155.jar"),
             ("Forge Config API Port", "ohNO6lps", "mods/ForgeConfigAPIPort-v26.2.1-mc26.2.x-Fabric.jar"),
             ("MossyLib", "ffLDUGbm", "mods/MossyLib-1.6.0+26.2+fabric.jar"),
-            ("Puzzles Lib", "QAGBst4M", "mods/PuzzlesLib-v26.2.4-mc26.2.x-Fabric.jar")),
+            ("Puzzles Lib", "QAGBst4M", "mods/PuzzlesLib-v26.2.4-mc26.2.x-Fabric.jar"),
+            ("Iceberg", "5faXoLqX", "mods/Iceberg-26.2-fabric-1.4.2.2.jar"),
+            ("Text Placeholder API", "eXts2L7r", "mods/placeholder-api-3.1.0-beta.1+26.2.jar")),
         Group("CatalogResourcePacks", "resourcepack",
             ("Fresh Animations", "50dA9Sha", "resourcepacks/FreshAnimations_v1.10.5.zip"),
             ("Fresh Animations: Extensions", "YAVTU8mK", "resourcepacks/FA+All_Extensions-v1.9.2.zip"),
@@ -63,5 +71,29 @@ public static class PackCatalog
             ("Complementary Reimagined", "HVnmMxH1", "shaderpacks/ComplementaryReimagined_r5.9.3.zip"))
     ];
 
-    public static IReadOnlyList<CatalogItem> Items { get; } = Groups.SelectMany(group => group.Items).ToArray();
+    public static IReadOnlyList<CatalogGroup> Vanilla2PlusGroups { get; } = VanillaPlusGroups
+        .Select(group => group.Key == "CatalogTechnical"
+            ? group with { Items = group.Items.Concat(new[]
+                {
+                    new CatalogItem("Library Ferret", "CatalogTechnical", "mod", "DOB2l4oJ", "mods/libraryferret-fabric-26.2-5.0.0.jar"),
+                    new CatalogItem("Moog's Structure Lib", "CatalogTechnical", "mod", "1oUDhxuy", "mods/MoogsStructureLib-fabric-26.2-3.3.0.jar")
+                }).ToArray() }
+            : group)
+        .Append(Group("CatalogBuilding", "mod",
+            ("Macaw's Windows", "C7I0BCni", "mods/mcw-windows-2.4.2-mc26.2fabric.jar"),
+            ("Macaw's Fences and Walls", "GmwLse2I", "mods/mcw-fences-1.2.1-mc26.2fabric.jar"),
+            ("Macaw's Bridges", "GURcjz8O", "mods/mcw-bridges-3.1.2-mc26.2fabric.jar"),
+            ("Macaw's Doors", "kNxa8z3e", "mods/mcw-doors-1.1.5-mc26.2fabric.jar"),
+            ("Macaw's Stairs", "iP3wH1ha", "mods/mcw-stairs-1.0.2-mc26.2fabric.jar")))
+        .Append(new CatalogGroup("CatalogWorldgen",
+        [
+            new CatalogItem("Better Villages", "CatalogWorldgen", "mod", "dGVX5JbJ", "mods/bettervillage-fabric-26.2-4.0.0.jar"),
+            new CatalogItem("MNS - Moog's Nether Structures", "CatalogWorldgen", "mod", "nGUXvjTa", "mods/MoogsNetherStructures-universal-1.21-3.1.1.jar"),
+            new CatalogItem("MVS - Moog's Voyager Structures", "CatalogWorldgen", "mod", "OQAgZMH1", "mods/MoogsVoyagerStructures-universal-1.21-5.1.3.jar"),
+            new CatalogItem("Structory", "CatalogWorldgen", "datapack", "aKCwCJlY", "mods/Structory_26.2_v1.3.7.jar")
+        ])).ToArray();
+
+    public static IReadOnlyList<CatalogGroup> Groups => VanillaPlusGroups;
+
+    public static IReadOnlyList<CatalogItem> Items { get; } = Vanilla2PlusGroups.SelectMany(group => group.Items).ToArray();
 }

@@ -1,0 +1,13 @@
+name = "InvMove"
+filename = "InvMove-0.9.6+26.2-Fabric.jar"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/REfW2AEX/versions/VFFU6Lfs/InvMove-0.9.6%2B26.2-Fabric.jar"
+hash-format = "sha512"
+hash = "bbe09e492c7c1f71be98347306d2472968cc09dead730e7cec20426eea7f9551ea7efeec195301c77d6a6f9a31e48000a6e4f5da2b99f4470848eaf7e45072aa"
+
+[update]
+[update.modrinth]
+mod-id = "REfW2AEX"
+version = "VFFU6Lfs"

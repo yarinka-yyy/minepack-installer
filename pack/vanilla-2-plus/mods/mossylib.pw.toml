@@ -1,0 +1,13 @@
+name = "MossyLib"
+filename = "MossyLib-1.6.0+26.2+fabric.jar"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/ffLDUGbm/versions/sL8KZEzW/MossyLib-1.6.0%2B26.2%2Bfabric.jar"
+hash-format = "sha512"
+hash = "b41712b34c9b95e8263e195780d156c067035bdf0b0716ad67e81b53d3931d5c49d7d90fdd507abffcdf420e8bafd087c4700e59caf737f2c68dfa862a97755a"
+
+[update]
+[update.modrinth]
+mod-id = "ffLDUGbm"
+version = "sL8KZEzW"

@@ -5,6 +5,11 @@ file = "config/iris.properties"
 hash = "ecdc47e26c1b274613251b8935d35c7225b4e1b12b7671388999dacd0f7178cb"
 
 [[files]]
+file = "mods/advancement-plaques.pw.toml"
+hash = "250f6f7cda563380af599db2609966c401296d2a01a15b132bf74a5966b70c5d"
+metafile = true
+
+[[files]]
 file = "mods/better-block-entities.pw.toml"
 hash = "549f571b8a25fa25e39490c37eb412af36c75afc7ce21304cfed0cc8549bb2bd"
 metafile = true
@@ -12,6 +17,11 @@ metafile = true
 [[files]]
 file = "mods/c2me.pw.toml"
 hash = "1e1770d1c2707473950f9a782ef19a5d1aa9a99ff1eccc92dfff8baf1c942840"
+metafile = true
+
+[[files]]
+file = "mods/cherished-worlds.pw.toml"
+hash = "89b9af3f0f96e88b96a2bacf331ecc8e08b9cc915524135494241b368714c359"
 metafile = true
 
 [[files]]
@@ -80,6 +90,11 @@ hash = "e0718ec44f9abe7e4fa8b4122478158db98b8dc2376a98c7382e0298e3b5bfa6"
 metafile = true
 
 [[files]]
+file = "mods/iceberg.pw.toml"
+hash = "03a0268103a3935df79af37424eda3e705a25cbce3af5bf66232ead7482f6002"
+metafile = true
+
+[[files]]
 file = "mods/immediatelyfast.pw.toml"
 hash = "fcd0dedf8a47b5e5e298cb9e26fe8f9bb3be8ac892e7ad238f8f781c0faaf2bd"
 metafile = true
@@ -95,8 +110,23 @@ hash = "54268d542c7b1f5534877790b3d90923e0697244bb3e961a597e8450aabf505b"
 metafile = true
 
 [[files]]
+file = "mods/invmove.pw.toml"
+hash = "4b4f84f47d0c98df783b95b6e11abb7471a7d0f8f688cb7ff0602d8e7cad33e3"
+metafile = true
+
+[[files]]
 file = "mods/iris.pw.toml"
 hash = "7262c5dea44f3ef66051c5300f498d03ad64f97cc5c920dd04ec8f0ba607bb92"
+metafile = true
+
+[[files]]
+file = "mods/leaf-me-alone.pw.toml"
+hash = "93d7e285effc0163ef901fb27bf82027b0d907a501be88f4bca87ffed3ced6b7"
+metafile = true
+
+[[files]]
+file = "mods/modmenu.pw.toml"
+hash = "fa00f7dbf48bbcf6940248d3fd3629f43656c54006cc63d5560f9ca77ccd97a9"
 metafile = true
 
 [[files]]
@@ -107,6 +137,11 @@ metafile = true
 [[files]]
 file = "mods/pick-up-notifier.pw.toml"
 hash = "cb97138eae13d3b0069f1705ec0e9da41a2bf5ec2114ce8b9b17909186efe738"
+metafile = true
+
+[[files]]
+file = "mods/placeholder-api.pw.toml"
+hash = "b234ade7fd54bb9d99c27769cd1635b18835752676d0cdd0a29af2b4146251a8"
 metafile = true
 
 [[files]]
@@ -132,6 +167,11 @@ metafile = true
 [[files]]
 file = "mods/voxy.pw.toml"
 hash = "93462b004525a25f82e8faec0e6c54a37cffb214117639f604d997bc026af17c"
+metafile = true
+
+[[files]]
+file = "mods/xaeros-world-map.pw.toml"
+hash = "02deec5980a738de5b9f79a4d80299717267f5526df838dceacb0a89e127edbc"
 metafile = true
 
 [[files]]

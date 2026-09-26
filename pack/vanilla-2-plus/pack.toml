@@ -1,0 +1,13 @@
+name = "MinePack Vanilla 2 Plus"
+author = "yarinka-yyy"
+version = "0.12.0"
+pack-format = "packwiz:1.1.0"
+
+[index]
+file = "index.toml"
+hash-format = "sha256"
+hash = "22324c40fc6bd201599c3f379687ba22a1009f1afbaeab3267556fa0dc0a93ee"
+
+[versions]
+fabric = "0.19.5"
+minecraft = "26.2"

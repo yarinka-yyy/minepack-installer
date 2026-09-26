@@ -67,7 +67,18 @@ public sealed class InstallService : IDisposable
             var instanceName = $"test-pack-{pack.VersionId}-{pack.ArchiveSha512[..12].ToLowerInvariant()}";
             instancePath = SafePath.Resolve(instancesRoot, instanceName);
             if (Directory.Exists(instancePath))
-                throw new InstallerException("ALREADY_INSTALLED", LocalizedText.Get("AlreadyInstalled"));
+            {
+                SafePath.EnsureNoReparsePoints(instancesRoot, instancePath);
+                ValidateMatchesRelease(InstallationManifest.Load(instancePath), pack);
+                var restored = await RepairAsync(instancePath, packPath, expectedPackSha512, progress, cancellationToken);
+                if (!restored.Success) return restored;
+                var existingRelativePath = Path.GetRelativePath(root, instancePath).Replace(Path.DirectorySeparatorChar, '/');
+                cancellationToken.ThrowIfCancellationRequested();
+                WriteActive(root, existingRelativePath);
+                try { Log("install_reactivated", new { instancePath }); }
+                catch { }
+                return restored;
+            }
 
             stagingRoot = Path.Combine(root, "staging", instanceName + "-" + Guid.NewGuid().ToString("N"));
             SafePath.EnsureNoReparsePoints(root, stagingRoot);
@@ -106,7 +117,9 @@ public sealed class InstallService : IDisposable
                 Files = managed.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase).ToList()
             };
             await VerifyManagedFilesAsync(stagingRoot, manifest.Files, cancellationToken);
-            if (pack.ArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase))
+            if (pack.ArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PreviousArtifactSha512, StringComparison.OrdinalIgnoreCase))
             {
                 var resourcePacks = TestPackRelease.InitialResourcePacks;
                 if (resourcePacks.Any(name => !manifest.Files.Any(file =>

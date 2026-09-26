@@ -86,10 +86,14 @@ public static class LauncherProfile
                 "0.5.0" => TestPackRelease.VisualArtifactSha512,
                 "0.6.0" => TestPackRelease.InventoryArtifactSha512,
                 "0.7.0" => TestPackRelease.GraphicsArtifactSha512,
+                "0.8.0" => TestPackRelease.AnimationArtifactSha512,
+                "0.9.0" => TestPackRelease.MapArtifactSha512,
                 TestPackRelease.PackVersion => TestPackRelease.ArtifactSha512,
+                Vanilla2PlusRelease.PackVersion => Vanilla2PlusRelease.ArtifactSha512,
+                "0.11.0" => Vanilla2PlusRelease.PreviousArtifactSha512,
                 _ => null
             };
-            var expectedMinecraftVersion = manifest.PackVersion is "0.3.0" or "0.4.0" or "0.5.0" or "0.6.0" or "0.7.0" or TestPackRelease.PackVersion
+            var expectedMinecraftVersion = manifest.PackVersion is "0.3.0" or "0.4.0" or "0.5.0" or "0.6.0" or "0.7.0" or "0.8.0" or "0.9.0" or "0.11.0" or TestPackRelease.PackVersion or Vanilla2PlusRelease.PackVersion
                 ? TestPackRelease.MinecraftVersion : "26.3";
             return expectedHash is not null &&
                    manifest.PackArchiveSha512.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) &&

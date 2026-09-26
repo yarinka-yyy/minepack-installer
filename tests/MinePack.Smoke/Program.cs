@@ -34,12 +34,18 @@ internal static class Smoke
             VerifyArchiveRejections(tempRoot);
             await VerifyArchiveMutationRejectedAsync(tempRoot);
             await VerifyInstallRepairAndUninstallAsync(tempRoot);
+            await VerifyVariantSwitchingAsync(tempRoot);
             VerifyLauncherFixture(tempRoot);
+            await VerifyLauncherLifecycleAsync(tempRoot);
             await VerifyAutomaticFabricProfileAsync(tempRoot);
             var liveCompleted = false;
             if (args.Contains("--live-pack", StringComparer.Ordinal))
             {
-                try { liveCompleted = await VerifyActualReleaseAsync(tempRoot); }
+                try
+                {
+                    liveCompleted = await VerifyActualReleaseAsync(tempRoot);
+                    if (liveCompleted) liveCompleted = await VerifyActualVanilla2PlusAsync(tempRoot);
+                }
                 catch (UnauthorizedAccessException ex)
                 {
                     Console.WriteLine($"NOT RUN: live release check could not read/write a required path ({ex.GetType().Name}).");
@@ -121,7 +127,16 @@ internal static class Smoke
             "MossyLib-1.6.0+26.2+fabric.jar", "cloth-config-26.2.155.jar",
             "ferritecore-9.0.0-fabric.jar"
         };
-        True(pack.Files.Count == 35 && !pack.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
+        var newMods = new[]
+        {
+            "xaeroworldmap-fabric-26.2-1.46.1.jar", "AdvancementPlaques-26.2-fabric-1.7.2.jar",
+            "cherishedworlds-fabric-17.0.0+26.2.jar", "leafmealone-1.2.0.jar",
+            "InvMove-0.9.6+26.2-Fabric.jar", "Iceberg-26.2-fabric-1.4.2.2.jar",
+            "modmenu-20.0.2.jar", "placeholder-api-3.1.0-beta.1+26.2.jar"
+        };
+        True(pack.Files.Count == 43 && !pack.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
+             !pack.Files.Any(file => file.Path.Contains("firstperson", StringComparison.OrdinalIgnoreCase) ||
+                                          file.Path.Contains("notenoughanimations", StringComparison.OrdinalIgnoreCase)) &&
              pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
              pack.Files.Any(file => file.Path == "mods/voxy-0.2.19-beta.jar") &&
              pack.Files.Any(file => file.Path == "mods/Chunky-Fabric-1.5.3.jar") &&
@@ -133,24 +148,54 @@ internal static class Smoke
              pack.Files.Any(file => file.Path == "mods/punchy-2.8a-fabric-26.2.jar") &&
              pack.Files.Any(file => file.Path == "mods/PuzzlesLib-v26.2.4-mc26.2.x-Fabric.jar") &&
              pack.Files.Any(file => file.Path == "mods/ForgeConfigAPIPort-v26.2.1-mc26.2.x-Fabric.jar") &&
-             addedMods.All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
+             addedMods.Concat(newMods).All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
              TestPackRelease.InitialResourcePacks.All(name => pack.Files.Any(file => file.Path == "resourcepacks/" + name)) &&
              pack.Overrides.Any(file => file.Path == "config/iris.properties"),
             "pinned release includes the base pack, requested mods and resource packs, and required dependencies");
         True(pack.Files.All(file => file.Sha512.Length == 128 && file.Sha512.All(Uri.IsHexDigit) &&
-                                   file.Downloads.All(uri => uri.Scheme == Uri.UriSchemeHttps && uri.Host == "cdn.modrinth.com")),
-            "pinned release hashes and URLs are valid");
-        var catalog = PackCatalog.Items;
-        True(catalog.Count == 35 &&
-             catalog.Count(item => item.Kind == "mod") == 26 &&
-             catalog.Count(item => item.Kind == "resourcepack") == 8 &&
-             catalog.Count(item => item.Kind == "shader") == 1 &&
+                                    file.Downloads.All(uri => uri.Scheme == Uri.UriSchemeHttps && uri.Host == "cdn.modrinth.com")),
+             "pinned release hashes and URLs are valid");
+        var previousVanilla2PlusPath = Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PreviousArtifactFileName);
+        var previousVanilla2Plus = PackArchive.Open(previousVanilla2PlusPath, Vanilla2PlusRelease.PreviousArtifactSha512);
+        True(previousVanilla2Plus.VersionId == "0.11.0" && previousVanilla2Plus.Files.Count == 48 &&
+             pack.Files.All(baseFile => previousVanilla2Plus.Files.Any(file => file.Path == baseFile.Path &&
+                 file.Sha512 == baseFile.Sha512 && file.Downloads.SequenceEqual(baseFile.Downloads))),
+            "previous Vanilla 2 Plus archive remains pinned and preserves Vanilla Plus");
+        var vanilla2PlusPath = Path.Combine(AppContext.BaseDirectory,
+            Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var vanilla2Plus = PackArchive.Open(vanilla2PlusPath, Vanilla2PlusRelease.ArtifactSha512);
+        Equal(Vanilla2PlusRelease.PackVersion, vanilla2Plus.VersionId, "Vanilla 2 Plus release version");
+        Equal("MinePack Vanilla 2 Plus", vanilla2Plus.Name, "Vanilla 2 Plus archive name");
+        Equal(TestPackRelease.MinecraftVersion, vanilla2Plus.MinecraftVersion, "Vanilla 2 Plus Minecraft version");
+        Equal(TestPackRelease.FabricLoaderVersion, vanilla2Plus.FabricLoaderVersion, "Vanilla 2 Plus Fabric Loader version");
+        True(vanilla2Plus.Files.Count == 54 &&
+             previousVanilla2Plus.Files.All(baseFile => vanilla2Plus.Files.Any(file => file.Path == baseFile.Path &&
+                 file.Sha512 == baseFile.Sha512 && file.Downloads.SequenceEqual(baseFile.Downloads))) &&
+             vanilla2Plus.Overrides.OrderBy(file => file.Path, StringComparer.Ordinal)
+                 .SequenceEqual(pack.Overrides.OrderBy(file => file.Path, StringComparer.Ordinal)),
+            "Vanilla 2 Plus preserves all 48 previous downloads and overrides exactly");
+        var additionalFiles = vanilla2Plus.Files.Where(file => !previousVanilla2Plus.Files.Any(baseFile => baseFile.Path == file.Path))
+            .Select(file => file.Path).ToHashSet(StringComparer.Ordinal);
+        True(additionalFiles.SetEquals(new[]
+        {
+            "mods/bettervillage-fabric-26.2-4.0.0.jar", "mods/libraryferret-fabric-26.2-5.0.0.jar",
+            "mods/MoogsNetherStructures-universal-1.21-3.1.1.jar", "mods/MoogsStructureLib-fabric-26.2-3.3.0.jar",
+            "mods/MoogsVoyagerStructures-universal-1.21-5.1.3.jar", "mods/Structory_26.2_v1.3.7.jar"
+        }) && additionalFiles.All(path => vanilla2Plus.Files.Single(file => file.Path == path).Downloads
+            .All(uri => uri.Scheme == Uri.UriSchemeHttps && uri.Host == "cdn.modrinth.com")),
+            "Vanilla 2 Plus adds only four worldgen projects and their two required libraries");
+
+        var catalog = PackCatalog.VanillaPlusGroups.SelectMany(group => group.Items).ToArray();
+        var vanilla2PlusCatalog = PackCatalog.Items;
+        True(catalog.Length == 43 && catalog.Count(item => item.Kind == "mod") == 34 &&
+             catalog.Count(item => item.Kind == "resourcepack") == 8 && catalog.Count(item => item.Kind == "shader") == 1 &&
              catalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal).SetEquals(pack.Files.Select(file => file.Path)) &&
-             catalog.Select(item => item.FilePath).Distinct(StringComparer.Ordinal).Count() == 35 &&
-             catalog.All(item => item.ModrinthUrl.Scheme == Uri.UriSchemeHttps &&
-                                 item.ModrinthUrl.Host == "modrinth.com" &&
-                                 !string.IsNullOrWhiteSpace(item.ProjectId)),
-            "UI catalog exactly matches all 35 files in pinned release");
+             vanilla2PlusCatalog.Count == 54 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 45 &&
+             vanilla2PlusCatalog.Count(item => item.Kind == "datapack") == 1 &&
+             vanilla2PlusCatalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal).SetEquals(vanilla2Plus.Files.Select(file => file.Path)) &&
+             vanilla2PlusCatalog.All(item => item.ModrinthUrl.Scheme == Uri.UriSchemeHttps &&
+                 item.ModrinthUrl.Host == "modrinth.com" && !string.IsNullOrWhiteSpace(item.ProjectId)),
+            "Vanilla Plus and Vanilla 2 Plus catalogs exactly match their pinned releases");
         var initialOptions = TestPackRelease.InitialOptions.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
         True(initialOptions[0] == "version:4903" && new[]
         {
@@ -183,20 +228,30 @@ internal static class Smoke
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en");
             Equal("Ready to install", LocalizedText.Get("UiReady"), "English startup text");
             Equal("Preparing a separate game folder", LocalizedText.Get("PreparingInstance"), "English progress text");
-            Equal("Test pack files installed.", LocalizedText.Get("PackFilesInstalled"), "English success text");
+            Equal("Pack files installed.", LocalizedText.Get("PackFilesInstalled"), "English success text");
             Equal("The pack file was not found.", LocalizedText.Get("PackFileMissing"), "English error text");
             Equal("Performance & Render Distance", LocalizedText.Get("CatalogPerformance"), "English catalog text");
-            Equal("Performance & Render Distance — 8|Graphics & Animations — 7|Tools & Quality of Life — 4|Sound — 2|Technical Foundation — 5|Resource Packs — 8|Shader — 1",
+            Equal("Building Blocks — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "English Vanilla 2 Plus building category");
+            Equal("World & Structures — 4", PackCatalog.Vanilla2PlusGroups[^1].Heading, "English Vanilla 2 Plus worldgen category");
+            Equal("Technical Foundation — 9", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Vanilla 2 Plus dependencies");
+            Equal("Pack version 0.12.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
+            Equal("45 mods · 8 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
+            Equal("Performance & Render Distance — 8|Graphics & Animations — 8|Tools & Quality of Life — 9|Sound — 2|Technical Foundation — 7|Resource Packs — 8|Shader — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "English catalog headings and counts");
             Equal("Copied worlds: 2. Skipped existing names: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "English formatted text");
 
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ru");
             Equal("Готово к установке", LocalizedText.Get("UiReady"), "Russian startup text");
             Equal("Подготовка отдельного каталога", LocalizedText.Get("PreparingInstance"), "Russian progress text");
-            Equal("Файлы тестовой сборки установлены.", LocalizedText.Get("PackFilesInstalled"), "Russian success text");
+            Equal("Файлы сборки установлены.", LocalizedText.Get("PackFilesInstalled"), "Russian success text");
             Equal("Файл сборки не найден.", LocalizedText.Get("PackFileMissing"), "Russian error text");
             Equal("Производительность и дальность", LocalizedText.Get("CatalogPerformance"), "Russian catalog text");
-            Equal("Производительность и дальность — 8|Графика и анимации — 7|Инструменты и удобство — 4|Звук — 2|Техническая основа — 5|Ресурспаки — 8|Шейдер — 1",
+            Equal("Строительные блоки — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Russian Vanilla 2 Plus building category");
+            Equal("Мир и структуры — 4", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Russian Vanilla 2 Plus worldgen category");
+            Equal("Техническая основа — 9", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Vanilla 2 Plus dependencies");
+            Equal("Версия сборки 0.12.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
+            Equal("45 модов · 8 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
+            Equal("Производительность и дальность — 8|Графика и анимации — 8|Инструменты и удобство — 9|Звук — 2|Техническая основа — 7|Ресурспаки — 8|Шейдер — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "Russian catalog headings and counts");
             Equal("Скопировано миров: 2. Пропущено совпадений имён: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "Russian formatted text");
 
@@ -386,6 +441,67 @@ internal static class Smoke
         True(markerUninstall.Success, "marker fixture cleanup succeeds");
     }
 
+    private static async Task VerifyVariantSwitchingAsync(string tempRoot)
+    {
+        var installRoot = Path.Combine(tempRoot, "variant-switch-root");
+        var plusBytes = Bytes("vanilla plus managed file");
+        var twoPlusBytes = Bytes("vanilla 2 plus managed file");
+        var currentDownloadBytes = plusBytes;
+        var handler = new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(currentDownloadBytes)
+        });
+        var plusPackPath = Path.Combine(tempRoot, "variant-plus.mrpack");
+        var twoPlusPackPath = Path.Combine(tempRoot, "variant-two-plus.mrpack");
+        CreatePack(plusPackPath, TestPackRelease.PackVersion, [new TestFile("mods/test.jar", plusBytes)]);
+        CreatePack(twoPlusPackPath, Vanilla2PlusRelease.PackVersion, [new TestFile("mods/test.jar", twoPlusBytes)]);
+        var plusHash = HashFile(plusPackPath);
+        var twoPlusHash = HashFile(twoPlusPackPath);
+
+        using var installer = new InstallService(new DownloadEngine(handler));
+        var plusInstall = await installer.InstallAsync(plusPackPath, plusHash, installRoot);
+        True(plusInstall.Success, "Vanilla Plus fixture installs first");
+        var plusInstance = plusInstall.GameDirectory!;
+        var plusWorld = Path.Combine(plusInstance, "saves", "plus-world", "level.dat");
+        Directory.CreateDirectory(Path.GetDirectoryName(plusWorld)!);
+        File.WriteAllText(plusWorld, "keep Vanilla Plus world");
+
+        currentDownloadBytes = twoPlusBytes;
+        var twoPlusInstall = await installer.InstallAsync(twoPlusPackPath, twoPlusHash, installRoot);
+        True(twoPlusInstall.Success, "Vanilla 2 Plus installs as a separate active instance");
+        var twoPlusInstance = twoPlusInstall.GameDirectory!;
+        var twoPlusWorld = Path.Combine(twoPlusInstance, "saves", "two-plus-world", "level.dat");
+        Directory.CreateDirectory(Path.GetDirectoryName(twoPlusWorld)!);
+        File.WriteAllText(twoPlusWorld, "keep Vanilla 2 Plus world");
+        True(!plusInstance.Equals(twoPlusInstance, StringComparison.OrdinalIgnoreCase) && File.Exists(plusWorld),
+            "switching variants keeps the previous isolated instance and its world");
+
+        File.WriteAllText(Path.Combine(plusInstance, "mods", "test.jar"), "corrupted inactive Vanilla Plus file");
+        currentDownloadBytes = plusBytes;
+        var returnToPlus = await installer.InstallAsync(plusPackPath, plusHash, installRoot);
+        True(returnToPlus.Success, "selecting Vanilla Plus reactivates its preserved instance");
+        Equal(plusInstance, installer.GetActiveInstancePath(installRoot), "active marker returns to Vanilla Plus");
+        Equal(HashBytes(plusBytes), HashFile(Path.Combine(plusInstance, "mods", "test.jar")),
+            "reactivating a preserved instance repairs damaged managed files first");
+        True(File.Exists(plusWorld) && File.Exists(twoPlusWorld), "reactivating Vanilla Plus preserves both versions' worlds");
+
+        currentDownloadBytes = twoPlusBytes;
+        var returnToTwoPlus = await installer.InstallAsync(twoPlusPackPath, twoPlusHash, installRoot);
+        True(returnToTwoPlus.Success, "selecting Vanilla 2 Plus reactivates its preserved instance");
+        Equal(twoPlusInstance, installer.GetActiveInstancePath(installRoot), "active marker returns to Vanilla 2 Plus");
+        var twoPlusManaged = Path.Combine(twoPlusInstance, "mods", "test.jar");
+        File.WriteAllText(twoPlusManaged, "damaged active Vanilla 2 Plus file");
+        var repair = await installer.RepairAsync(twoPlusInstance, twoPlusPackPath, twoPlusHash);
+        True(repair.Success, "Repair uses the active Vanilla 2 Plus archive");
+        Equal(HashBytes(twoPlusBytes), HashFile(twoPlusManaged), "Vanilla 2 Plus Repair restores its pinned file");
+        var uninstall = await installer.UninstallAsync(twoPlusInstance, twoPlusPackPath, twoPlusHash);
+        True(uninstall.Success && installer.GetActiveInstancePath(installRoot) is null,
+            "Uninstall uses the active Vanilla 2 Plus archive and clears its marker");
+        True(File.Exists(twoPlusWorld) && File.Exists(plusWorld) && Directory.Exists(plusInstance),
+            "uninstalling active Vanilla 2 Plus preserves both worlds and the inactive Vanilla Plus instance");
+        Pass("switching Vanilla Plus and Vanilla 2 Plus reactivates pinned instances and preserves worlds");
+    }
+
     private static async Task VerifyArchiveMutationRejectedAsync(string tempRoot)
     {
         var path = Path.Combine(tempRoot, "mutable-pack.mrpack");
@@ -473,6 +589,79 @@ internal static class Smoke
         return true;
     }
 
+    private static async Task<bool> VerifyActualVanilla2PlusAsync(string tempRoot)
+    {
+        var packPath = Path.Combine(AppContext.BaseDirectory,
+            Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var installRoot = Path.Combine(tempRoot, "live-vanilla-2-plus-install");
+        var vanilla = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+        var vanillaBefore = CaptureVanillaData(vanilla);
+        if (vanillaBefore is null)
+            Console.WriteLine("NOT RUN: vanilla mods/config/saves could not be read for a before/after comparison.");
+        using var installer = new InstallService();
+        var install = await installer.InstallAsync(packPath, Vanilla2PlusRelease.ArtifactSha512, installRoot);
+        if (!install.Success)
+        {
+            Console.WriteLine($"NOT RUN: Vanilla 2 Plus install did not complete ({install.Code}). {install.Message} Diagnostic log: {install.LogPath ?? "unavailable"}.");
+            return false;
+        }
+
+        var instance = install.GameDirectory ?? throw new InvalidOperationException("Vanilla 2 Plus install did not return an instance directory.");
+        var manifest = InstallationManifest.Load(instance);
+        Equal(Vanilla2PlusRelease.PackVersion, manifest.PackVersion, "installed Vanilla 2 Plus manifest version");
+        True(manifest.Files.Count == 55 && manifest.Files.Any(file => file.Path == "config/iris.properties"),
+            "Vanilla 2 Plus manifest records 54 downloads and the Iris config override");
+        foreach (var file in manifest.Files)
+        {
+            var path = Path.Combine(instance, file.Path.Replace('/', Path.DirectorySeparatorChar));
+            True(string.Equals(file.Sha512, HashFile(path), StringComparison.OrdinalIgnoreCase),
+                $"Vanilla 2 Plus installed file hash {file.Path}");
+        }
+        var newModFiles = new[]
+        {
+            "mcw-windows-2.4.2-mc26.2fabric.jar", "mcw-fences-1.2.1-mc26.2fabric.jar",
+            "mcw-bridges-3.1.2-mc26.2fabric.jar", "mcw-doors-1.1.5-mc26.2fabric.jar",
+            "mcw-stairs-1.0.2-mc26.2fabric.jar", "bettervillage-fabric-26.2-4.0.0.jar",
+            "libraryferret-fabric-26.2-5.0.0.jar", "MoogsNetherStructures-universal-1.21-3.1.1.jar",
+            "MoogsStructureLib-fabric-26.2-3.3.0.jar", "MoogsVoyagerStructures-universal-1.21-5.1.3.jar",
+            "Structory_26.2_v1.3.7.jar"
+        };
+        True(newModFiles.All(name => manifest.Files.Any(file => file.Path == "mods/" + name)),
+            "all five Macaw's mods and six worldgen files are installed and managed");
+        var optionsPath = Path.Combine(instance, "options.txt");
+        var expectedPacks = new[] { "vanilla" }.Concat(TestPackRelease.InitialResourcePacks.Select(name => "file/" + name)).Append("punchy:punchy");
+        var options = File.ReadAllLines(optionsPath);
+        True(options[0] == "version:4903" &&
+             File.ReadAllText(optionsPath).Contains("resourcePacks:" + JsonSerializer.Serialize(expectedPacks), StringComparison.Ordinal),
+            "Vanilla 2 Plus sets Minecraft 26.2 options and preserves all eight resource packs plus Punchy");
+        var bbeConfigPath = Path.Combine(instance, "config", "BBEConfig.json");
+        True(File.Exists(bbeConfigPath), "Vanilla 2 Plus applies the existing Better Block Entities config");
+        var worldPath = Path.Combine(instance, "saves", "plan004-test-world", "level.dat");
+        Directory.CreateDirectory(Path.GetDirectoryName(worldPath)!);
+        File.WriteAllText(worldPath, "test world stays unmanaged");
+        File.WriteAllText(optionsPath, "player options\n");
+        File.WriteAllText(bbeConfigPath, "player BBE settings\n");
+        var corruptMacaw = Path.Combine(instance, "mods", "mcw-stairs-1.0.2-mc26.2fabric.jar");
+        File.WriteAllText(corruptMacaw, "corrupt managed mod");
+        var repair = await installer.RepairAsync(instance, packPath, Vanilla2PlusRelease.ArtifactSha512);
+        True(repair.Success && File.ReadAllText(optionsPath) == "player options\n" &&
+             File.ReadAllText(bbeConfigPath) == "player BBE settings\n" && File.Exists(worldPath),
+            "Vanilla 2 Plus Repair restores its pinned mod and preserves user settings and world");
+        var vanillaAfter = CaptureVanillaData(vanilla);
+        if (vanillaBefore is not null && vanillaAfter is not null)
+            Equal(vanillaBefore, vanillaAfter, "Vanilla 2 Plus leaves vanilla mods/config/saves unchanged");
+        else if (vanillaBefore is not null || vanillaAfter is not null)
+            Console.WriteLine("NOT RUN: vanilla mods/config/saves comparison was incomplete because access changed.");
+
+        var uninstall = await installer.UninstallAsync(instance, packPath, Vanilla2PlusRelease.ArtifactSha512);
+        True(uninstall.Success && File.Exists(worldPath) && File.ReadAllText(optionsPath) == "player options\n" &&
+             File.ReadAllText(bbeConfigPath) == "player BBE settings\n",
+            "Vanilla 2 Plus Uninstall removes managed files and preserves user data");
+        True(installer.GetActiveInstancePath(installRoot) is null, "Vanilla 2 Plus Uninstall clears the active marker");
+        Pass("Vanilla 2 Plus actual downloads, SHA-512 checks, install, Repair, and Uninstall");
+        return true;
+    }
+
     private static string? CaptureVanillaData(string vanillaRoot)
     {
         var paths = new[] { "mods", "config", "saves" };
@@ -521,13 +710,13 @@ internal static class Smoke
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
 
         var oldInstance = Path.Combine(tempRoot, "owned-instance", "instances",
-            "test-pack-0.7.0-" + TestPackRelease.GraphicsArtifactSha512[..12].ToLowerInvariant());
+            "test-pack-0.8.0-" + TestPackRelease.AnimationArtifactSha512[..12].ToLowerInvariant());
         new InstallationManifest
         {
-            PackVersion = "0.7.0",
+            PackVersion = "0.8.0",
             MinecraftVersion = "26.2",
             FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
-            PackArchiveSha512 = TestPackRelease.GraphicsArtifactSha512
+            PackArchiveSha512 = TestPackRelease.AnimationArtifactSha512
         }.SaveAtomic(oldInstance);
         string ProfileWithoutMarker(string gameDir, string name = "MinePack Test Pack") => JsonSerializer.Serialize(new
         {
@@ -560,8 +749,48 @@ internal static class Smoke
         using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveFixtureCandidate(markerless)))
             True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
                 "markerless MinePack profile can be removed while its manifest exists");
+        var previousInstance = Path.Combine(tempRoot, "owned-instance", "instances",
+            "test-pack-0.9.0-" + TestPackRelease.MapArtifactSha512[..12].ToLowerInvariant());
+        new InstallationManifest
+        {
+            PackVersion = "0.9.0",
+            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+            PackArchiveSha512 = TestPackRelease.MapArtifactSha512
+        }.SaveAtomic(previousInstance);
+        _ = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(previousInstance, "MinePack"),
+            Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
+        var previousVanilla2PlusInstance = Path.Combine(tempRoot, "owned-instance", "instances",
+            "test-pack-0.11.0-" + Vanilla2PlusRelease.PreviousArtifactSha512[..12].ToLowerInvariant());
+        new InstallationManifest
+        {
+            PackVersion = "0.11.0",
+            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+            PackArchiveSha512 = Vanilla2PlusRelease.PreviousArtifactSha512
+        }.SaveAtomic(previousVanilla2PlusInstance);
+        _ = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(previousVanilla2PlusInstance, "MinePack"),
+            Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
         Equal(markerless, LauncherProfile.RemoveFixtureCandidate(markerless, Path.Combine(tempRoot, "new-instance")),
             "uninstalling a different instance preserves the current MinePack profile");
+        var vanilla2PlusInstance = Path.Combine(tempRoot, "owned-instance", "instances",
+            "test-pack-" + Vanilla2PlusRelease.PackVersion + "-" + Vanilla2PlusRelease.ArtifactSha512[..12].ToLowerInvariant());
+        new InstallationManifest
+        {
+            PackVersion = Vanilla2PlusRelease.PackVersion,
+            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+            PackArchiveSha512 = Vanilla2PlusRelease.ArtifactSha512
+        }.SaveAtomic(vanilla2PlusInstance);
+        var vanilla2PlusProfile = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(vanilla2PlusInstance, "MinePack"),
+            Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
+        using (var parsed = JsonDocument.Parse(vanilla2PlusProfile))
+            Equal(Path.GetFullPath(Path.Combine(tempRoot, "new-instance")),
+                parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString(),
+                "markerless Launcher recognizes the exact Vanilla 2 Plus manifest");
+        using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveFixtureCandidate(ProfileWithoutMarker(vanilla2PlusInstance, "MinePack"), vanilla2PlusInstance)))
+            True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
+                "Vanilla 2 Plus profile can be removed only while its own manifest exists");
         try
         {
             _ = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(Path.Combine(tempRoot, "foreign-instance")),
@@ -588,22 +817,14 @@ internal static class Smoke
         const string input = "{\"profiles\":{\"vanilla\":{\"name\":\"Original\",\"customField\":17}},\"settings\":{\"custom\":true}}";
         File.WriteAllText(profilesPath, input);
         const string versionId = "fabric-loader-0.19.5-26.2";
-        byte[] archive;
-        using (var memory = new MemoryStream())
-        {
-            using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
-            {
-                using (var writer = new StreamWriter(zip.CreateEntry($"{versionId}/{versionId}.json").Open()))
-                    writer.Write($"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"26.2\"}}");
-                zip.CreateEntry($"{versionId}/{versionId}.jar");
-            }
-            archive = memory.ToArray();
-        }
+        var profileHash = HashBytes(Bytes($"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"26.2\"}}"));
+        var archive = CreateFabricProfileArchive(versionId,
+            $"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"26.2\",\"releaseTime\":\"2026-09-24\",\"time\":\"2026-09-24\"}}");
 
         var hydratedJar = Bytes("official Minecraft client JAR fixture");
         using var service = new FabricLauncherService(launcherRoot,
             new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) }),
-            HashBytes(archive), HashBytes(hydratedJar), hydratedJar.Length);
+            profileHash, HashBytes(hydratedJar), hydratedJar.Length, ensureLauncherClosed: static () => { });
         await service.ConfigureAsync(gameDirectory);
         await service.ConfigureAsync(gameDirectory);
         var version = Path.Combine(launcherRoot, "versions", versionId);
@@ -613,6 +834,24 @@ internal static class Smoke
         File.WriteAllBytes(versionJar, hydratedJar);
         await service.ConfigureAsync(gameDirectory);
         Equal(HashBytes(hydratedJar), HashFile(versionJar), "Launcher-filled official client JAR remains unchanged");
+        var retimedArchive = CreateFabricProfileArchive(versionId,
+            $"{{\"time\":\"2026-09-26\",\"releaseTime\":\"2026-09-26\",\"inheritsFrom\":\"26.2\",\"id\":\"{versionId}\"}}");
+        using (var retimedService = new FabricLauncherService(launcherRoot,
+                   new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(retimedArchive) }),
+                   profileHash, HashBytes(hydratedJar), hydratedJar.Length, ensureLauncherClosed: static () => { }))
+            await retimedService.ConfigureAsync(gameDirectory);
+        Equal(HashBytes(hydratedJar), HashFile(versionJar), "changed Fabric timestamps leave the official client JAR intact");
+        var alteredArchive = CreateFabricProfileArchive(versionId,
+            $"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"26.2\",\"releaseTime\":\"2026-09-26\",\"time\":\"2026-09-26\",\"libraries\":[{{\"name\":\"foreign:library:1\"}}]}}");
+        var profileBeforeAlteredArchive = File.ReadAllText(profilesPath);
+        using (var alteredService = new FabricLauncherService(launcherRoot,
+                   new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(alteredArchive) }),
+                   profileHash, HashBytes(hydratedJar), hydratedJar.Length, ensureLauncherClosed: static () => { }))
+        {
+            try { await alteredService.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected changed Fabric libraries to be rejected."); }
+            catch (InstallerException ex) when (ex.Code == "FABRIC_HASH") { }
+        }
+        Equal(profileBeforeAlteredArchive, File.ReadAllText(profilesPath), "changed Fabric libraries leave Launcher profile untouched");
         var profileBeforeConflict = File.ReadAllText(profilesPath);
         File.WriteAllText(versionJar, "different client JAR");
         try { await service.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected foreign Fabric JAR rejection."); }
@@ -638,7 +877,7 @@ internal static class Smoke
         File.WriteAllText(badProfiles, input);
         using var badService = new FabricLauncherService(badRoot,
             new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) }),
-            HashBytes(Bytes("different")));
+            HashBytes(Bytes("different")), ensureLauncherClosed: static () => { });
         try { await badService.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected Fabric hash rejection."); }
         catch (InstallerException ex) when (ex.Code == "FABRIC_HASH") { }
         Equal(input, File.ReadAllText(badProfiles), "bad Fabric archive leaves Launcher profile untouched");
@@ -650,7 +889,7 @@ internal static class Smoke
         File.WriteAllText(conflictProfiles, conflict);
         using var conflictService = new FabricLauncherService(conflictRoot,
             new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) }),
-            HashBytes(archive));
+            profileHash, ensureLauncherClosed: static () => { });
         try { await conflictService.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected Launcher conflict rejection."); }
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
         Equal(conflict, File.ReadAllText(conflictProfiles), "foreign profile preserved after conflict");
@@ -659,25 +898,156 @@ internal static class Smoke
         Directory.CreateDirectory(previousRoot);
         File.WriteAllText(Path.Combine(previousRoot, "launcher_profiles.json"), input);
         const string previousId = "fabric-loader-0.19.5-26.3";
-        byte[] previousArchive;
-        using (var memory = new MemoryStream())
-        {
-            using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
-            {
-                using (var writer = new StreamWriter(zip.CreateEntry($"{previousId}/{previousId}.json").Open()))
-                    writer.Write($"{{\"id\":\"{previousId}\",\"inheritsFrom\":\"26.3\"}}");
-                zip.CreateEntry($"{previousId}/{previousId}.jar");
-            }
-            previousArchive = memory.ToArray();
-        }
+        var previousProfileHash = HashBytes(Bytes($"{{\"id\":\"{previousId}\",\"inheritsFrom\":\"26.3\"}}"));
+        var previousArchive = CreateFabricProfileArchive(previousId,
+            $"{{\"id\":\"{previousId}\",\"inheritsFrom\":\"26.3\",\"releaseTime\":\"2026-09-24\",\"time\":\"2026-09-24\"}}");
         using (var previousService = new FabricLauncherService(previousRoot,
                    new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(previousArchive) }),
-                   expectedSha512: HashBytes(previousArchive), minecraftVersion: "26.3"))
+                   expectedSha512: previousProfileHash, minecraftVersion: "26.3", ensureLauncherClosed: static () => { }))
             await previousService.ConfigureAsync(gameDirectory);
         using (var previousProfile = JsonDocument.Parse(File.ReadAllText(Path.Combine(previousRoot, "launcher_profiles.json"))))
             Equal(previousId, previousProfile.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
                 .GetProperty("lastVersionId").GetString(), "previous release retains its Fabric version");
         Pass("automatic Fabric profile accepts the official Launcher-filled JAR and rejects foreign files");
+
+        var reopenedRoot = Path.Combine(tempRoot, "launcher-reopened");
+        Directory.CreateDirectory(reopenedRoot);
+        var reopenedProfile = Path.Combine(reopenedRoot, "launcher_profiles.json");
+        File.WriteAllText(reopenedProfile, input);
+        var guardCalls = 0;
+        using var reopenedService = new FabricLauncherService(reopenedRoot,
+            new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) }),
+            profileHash, ensureLauncherClosed: () =>
+            {
+                if (++guardCalls == 2)
+                    throw new InstallerException("LAUNCHER_RUNNING", "fixture: Launcher reopened");
+            });
+        try { await reopenedService.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected reopened Launcher rejection."); }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_RUNNING") { }
+        Equal(2, guardCalls, "Launcher is rechecked immediately before profile write");
+        Equal(input, File.ReadAllText(reopenedProfile), "reopened Launcher leaves profile untouched");
+        True(!Directory.Exists(Path.Combine(reopenedRoot, "versions", versionId)), "Fabric staging is rolled back when Launcher reopens");
+
+        var ambiguousRoot = Path.Combine(tempRoot, "launcher-ambiguous-profiles");
+        Directory.CreateDirectory(ambiguousRoot);
+        File.WriteAllText(Path.Combine(ambiguousRoot, "launcher_profiles.json"), input);
+        File.WriteAllText(Path.Combine(ambiguousRoot, "launcher_profiles_microsoft_store.json"), input);
+        var guardUnexpected = false;
+        using var ambiguousService = new FabricLauncherService(ambiguousRoot,
+            ensureLauncherClosed: () => guardUnexpected = true);
+        try { ambiguousService.CheckReady(); throw new InvalidOperationException("Expected ambiguous Launcher profiles rejection."); }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_UNKNOWN") { }
+        True(!guardUnexpected, "ambiguous profile files stop before process checks or mutation");
+        Pass("Launcher lifecycle rechecks before profile writes and rejects ambiguous profile files");
+    }
+
+    private static async Task VerifyLauncherLifecycleAsync(string tempRoot)
+    {
+        var storeTarget = new MinecraftLauncherTarget(MinecraftLauncherKind.Store,
+            "Microsoft.4297127D64EC6_8wekyb3d8bbwe!Minecraft");
+        var storePlatform = new FakeLauncherPlatform([storeTarget]);
+        var storeController = new MinecraftLauncherController(storePlatform, TimeSpan.FromMilliseconds(100));
+        var discoveredStore = await storeController.CloseBeforeInstallAsync();
+        Equal(storeTarget, discoveredStore, "registered Store AUMID is selected when already closed");
+        True(storePlatform.Events.Count == 0, "already closed Launcher receives no close request");
+        var profileConfigured = false;
+        var storeStart = await storeController.ConfigureAndStartAsync(storeTarget, () =>
+        {
+            storePlatform.Events.Add("profile");
+            profileConfigured = true;
+            return Task.CompletedTask;
+        });
+        Equal(MinecraftLauncherStartStatus.Requested, storeStart.Status, "Store Launcher start request succeeds after profile setup");
+        True(profileConfigured && storePlatform.Events.IndexOf("profile") < storePlatform.Events.IndexOf("start"),
+            "Store Launcher starts only after profile configuration");
+
+        var win32Target = new MinecraftLauncherTarget(MinecraftLauncherKind.Win32, Path.Combine(tempRoot, "MinecraftLauncher.exe"));
+        var win32Platform = new FakeLauncherPlatform([win32Target]);
+        win32Platform.SetRunning(win32Target, allowClose: true);
+        var win32Controller = new MinecraftLauncherController(win32Platform, TimeSpan.FromMilliseconds(100));
+        var selectedWin32 = await win32Controller.CloseBeforeInstallAsync();
+        Equal(win32Target, selectedWin32, "registered Win32 path is selected");
+        win32Platform.Events.Add("install");
+        True(win32Platform.Events.IndexOf("close") < win32Platform.Events.IndexOf("exit") &&
+            win32Platform.Events.IndexOf("exit") < win32Platform.Events.IndexOf("install"),
+            "installation begins only after graceful exit is confirmed");
+
+        var storeProfileRoot = Path.Combine(tempRoot, "store-with-standard-profile");
+        Directory.CreateDirectory(storeProfileRoot);
+        File.WriteAllText(Path.Combine(storeProfileRoot, "launcher_profiles.json"), "{}");
+        using var storeProfileService = new FabricLauncherService(storeProfileRoot, ensureLauncherClosed: static () => { });
+        storeProfileService.CheckProfileReady();
+        Equal(storeTarget, await storeController.CloseBeforeInstallAsync(),
+            "registered Store Launcher may use launcher_profiles.json");
+
+        var timeoutPlatform = new FakeLauncherPlatform([win32Target]);
+        timeoutPlatform.SetRunning(win32Target, allowClose: false);
+        var timeoutController = new MinecraftLauncherController(timeoutPlatform, TimeSpan.FromMilliseconds(30));
+        var installStarted = false;
+        try
+        {
+            await timeoutController.CloseBeforeInstallAsync();
+            installStarted = true;
+            throw new InvalidOperationException("Expected Launcher close timeout.");
+        }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_CLOSE_TIMEOUT") { }
+        True(!installStarted, "Launcher timeout or refusal prevents install callback");
+
+        var bothVariantsPlatform = new FakeLauncherPlatform([storeTarget, win32Target]);
+        try
+        {
+            await new MinecraftLauncherController(bothVariantsPlatform).CloseBeforeInstallAsync();
+            throw new InvalidOperationException("Expected ambiguous Launcher target rejection.");
+        }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_TARGET_AMBIGUOUS") { }
+        bothVariantsPlatform.SetRunning(storeTarget, allowClose: true);
+        Equal(storeTarget, await new MinecraftLauncherController(bothVariantsPlatform).CloseBeforeInstallAsync(),
+            "one active official Launcher resolves registered variants");
+
+        var secondWin32Target = new MinecraftLauncherTarget(MinecraftLauncherKind.Win32,
+            Path.Combine(tempRoot, "other", "MinecraftLauncher.exe"));
+        var ambiguousPlatform = new FakeLauncherPlatform([win32Target, secondWin32Target]);
+        try
+        {
+            await new MinecraftLauncherController(ambiguousPlatform).CloseBeforeInstallAsync();
+            throw new InvalidOperationException("Expected ambiguous Launcher target rejection.");
+        }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_TARGET_AMBIGUOUS") { }
+
+        // Simulates a matching process whose MainModule path cannot be read.
+        var unknownPlatform = new FakeLauncherPlatform([win32Target]) { HasUnknownProcess = true };
+        try
+        {
+            await new MinecraftLauncherController(unknownPlatform).CloseBeforeInstallAsync();
+            throw new InvalidOperationException("Expected unknown process rejection.");
+        }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_IDENTITY_UNKNOWN") { }
+        True(unknownPlatform.Events.Count == 0, "unidentified process with an unavailable path blocks changes without being closed");
+
+        try
+        {
+            await storeController.ConfigureAndStartAsync(storeTarget,
+                () => Task.FromException(new InvalidOperationException("profile failed")));
+            throw new InvalidOperationException("Expected profile setup failure.");
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "profile failed") { }
+        Equal(1, storePlatform.Events.Count(eventName => eventName == "start"),
+            "profile setup failure does not issue another Launcher start request");
+
+        var failedStartPlatform = new FakeLauncherPlatform([win32Target]) { FailStart = true };
+        var failedStart = await new MinecraftLauncherController(failedStartPlatform).ConfigureAndStartAsync(
+            win32Target, static () => Task.CompletedTask);
+        Equal(MinecraftLauncherStartStatus.Failed, failedStart.Status, "start failure is returned separately from install success");
+        True(failedStart.Diagnostic?.StartsWith("LAUNCHER_START_FAILED", StringComparison.Ordinal) == true,
+            "start failure has a diagnostic code");
+
+        var unavailablePlatform = new FakeLauncherPlatform([]);
+        var unavailable = await new MinecraftLauncherController(unavailablePlatform).ConfigureAndStartAsync(
+            null, static () => Task.CompletedTask);
+        Equal(MinecraftLauncherStartStatus.TargetUnavailable, unavailable.Status,
+            "an unregistered target keeps installation successful and requests manual opening");
+        True(unavailablePlatform.Events.Count == 0, "no unverified target is launched");
+        Pass("Store and Win32 Launcher targets close, confirm exit, and report start outcomes using isolated fixtures");
     }
 
     private static async Task VerifyOfficialFabricDownloadAsync(string tempRoot)
@@ -686,7 +1056,7 @@ internal static class Smoke
         Directory.CreateDirectory(launcherRoot);
         var profilesPath = Path.Combine(launcherRoot, "launcher_profiles.json");
         File.WriteAllText(profilesPath, "{\"profiles\":{\"vanilla\":{\"name\":\"Original\"}}}");
-        using var service = new FabricLauncherService(launcherRoot);
+        using var service = new FabricLauncherService(launcherRoot, ensureLauncherClosed: static () => { });
         await service.ConfigureAsync(Path.Combine(tempRoot, "official-fabric-game"));
         using var document = JsonDocument.Parse(File.ReadAllText(profilesPath));
         True(document.RootElement.GetProperty("profiles").TryGetProperty("vanilla", out _), "official Fabric download keeps vanilla profile");
@@ -722,7 +1092,7 @@ internal static class Smoke
             File.Copy(Path.Combine(sourceVersion, versionId + ".jar"), copiedJar);
         }
         var copiedJarHash = File.Exists(copiedJar) ? HashFile(copiedJar) : null;
-        using var service = new FabricLauncherService(launcherRoot);
+        using var service = new FabricLauncherService(launcherRoot, ensureLauncherClosed: static () => { });
         await service.ConfigureAsync(Path.Combine(tempRoot, "current-launcher-copy-game"));
         if (copiedJarHash is not null)
             Equal(copiedJarHash, HashFile(copiedJar), "Launcher-hydrated Fabric JAR survives reconfiguration in a copy");
@@ -733,6 +1103,18 @@ internal static class Smoke
         True(JsonNode.DeepEquals(before, after), "current Launcher settings and other profiles stay unchanged in a copy");
         True(File.ReadAllBytes(sourceFiles[0]).AsSpan().SequenceEqual(original), "actual Launcher profile file stays untouched");
         Pass("current Launcher profile format accepts an isolated MinePack profile in a temporary copy");
+    }
+
+    private static byte[] CreateFabricProfileArchive(string versionId, string json)
+    {
+        using var memory = new MemoryStream();
+        using (var zip = new ZipArchive(memory, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            using (var writer = new StreamWriter(zip.CreateEntry($"{versionId}/{versionId}.json").Open()))
+                writer.Write(json);
+            zip.CreateEntry($"{versionId}/{versionId}.jar");
+        }
+        return memory.ToArray();
     }
 
     private static string CreatePack(string path, string version, IReadOnlyList<TestFile> files,
@@ -792,6 +1174,62 @@ internal static class Smoke
 
     private sealed record TestFile(string Path, byte[] Bytes, string Url = "https://cdn.modrinth.com/data/test/version/test.jar", bool InvalidHash = false);
     private sealed record TestOverride(string Path, byte[] Bytes);
+
+    private sealed class FakeLauncherPlatform(IReadOnlyList<MinecraftLauncherTarget> targets) : IMinecraftLauncherPlatform
+    {
+        private readonly Dictionary<MinecraftLauncherTarget, FakeLauncherProcessState> _running = [];
+        public List<string> Events { get; } = [];
+        public bool HasUnknownProcess { get; set; }
+        public bool FailStart { get; set; }
+
+        public IReadOnlyList<MinecraftLauncherTarget> FindTargets() => targets;
+
+        public IReadOnlyList<IMinecraftLauncherProcess> FindRunningProcesses(MinecraftLauncherTarget target) =>
+            _running.TryGetValue(target, out var state) && !state.HasExited
+                ? [new FakeLauncherProcess(state)]
+                : [];
+
+        public bool HasUnidentifiedLauncherProcess() => HasUnknownProcess;
+
+        public void Start(MinecraftLauncherTarget target)
+        {
+            Events.Add("start");
+            if (FailStart) throw new InvalidOperationException("fixture launch failure");
+        }
+
+        public void SetRunning(MinecraftLauncherTarget target, bool allowClose) =>
+            _running[target] = new FakeLauncherProcessState(Events, allowClose);
+    }
+
+    private sealed class FakeLauncherProcessState(List<string> events, bool allowClose)
+    {
+        public bool HasExited { get; set; }
+        public bool CloseRequested { get; private set; }
+
+        public bool RequestClose()
+        {
+            events.Add("close");
+            CloseRequested = allowClose;
+            return allowClose;
+        }
+
+        public Task WaitForExitAsync(CancellationToken cancellationToken)
+        {
+            events.Add("wait");
+            if (!CloseRequested) return Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            HasExited = true;
+            events.Add("exit");
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeLauncherProcess(FakeLauncherProcessState state) : IMinecraftLauncherProcess
+    {
+        public bool HasExited => state.HasExited;
+        public bool RequestClose() => state.RequestClose();
+        public Task WaitForExitAsync(CancellationToken cancellationToken) => state.WaitForExitAsync(cancellationToken);
+        public void Dispose() { }
+    }
 
     private sealed class DelegateHandler(Func<HttpRequestMessage, HttpResponseMessage> respond) : HttpMessageHandler
     {

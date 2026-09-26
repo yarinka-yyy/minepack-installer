@@ -1,5 +1,30 @@
 # Test pack releases
 
+## 0.10.0 — Vanilla Plus with Mod Menu candidate
+
+Minecraft `26.2`, Fabric Loader `0.19.5`. Preserves all 41 files from `0.9.0` and adds [Mod Menu 20.0.2](https://modrinth.com/mod/modmenu/version/WdLLrOzD) (`mOgUt4GM` / `WdLLrOzD`, `modmenu-20.0.2.jar`) and its required [Text Placeholder API 3.1.0-beta.1+26.2](https://modrinth.com/mod/placeholder-api/version/NDqH16LT) (`eXts2L7r` / `NDqH16LT`, `placeholder-api-3.1.0-beta.1+26.2.jar`). Modrinth metadata explicitly lists Minecraft `26.2` and Fabric for both versions. The existing Fabric API satisfies Mod Menu's other required dependency. Both JARs are downloaded by pinned Modrinth CDN URL and SHA-512; neither is bundled in the `.mrpack`.
+
+The 43-file export contains 34 mods, 8 resource packs, and 1 shader. Packwiz resolved the dependencies and exported the complete archive. A clean temporary install downloaded and SHA-512-verified all files, then passed Repair and Uninstall while preserving user data. Minecraft/Fabric startup and the in-game Mod Menu screen still require game testing. Archive SHA-512: `FDEA02362FB025310E26C3DE14DE18B907574BB412A0ADEC800881ECD6D8F31095D4021691EB0A35DCECB318E042F56360A36EDA79372453F658BC46090327E1`.
+
+## 0.9.0 — map, world selection, UI and movement candidate
+
+Minecraft `26.2`, Fabric Loader `0.19.5`. Preserves every file and setting from `0.8.0` and adds five requested mods plus the required Iceberg library:
+
+| Component | Modrinth project / version | Pinned file |
+| --- | --- | --- |
+| [Xaero's World Map](https://modrinth.com/mod/xaeros-world-map/version/q0Wvp46X) 1.46.1 | `NcUtCpym` / `q0Wvp46X` | `xaeroworldmap-fabric-26.2-1.46.1.jar` |
+| [Advancement Plaques](https://modrinth.com/mod/advancement-plaques/version/EULg1tpY) 1.7.2 | `9NM0dXub` / `EULg1tpY` | `AdvancementPlaques-26.2-fabric-1.7.2.jar` |
+| [Cherished Worlds](https://modrinth.com/mod/cherished-worlds/version/VhoXPFdC) 17.0.0+26.2 | `3azQ6p0W` / `VhoXPFdC` | `cherishedworlds-fabric-17.0.0+26.2.jar` |
+| [Leaf Me Alone](https://modrinth.com/mod/leaf-me-alone/version/RtzEHUwL) 1.2.0 | `ppMUvsIg` / `RtzEHUwL` | `leafmealone-1.2.0.jar` |
+| [InvMove](https://modrinth.com/mod/invmove/version/VFFU6Lfs) 0.9.6 beta | `REfW2AEX` / `VFFU6Lfs` | `InvMove-0.9.6+26.2-Fabric.jar` |
+| [Iceberg](https://modrinth.com/mod/iceberg/version/c69GepxX) 1.4.2.2 | `5faXoLqX` / `c69GepxX` | `Iceberg-26.2-fabric-1.4.2.2.jar` |
+
+The chosen Modrinth versions explicitly include Fabric and Minecraft `26.2`. Their downloaded JARs passed SHA-512 verification. JAR metadata confirms that Advancement Plaques requires Iceberg `>=1.4.2`, InvMove requires the existing Cloth Config, and Xaero's World Map bundles its required XaeroLib `1.7.7` as a nested JAR. Advancement Plaques declares a conflict with Canvas, which is absent; Sodium's old-Iceberg incompatibility is `<1.2.7`, while this pack uses `1.4.2.2`. No new JAR or existing JAR declares a break against another selected version. Leaf Me Alone needs installation on both client and server for multiplayer; the local singleplayer integrated server uses the installed file. InvMove warns that movement in inventory screens may trigger some multiplayer anticheat systems. Its interaction with Inventory Sorting still needs an in-game check.
+
+[First-person Model](https://modrinth.com/mod/first-person-model/version/6sgz2HEq) was **not added**. It requires Not Enough Animations, and the existing Punchy! mod has priority. Although Punchy! previously claimed First-person Model support, [a report of missing legs/body](https://github.com/tr7zw/FirstPersonModel/issues/630) and [an open request to synchronize their animations](https://github.com/tr7zw/FirstPersonModel/issues/656) leave the exact current combination unverified. Fresh Animations in this pack does not include the separate player extension; the concern is primarily Punchy! and the additional animation dependency. Reconsider only after a successful visual test with the exact pinned versions.
+
+Packwiz exported a 41-file `.mrpack` containing 32 mods, 8 resource packs, and 1 shader. A clean temporary installer run downloaded and verified every file, then passed Repair and Uninstall while preserving user data. Minecraft/Fabric startup logs, the five new mods' in-game behavior, Leaf Me Alone on a multiplayer server, and InvMove with Inventory Sorting still require game testing. Archive SHA-512: `FDA99C8A9545A17890643E1BECCE9914176F1D53CB4DF81A762AB60B7B315EC233952181D2D10BE9B5555E74A89561803580D5E5AFFD7993BD16C79F48C9C648`.
+
 ## 0.8.0 — Punchy! first-person animation candidate
 
 Minecraft `26.2`, Fabric Loader `0.19.5`. Preserves all 34 files from the user-tested `0.7.0` pack and adds [Punchy! 2.8a for Fabric 26.2](https://modrinth.com/mod/punchy-fpa/version/QShDZDjS): Modrinth project `8aoMKplv`, version `QShDZDjS`, file `mods/punchy-2.8a-fabric-26.2.jar`. The JAR declares Fabric Loader `>=0.19.3`, Java `>=25`, Minecraft `26.2`, and Fabric API; the pinned pack meets these requirements. No additional external dependency or declared hard break targets an existing mod. The JAR is downloaded from Modrinth CDN with SHA-512 verification, not embedded in the installer.

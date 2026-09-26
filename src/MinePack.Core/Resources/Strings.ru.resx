@@ -6,10 +6,13 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="UiSubtitle" xml:space="preserve"><value>Моды для Minecraft — в один клик</value></data>
   <data name="UiDescription" xml:space="preserve"><value>MinePack скачает моды и компоненты, создаст отдельный профиль в Minecraft Launcher. Ваши миры останутся отдельно.</value></data>
-  <data name="UiRequirements" xml:space="preserve"><value>Нужны официальный Minecraft Launcher и аккаунт Minecraft: Java Edition. Перед установкой закройте Launcher.</value></data>
+  <data name="UiRequirements" xml:space="preserve"><value>Нужны официальный Minecraft Launcher и аккаунт Minecraft: Java Edition.</value></data>
   <data name="UiMinecraftVersion" xml:space="preserve"><value>Для версии 26.2</value></data>
-  <data name="UiBuildInfo" xml:space="preserve"><value>Версия сборки 0.8.0 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
-  <data name="UiPackCounts" xml:space="preserve"><value>26 модов · 8 ресурспаков · 1 шейдер</value></data>
+  <data name="UiBuildInfo" xml:space="preserve"><value>Minecraft 26.2 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
+  <data name="UiPackVersion" xml:space="preserve"><value>Версия сборки {0}</value></data>
+  <data name="UiPackCountsVanillaPlus" xml:space="preserve"><value>34 мода · 8 ресурспаков · 1 шейдер</value></data>
+  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>45 модов · 8 ресурспаков · 1 шейдер</value></data>
+  <data name="UiChoosePack" xml:space="preserve"><value>Выберите сборку для установки</value></data>
   <data name="UiCatalogTitle" xml:space="preserve"><value>Что входит в сборку</value></data>
   <data name="UiOpenOnModrinth" xml:space="preserve"><value>Открыть на Modrinth</value></data>
   <data name="UiInstallLocation" xml:space="preserve"><value>Куда установить</value></data>
@@ -39,6 +42,8 @@
   <data name="CatalogTechnical" xml:space="preserve"><value>Техническая основа</value></data>
   <data name="CatalogResourcePacks" xml:space="preserve"><value>Ресурспаки</value></data>
   <data name="CatalogShader" xml:space="preserve"><value>Шейдер</value></data>
+  <data name="CatalogBuilding" xml:space="preserve"><value>Строительные блоки</value></data>
+  <data name="CatalogWorldgen" xml:space="preserve"><value>Мир и структуры</value></data>
   <data name="OperationWait" xml:space="preserve"><value>Подождите, выполняем выбранное действие.</value></data>
   <data name="OperationInstalling" xml:space="preserve"><value>Устанавливаем сборку</value></data>
   <data name="OperationWorking" xml:space="preserve"><value>Выполняем действие</value></data>
@@ -85,9 +90,13 @@
   <data name="RetryConfigure" xml:space="preserve"><value>Файлы сохранены. Нажмите «Восстановить профиль Launcher» после устранения причины.</value></data>
   <data name="OperationFailedProgress" xml:space="preserve"><value>Операция завершилась с ошибкой</value></data>
   <data name="ConfigureLauncherProgress" xml:space="preserve"><value>Загрузка Fabric и создание отдельного профиля Launcher…</value></data>
+  <data name="ClosingLauncherProgress" xml:space="preserve"><value>Проверка Minecraft Launcher и закрытие, если он открыт…</value></data>
   <data name="PackReady" xml:space="preserve"><value>Сборка готова</value></data>
   <data name="InstallComplete" xml:space="preserve"><value>Установка завершена</value></data>
   <data name="LaunchInstruction" xml:space="preserve"><value>Откройте официальный Minecraft Launcher, выберите профиль MinePack и нажмите «Играть».</value></data>
+  <data name="LauncherStartRequestedStatus" xml:space="preserve"><value>Отправлен запрос на запуск Minecraft Launcher. Выберите профиль MinePack и нажмите «Играть».</value></data>
+  <data name="LauncherStartFailedStatus" xml:space="preserve"><value>Сборка готова, но открыть Minecraft Launcher не удалось. Откройте его вручную и выберите профиль MinePack.</value></data>
+  <data name="LauncherStartUnavailableStatus" xml:space="preserve"><value>Сборка готова. Не удалось найти зарегистрированный официальный Launcher для запуска. Откройте его вручную и выберите профиль MinePack.</value></data>
   <data name="FirstLaunchDownload" xml:space="preserve"><value>При первом запуске Launcher сам загрузит базовые файлы Minecraft.</value></data>
   <data name="GameFolderLabel" xml:space="preserve"><value>Папка игры: {0}</value></data>
   <data name="InstalledFolderNotFound" xml:space="preserve"><value>Установленная папка игры пока не найдена.</value></data>
@@ -168,7 +177,7 @@
   <data name="PinnedBbeMissing" xml:space="preserve"><value>В тестовом релизе отсутствует Better Block Entities.</value></data>
   <data name="PinnedBbeConfigExists" xml:space="preserve"><value>Релиз уже содержит настройки Better Block Entities.</value></data>
   <data name="InstallFilesComplete" xml:space="preserve"><value>Установка файлов завершена</value></data>
-  <data name="PackFilesInstalled" xml:space="preserve"><value>Файлы тестовой сборки установлены.</value></data>
+  <data name="PackFilesInstalled" xml:space="preserve"><value>Файлы сборки установлены.</value></data>
   <data name="InstallCancelled" xml:space="preserve"><value>Установка отменена. Предыдущая активная версия не изменена.</value></data>
   <data name="InstallFailed" xml:space="preserve"><value>Не удалось завершить установку. Откройте журнал диагностики.</value></data>
   <data name="RestoredFile" xml:space="preserve"><value>Восстановлен {0}</value></data>
@@ -196,7 +205,12 @@
   <data name="OfficialLauncherNotFound" xml:space="preserve"><value>Официальный Minecraft Launcher не найден. Установите и один раз откройте его.</value></data>
   <data name="LauncherProfilesMissing" xml:space="preserve"><value>Файл профилей Launcher не найден. Откройте официальный Launcher один раз и закройте его.</value></data>
   <data name="LauncherProfilesAmbiguous" xml:space="preserve"><value>Найдены два варианта профилей Launcher; автоматический выбор невозможен без риска изменить не тот профиль.</value></data>
-  <data name="LauncherRunning" xml:space="preserve"><value>Закройте Minecraft Launcher и повторите настройку. Открытый Launcher может перезаписать профиль.</value></data>
+  <data name="LauncherRunning" xml:space="preserve"><value>Minecraft Launcher запущен. MinePack не менял профиль. Закройте программу и повторите попытку.</value></data>
+  <data name="LauncherCloseTimeout" xml:space="preserve"><value>Minecraft Launcher не закрылся за отведённое время. Установка не началась. Закройте его и повторите попытку.</value></data>
+  <data name="LauncherCloseFailed" xml:space="preserve"><value>Не удалось безопасно отправить Minecraft Launcher запрос на закрытие. Установка не началась.</value></data>
+  <data name="LauncherIdentityUnknown" xml:space="preserve"><value>Возможно, запущен Minecraft Launcher, но подтвердить его официальное происхождение не удалось. MinePack оставил программу открытой и не начал установку.</value></data>
+  <data name="LauncherTargetsAmbiguous" xml:space="preserve"><value>Зарегистрировано несколько официальных установок Minecraft Launcher. MinePack не смог безопасно выбрать одну, поэтому установка не началась.</value></data>
+  <data name="LauncherDiscoveryFailed" xml:space="preserve"><value>Windows не удалось прочитать список зарегистрированных приложений и безопасно проверить Minecraft Launcher.</value></data>
   <data name="FabricArchiveUnexpected" xml:space="preserve"><value>Официальный пакет Fabric имеет неожиданную структуру.</value></data>
   <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>Версии в пакете Fabric не соответствуют тестовому релизу.</value></data>
   <data name="LauncherProfileChanged" xml:space="preserve"><value>Профиль Launcher изменился во время установки. Повторите попытку после закрытия Launcher.</value></data>

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -8,8 +7,8 @@ namespace MinePack.Core;
 
 public sealed class FabricLauncherService : IDisposable
 {
-    private const string ProfileSha512 = "A33455AA111C1EB32E79D22716CDFA499744E0625C7491E12200AE2D188E1E0F5DA45372D8723BDBAEB3BA814F2248165B2EB50366A82C969EB8B542ED9E0280";
-    private const string PreviousProfileSha512 = "E951DB8CFBFCCBFDB95DA6EBDD2E89F4B3C1E5F821F75EA7629EE35DD5782AF2451DCC447F21B2F1A264A3A86407470DEDF56651B593E051C858DFCC2D5845AC";
+    private const string ProfileSha512 = "F5728443FDBBB9307D83D96171FA038D3F66241A2D2D54F0F77F5D807882886255EB6F2DC55D8C3C68AEFD932998E8F7AC54E556974BA65A698FB23E99B405DA";
+    private const string PreviousProfileSha512 = "10DADB629030E7EA791A1538F72671BE27F0E2A3D36D1A3A1E8DA2E19AEA6C9020A1EBE13FE4683FC91C5A425D3CF2BA0063695B0C2182809F13157CAC2D95A6";
     private const string MinecraftClientJarSha512 = "9A2465F82D7706E7FECF4C5D9AB05BF85F818D81C1FF1605B9C0D982B29BABDDBF036A6440AA6D4F0C184110457B637F9D7959453B4FB314489782B82CAACC90";
     private const string PreviousMinecraftClientJarSha512 = "9CEDD89122B11B0E079ECD342BABD034E3A2016F8B60CDC9FD1296A167AE606108819E7440381526704B335A9FC8948BEAB66C436B7C3BA5EF3D068301F7CFE6";
     private const long MinecraftClientJarSize = 39_193_383;
@@ -22,9 +21,11 @@ public sealed class FabricLauncherService : IDisposable
     private readonly string _expectedClientJarSha512;
     private readonly long _expectedClientJarSize;
     private readonly HttpClient _http;
+    private readonly Action _ensureLauncherClosed;
 
     public FabricLauncherService(string? launcherRoot = null, HttpMessageHandler? handler = null, string? expectedSha512 = null,
-        string? expectedClientJarSha512 = null, long? expectedClientJarSize = null, string? minecraftVersion = null)
+        string? expectedClientJarSha512 = null, long? expectedClientJarSize = null, string? minecraftVersion = null,
+        Action? ensureLauncherClosed = null)
     {
         _minecraftVersion = minecraftVersion ?? TestPackRelease.MinecraftVersion;
         if (_minecraftVersion is not ("26.2" or "26.3"))
@@ -37,13 +38,16 @@ public sealed class FabricLauncherService : IDisposable
         _expectedClientJarSha512 = expectedClientJarSha512 ?? (previous ? PreviousMinecraftClientJarSha512 : MinecraftClientJarSha512);
         _expectedClientJarSize = expectedClientJarSize ?? (previous ? PreviousMinecraftClientJarSize : MinecraftClientJarSize);
         _http = new HttpClient(handler ?? new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(45) };
+        _ensureLauncherClosed = ensureLauncherClosed ?? new MinecraftLauncherController().EnsureClosed;
     }
 
     public void CheckReady()
     {
-        _ = FindProfilePath();
-        EnsureLauncherClosed();
+        CheckProfileReady();
+        _ensureLauncherClosed();
     }
+
+    public void CheckProfileReady() => _ = FindProfilePath();
 
     public async Task ConfigureAsync(string gameDirectory, CancellationToken cancellationToken = default)
     {
@@ -59,11 +63,13 @@ public sealed class FabricLauncherService : IDisposable
         if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength is > 1_000_000)
             throw new InstallerException("FABRIC_DOWNLOAD", LocalizedText.Get("PinnedFabricProfileUnavailable"));
         var archive = await response.Content.ReadAsByteArrayAsync(cancellationToken);
-        if (archive.Length > 1_000_000 || !CryptographicOperations.FixedTimeEquals(
-                SHA512.HashData(archive), Convert.FromHexString(_expectedSha512)))
+        if (archive.Length > 1_000_000)
             throw new InstallerException("FABRIC_HASH", LocalizedText.Get("FabricProfileHashInvalid"));
 
         var (versionJson, versionJar) = ReadProfileArchive(archive);
+        var expectedProfileHash = Convert.FromHexString(_expectedSha512);
+        if (!MatchesPinnedProfile(versionJson, expectedProfileHash))
+            throw new InstallerException("FABRIC_HASH", LocalizedText.Get("FabricProfileHashInvalid"));
         var versionsRoot = Path.Combine(_launcherRoot, "versions");
         var versionPath = Path.Combine(versionsRoot, _versionId);
         SafePath.EnsureNoReparsePoints(_launcherRoot, versionPath);
@@ -76,7 +82,7 @@ public sealed class FabricLauncherService : IDisposable
             SafePath.EnsureNoReparsePoints(_launcherRoot, existingJson);
             SafePath.EnsureNoReparsePoints(_launcherRoot, existingJar);
             if (!File.Exists(existingJson) ||
-                !File.ReadAllBytes(existingJson).AsSpan().SequenceEqual(versionJson) ||
+                !MatchesPinnedProfile(File.ReadAllBytes(existingJson), expectedProfileHash) ||
                 !IsExpectedClientJar(existingJar))
                 throw new InstallerException("FABRIC_VERSION_CONFLICT", LocalizedText.Get("FabricVersionConflict"));
         }
@@ -103,6 +109,7 @@ public sealed class FabricLauncherService : IDisposable
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            _ensureLauncherClosed();
             UpdateProfile(profilePath, json => LauncherProfile.BuildFixtureCandidate(json, gameDirectory,
                 _minecraftVersion, TestPackRelease.FabricLoaderVersion));
         }
@@ -128,7 +135,7 @@ public sealed class FabricLauncherService : IDisposable
             !new[] { "launcher_profiles.json", "launcher_profiles_microsoft_store.json" }
                 .Any(name => File.Exists(Path.Combine(_launcherRoot, name)))) return;
         var profilePath = FindProfilePath();
-        EnsureLauncherClosed();
+        _ensureLauncherClosed();
         UpdateProfile(profilePath, json => LauncherProfile.RemoveFixtureCandidate(json, expectedGameDirectory));
     }
 
@@ -144,12 +151,6 @@ public sealed class FabricLauncherService : IDisposable
                 : LocalizedText.Get("LauncherProfilesAmbiguous"));
         SafePath.EnsureNoReparsePoints(_launcherRoot, candidates[0]);
         return candidates[0];
-    }
-
-    private static void EnsureLauncherClosed()
-    {
-        if (Process.GetProcesses().Any(process => process.ProcessName.Contains("MinecraftLauncher", StringComparison.OrdinalIgnoreCase)))
-            throw new InstallerException("LAUNCHER_RUNNING", LocalizedText.Get("LauncherRunning"));
     }
 
     private (byte[] Json, byte[] Jar) ReadProfileArchive(byte[] archive)
@@ -168,6 +169,51 @@ public sealed class FabricLauncherService : IDisposable
             root.GetProperty("inheritsFrom").GetString() != _minecraftVersion)
             throw new InstallerException("FABRIC_ARCHIVE", LocalizedText.Get("FabricArchiveVersionMismatch"));
         return (Encoding.UTF8.GetBytes(json), Array.Empty<byte>());
+    }
+
+    private static byte[] StableProfileHash(byte[] json)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+        if (root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty("time", out var time) || time.ValueKind != JsonValueKind.String ||
+            !root.TryGetProperty("releaseTime", out var releaseTime) || releaseTime.ValueKind != JsonValueKind.String)
+            throw new JsonException("Fabric profile timestamps are missing or invalid.");
+        using var output = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(output))
+            WriteStableJson(root, writer, isRoot: true);
+        return SHA512.HashData(output.ToArray());
+    }
+
+    private static bool MatchesPinnedProfile(byte[] json, byte[] expectedHash)
+    {
+        try { return CryptographicOperations.FixedTimeEquals(StableProfileHash(json), expectedHash); }
+        catch (JsonException) { return false; }
+    }
+
+    private static void WriteStableJson(JsonElement value, Utf8JsonWriter writer, bool isRoot = false)
+    {
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var property in value.EnumerateObject().OrderBy(item => item.Name, StringComparer.Ordinal))
+                {
+                    if (isRoot && property.Name is ("time" or "releaseTime")) continue;
+                    writer.WritePropertyName(property.Name);
+                    WriteStableJson(property.Value, writer);
+                }
+                writer.WriteEndObject();
+                break;
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in value.EnumerateArray()) WriteStableJson(item, writer);
+                writer.WriteEndArray();
+                break;
+            default:
+                value.WriteTo(writer);
+                break;
+        }
     }
 
     private static void UpdateProfile(string path, Func<string, string> change)
