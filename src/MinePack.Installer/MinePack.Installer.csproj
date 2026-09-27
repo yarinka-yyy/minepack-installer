@@ -4,31 +4,32 @@
     <ProjectReference Include="..\MinePack.Core\MinePack.Core.csproj" />
     <Resource Include="Assets\Monocraft.ttf" />
     <Resource Include="Assets\MinePackIcon.ico" />
-    <Content Include="Assets\Monocraft-OFL.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.1.0.mrpack" Link="releases\test-pack\test-pack-0.1.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.2.0.mrpack" Link="releases\test-pack\test-pack-0.2.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.3.0.mrpack" Link="releases\test-pack\test-pack-0.3.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.4.0.mrpack" Link="releases\test-pack\test-pack-0.4.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.5.0.mrpack" Link="releases\test-pack\test-pack-0.5.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.6.0.mrpack" Link="releases\test-pack\test-pack-0.6.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.7.0.mrpack" Link="releases\test-pack\test-pack-0.7.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.8.0.mrpack" Link="releases\test-pack\test-pack-0.8.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.9.0.mrpack" Link="releases\test-pack\test-pack-0.9.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.10.0.mrpack" Link="releases\test-pack\test-pack-0.10.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\test-pack-0.15.0.mrpack" Link="releases\test-pack\test-pack-0.15.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.14.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.14.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.16.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.16.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.17.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.17.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
-    <Content Include="..\..\releases\test-pack\README.md" Link="releases\test-pack\README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" />
+    <Content Include="Assets\Monocraft-OFL.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.1.0.mrpack" Link="releases\test-pack\test-pack-0.1.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.2.0.mrpack" Link="releases\test-pack\test-pack-0.2.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.3.0.mrpack" Link="releases\test-pack\test-pack-0.3.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.4.0.mrpack" Link="releases\test-pack\test-pack-0.4.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.5.0.mrpack" Link="releases\test-pack\test-pack-0.5.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.6.0.mrpack" Link="releases\test-pack\test-pack-0.6.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.7.0.mrpack" Link="releases\test-pack\test-pack-0.7.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.8.0.mrpack" Link="releases\test-pack\test-pack-0.8.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.9.0.mrpack" Link="releases\test-pack\test-pack-0.9.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.10.0.mrpack" Link="releases\test-pack\test-pack-0.10.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.15.0.mrpack" Link="releases\test-pack\test-pack-0.15.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.14.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.14.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.16.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.16.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.17.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.17.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\README.md" Link="releases\test-pack\README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <ApplicationIcon>Assets\MinePackIcon.ico</ApplicationIcon>
     <TargetFramework>net10.0-windows</TargetFramework>
+    <Version>0.18.0</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>

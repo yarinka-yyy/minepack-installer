@@ -6,13 +6,13 @@ MinePack installs a pinned modpack for **official Minecraft: Java Edition** thro
 
 For Windows · Fabric · Minecraft 26.2 · Official Minecraft Launcher
 
-Choose one build: **Vanilla Plus 0.15.0** has 38 mods, 8 resource packs, and 1 shader. **Vanilla 2 Plus 0.17.0** has 53 mods, 10 resource packs, and 1 shader. It includes Guard Villagers, It Takes a Pillage Continuation, Voxy WorldGen, and Freshly Modded animations. Guard Villagers works without Hero of the Village, and Voxy WorldGen starts with a 512-chunk generation radius. The installer downloads pinned files, checks their hashes, and uses one MinePack profile with a separate game folder for the active build.
+Choose one build: **Vanilla Plus 0.15.0** has 38 mods, 8 resource packs, and 1 shader. **Frontier 0.17.0** has 53 mods, 10 resource packs, and 1 shader. It includes Guard Villagers, It Takes a Pillage Continuation, Voxy WorldGen, and Freshly Modded animations. Guard Villagers works without Hero of the Village, and Voxy WorldGen starts with a 512-chunk generation radius. The installer downloads pinned files, checks their hashes, and uses one MinePack profile with a separate game folder for the active build. Installer version 0.18.0 is separate from the pack versions.
 
 ## Install
 
 1. A public installer download has not been confirmed yet, so there is no download link here.
-2. When a complete installer package is published, download and extract it. Keep all files from the package together.
-3. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Vanilla 2 Plus**, and click **Install pack**. MinePack closes an open official Launcher, installs the selected build and updates the MinePack profile, then sends a request to open the Launcher.
+2. For local testing, use `artifacts/MinePack-Installer-0.18.0-win-x64.zip`. Extract the complete ZIP folder before running the installer; keep its files together. This test ZIP is not a public release.
+3. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Frontier**, and click **Install pack**. MinePack closes an open official Launcher, installs the selected build and updates the MinePack profile, then sends a request to open the Launcher.
 4. Choose the **MinePack** profile and click **Play**. On the first launch, the Launcher downloads the Minecraft base files.
 
 ## Game files and worlds
@@ -113,7 +113,7 @@ The vanilla `.minecraft` folder, its worlds, and other Launcher profiles are lef
 </details>
 
 <details>
-<summary>Vanilla 2 Plus additions — building mods (5)</summary>
+<summary>Frontier additions — building mods (5)</summary>
 
 These are added to all Vanilla Plus files above.
 
@@ -128,7 +128,7 @@ For an external multiplayer server, these block mods must also be installed on t
 </details>
 
 <details>
-<summary>Vanilla 2 Plus additions — world &amp; structures (4)</summary>
+<summary>Frontier additions — world &amp; structures (4)</summary>
 
 These are added to all Vanilla Plus files and the five Macaw's mods above.
 
@@ -142,20 +142,28 @@ The required libraries [Library Ferret](https://modrinth.com/mod/DOB2l4oJ) and [
 </details>
 
 <details>
-<summary>Vanilla 2 Plus addition — villagers (1)</summary>
+<summary>Frontier addition — villagers (1)</summary>
 
 - [Guard Villagers (Fabric/Quilt)](https://modrinth.com/mod/59rkB3YY) — village guards
 
 Smooth Swapping and Subtle Effects are included in both builds, with Fzzy Config and Fabric Language Kotlin for Subtle Effects. Smooth Swapping is being retested after it did not work in an earlier build; Mod Menu provides its settings. Multiplayer servers need Guard Villagers installed for its gameplay.
 
-Vanilla 2 Plus also enables [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) for Guard Villagers models and [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) for the detailed movements. These are client-side resource packs; their appearance still needs an in-game check.
+Frontier also enables [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) for Guard Villagers models and [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) for the detailed movements. These are client-side resource packs; their appearance still needs an in-game check.
 
 </details>
 
-## Build from source
+## Build from source and local package
 
-On Windows with the .NET 10 SDK, publish the installer with:
+The installer application is version 0.18.0. The pinned pack versions remain Vanilla Plus 0.15.0 and Frontier 0.17.0. On Windows with the .NET 10 SDK, publish the ordinary build with:
 
 ```powershell
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.15.0
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.18.0
 ```
+
+To publish the single-file candidate (the `releases/` archives and font license remain alongside the EXE):
+
+```powershell
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -o artifacts/publish-0.18.0-singlefile
+```
+
+The local QA ZIP is `artifacts/MinePack-Installer-0.18.0-win-x64.zip`. Extract the whole ZIP before starting `MinePack.Installer.exe`; do not move the EXE away from its `releases/` and `Assets/` folders.

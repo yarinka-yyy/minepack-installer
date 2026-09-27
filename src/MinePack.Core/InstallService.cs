@@ -70,15 +70,20 @@ public sealed class InstallService : IDisposable
             if (Directory.Exists(instancePath))
             {
                 SafePath.EnsureNoReparsePoints(instancesRoot, instancePath);
-                ValidateMatchesRelease(InstallationManifest.Load(instancePath), pack);
-                var restored = await RepairAsync(instancePath, packPath, expectedPackSha512, progress, cancellationToken);
-                if (!restored.Success) return restored;
-                var existingRelativePath = Path.GetRelativePath(root, instancePath).Replace(Path.DirectorySeparatorChar, '/');
-                cancellationToken.ThrowIfCancellationRequested();
-                WriteActive(root, existingRelativePath);
-                try { Log("install_reactivated", new { instancePath }); }
-                catch { }
-                return restored;
+                if (File.Exists(Path.Combine(instancePath, InstallationManifest.FileName)))
+                {
+                    ValidateMatchesRelease(InstallationManifest.Load(instancePath), pack);
+                    var restored = await RepairAsync(instancePath, packPath, expectedPackSha512, progress, cancellationToken);
+                    if (!restored.Success) return restored;
+                    var existingRelativePath = Path.GetRelativePath(root, instancePath).Replace(Path.DirectorySeparatorChar, '/');
+                    cancellationToken.ThrowIfCancellationRequested();
+                    WriteActive(root, existingRelativePath);
+                    try { Log("install_reactivated", new { instancePath }); }
+                    catch { }
+                    return restored;
+                }
+                instanceName += "-reinstall-" + Guid.NewGuid().ToString("N");
+                instancePath = SafePath.Resolve(instancesRoot, instanceName);
             }
 
             stagingRoot = Path.Combine(root, "staging", instanceName + "-" + Guid.NewGuid().ToString("N"));

@@ -282,6 +282,7 @@ internal static class Smoke
             Equal("Technical Foundation — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Vanilla 2 Plus dependencies");
             Equal("Resource Packs — 10", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Vanilla 2 Plus resource packs");
             Equal("Pack version 0.17.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
+            Equal("Installer version 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "English installer version");
             Equal("53 mods · 10 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
             Equal("38 mods · 8 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
             Equal("Performance & Render Distance — 8|Graphics & Animations — 9|Tools & Quality of Life — 10|Sound — 2|Technical Foundation — 9|Resource Packs — 8|Shader — 1",
@@ -299,6 +300,7 @@ internal static class Smoke
             Equal("Техническая основа — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Vanilla 2 Plus dependencies");
             Equal("Ресурспаки — 10", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Vanilla 2 Plus resource packs");
             Equal("Версия сборки 0.17.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
+            Equal("Версия установщика 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Russian installer version");
             Equal("53 мода · 10 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
             Equal("38 модов · 8 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
             Equal("Производительность и дальность — 8|Графика и анимации — 9|Инструменты и удобство — 10|Звук — 2|Техническая основа — 9|Ресурспаки — 8|Шейдер — 1",
@@ -460,6 +462,19 @@ internal static class Smoke
              File.Exists(screenshotPath) && File.Exists(unknownPath), "uninstall preserves worlds, screenshots, and unknown files");
         True(installer.GetActiveInstancePath(installRoot) is null, "uninstall clears its active marker");
         Pass("uninstall removes only managed files and preserves user data");
+
+        failDownloads = false;
+        currentDownloadBytes = packageBytes;
+        var reinstall = await installer.InstallAsync(packPath, packHash, installRoot);
+        True(reinstall.Success, "same release reinstalls after uninstall preserves user data without a manifest");
+        var reinstalledInstance = reinstall.GameDirectory!;
+        True(!reinstalledInstance.Equals(instance, StringComparison.OrdinalIgnoreCase) &&
+             File.Exists(worldPath) && File.Exists(screenshotPath) && File.Exists(unknownPath),
+            "reinstall leaves the uninstalled instance and its user data untouched");
+        True(File.Exists(Path.Combine(reinstalledInstance, InstallationManifest.FileName)),
+            "reinstall writes a new local manifest");
+        Equal(reinstalledInstance, installer.GetActiveInstancePath(installRoot), "reinstalled instance becomes active");
+        Pass("reinstall after uninstall uses a fresh instance without losing user data");
 
         var markerRoot = Path.Combine(tempRoot, "marker-install-root");
         Directory.CreateDirectory(markerRoot);

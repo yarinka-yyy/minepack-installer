@@ -10,6 +10,7 @@
   <data name="UiMinecraftVersion" xml:space="preserve"><value>Для версии 26.2</value></data>
   <data name="UiBuildInfo" xml:space="preserve"><value>Minecraft 26.2 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
   <data name="UiPackVersion" xml:space="preserve"><value>Версия сборки {0}</value></data>
+  <data name="UiInstallerVersion" xml:space="preserve"><value>Версия установщика {0}</value></data>
   <data name="UiPackCountsVanillaPlus" xml:space="preserve"><value>38 модов · 8 ресурспаков · 1 шейдер</value></data>
   <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>53 мода · 10 ресурспаков · 1 шейдер</value></data>
   <data name="UiChoosePack" xml:space="preserve"><value>Выберите сборку для установки</value></data>

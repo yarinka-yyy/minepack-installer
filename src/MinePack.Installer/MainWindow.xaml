@@ -197,6 +197,54 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="CatalogOuterExpander" TargetType="Expander" BasedOn="{StaticResource CatalogExpander}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <ToggleButton x:Name="HeaderToggle" Content="{TemplateBinding Header}"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Background="#4A3826" Foreground="{StaticResource Ink}"
+                                          BorderBrush="#1B150F" BorderThickness="2"
+                                          MinHeight="{TemplateBinding MinHeight}"
+                                          FontSize="{TemplateBinding FontSize}" Cursor="Hand">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="HeaderSurface" Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}">
+                                            <StackPanel Orientation="Horizontal" Margin="10,5">
+                                                <ContentPresenter VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                                                <TextBlock x:Name="Sign" Text="+" Width="26" Margin="8,0,0,0"
+                                                           FontSize="{TemplateBinding FontSize}" FontWeight="Bold"
+                                                           Foreground="#9AE56B" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Sign" Property="Text" Value="−"/>
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="HeaderSurface" Property="Background" Value="#5C472F"/>
+                                            </Trigger>
+                                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                                <Setter TargetName="HeaderSurface" Property="BorderBrush" Value="#FCE48B"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ExpandSite" ContentSource="Content" Visibility="Collapsed"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="ProgressStyle" TargetType="ProgressBar">
             <Setter Property="Template">
                 <Setter.Value>
@@ -221,7 +269,16 @@
             <StackPanel Margin="24,28,24,28" MaxWidth="800">
                 <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12" Padding="20,16">
                     <StackPanel>
-                        <TextBlock Text="MINEPACK" FontSize="34" FontWeight="Bold" Foreground="#B5F18B"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="MINEPACK" FontSize="34" FontWeight="Bold" Foreground="#B5F18B"/>
+                            <TextBlock Grid.Column="1" Text="{loc:Localized Key=UiMinecraftVersion}"
+                                       FontSize="21" FontWeight="Bold" Foreground="#C8F5A8"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
                         <TextBlock Text="{loc:Localized Key=UiSubtitle}" FontSize="22"
                                    FontWeight="Bold" Margin="0,5,0,7"/>
                         <TextBlock Text="{loc:Localized Key=UiDescription}"
@@ -234,36 +291,31 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12" Padding="16,11">
-                    <DockPanel>
-                        <TextBlock Text="{loc:Localized Key=UiMinecraftVersion}" FontSize="21" FontWeight="Bold"
-                                   Foreground="#C8F5A8" DockPanel.Dock="Left"/>
-                        <StackPanel HorizontalAlignment="Right">
-                            <TextBlock x:Name="PackVersionText" FontSize="14" HorizontalAlignment="Right"
-                                       Foreground="{StaticResource SoftInk}"/>
-                            <TextBlock x:Name="PackCountsText" FontSize="15" HorizontalAlignment="Right"
-                                       Foreground="{StaticResource SoftInk}"/>
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
-
                 <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12" Padding="16,12">
                     <StackPanel>
-                        <TextBlock Text="{loc:Localized Key=UiChoosePack}" FontSize="20" FontWeight="Bold"
-                                   Margin="0,0,0,9"/>
+                        <Grid Margin="0,0,0,9">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{loc:Localized Key=UiChoosePack}" FontSize="20" FontWeight="Bold"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock x:Name="PackCountsText" Grid.Column="1" FontSize="15"
+                                       Foreground="{StaticResource SoftInk}" HorizontalAlignment="Right"
+                                       TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </Grid>
                         <UniformGrid Columns="2" Rows="1">
                             <RadioButton x:Name="VanillaPlusOption" Content="Vanilla Plus" GroupName="PackChoice"
                                          IsChecked="True" Style="{StaticResource PackChoice}" Margin="0,0,5,0"/>
-                            <RadioButton x:Name="Vanilla2PlusOption" Content="Vanilla 2 Plus" GroupName="PackChoice"
+                            <RadioButton x:Name="Vanilla2PlusOption" Content="Frontier" GroupName="PackChoice"
                                          Style="{StaticResource PackChoice}" Margin="5,0,0,0"/>
                         </UniformGrid>
                     </StackPanel>
                 </Border>
 
                 <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12">
-                    <StackPanel>
-                        <TextBlock Text="{loc:Localized Key=UiCatalogTitle}" FontSize="22" FontWeight="Bold"
-                                   Margin="0,0,0,9"/>
+                    <Expander Header="{loc:Localized Key=UiCatalogTitle}" Style="{StaticResource CatalogOuterExpander}"
+                              FontSize="22" MinHeight="50" IsExpanded="False">
                         <ItemsControl x:Name="CatalogList">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -292,7 +344,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                    </StackPanel>
+                    </Expander>
                 </Border>
 
                 <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12" Padding="16,12">
@@ -358,6 +410,10 @@
                         <StackPanel Margin="8,9,8,9">
                             <TextBlock Text="{loc:Localized Key=UiBuildInfo}"
                                        Style="{StaticResource MutedText}" FontSize="15" Margin="0,0,0,10"/>
+                            <TextBlock x:Name="PackVersionText" Style="{StaticResource MutedText}"
+                                       FontSize="15" Margin="0,0,0,6"/>
+                            <TextBlock x:Name="InstallerVersionText" Style="{StaticResource MutedText}"
+                                       FontSize="15" Margin="0,0,0,10"/>
                             <TextBlock x:Name="DiagnosticText" Style="{StaticResource MutedText}"
                                        FontSize="14" Margin="0,0,0,10"/>
                             <StackPanel Orientation="Horizontal">

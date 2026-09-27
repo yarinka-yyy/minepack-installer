@@ -23,6 +23,8 @@ public partial class MainWindow : Window
         _launcher = new FabricLauncherService(ensureLauncherClosed: _launcherController.EnsureClosed);
         VanillaPlusOption.Checked += PackChoice_Changed;
         Vanilla2PlusOption.Checked += PackChoice_Changed;
+        var installerVersion = typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
+        InstallerVersionText.Text = LocalizedText.Get("UiInstallerVersion", installerVersion);
         UpdatePackSelection();
         InstallRootBox.Text = InstallService.DefaultInstallRoot;
     }
