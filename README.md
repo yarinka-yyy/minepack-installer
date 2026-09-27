@@ -1,24 +1,24 @@
 # MinePack Installer
 
-English · [Русский](README.ru.md)
+English · [Русский](README.ru.md) · [简体中文](README.zh-CN.md)
 
 MinePack helps you install a curated collection of mods for **official Minecraft: Java Edition** without setting up each mod by hand. It downloads the selected files, checks them, and puts the game in a separate MinePack folder.
 
-MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. To play, you need the official Minecraft Launcher and an account with access to Java Edition. The packs require Fabric; MinePack prepares it during installation, so you do not need to install Fabric separately.
+MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. To play, you need the official Minecraft Launcher and an account with access to Java Edition.
 
 ## Choose a pack
 
-**Vanilla Plus** includes 37 mods, 8 resource packs, and 1 shader. It focuses on performance and render distance, graphics and animations, useful tools, and sound.
+**Vanilla Plus** includes 37 mods, 8 resource packs, and 1 shader. Mobs and villagers move more expressively, while the shader and visual additions change lighting, water, plants, and particles. Voxy displays terrain you have already explored far beyond the usual render distance; performance mods help keep the game smooth. A world map, inventory sorting, item hints, and richer sound make everyday play more convenient.
 
-**Frontier** includes everything in Vanilla Plus, plus building options, village guards, and new structures. It has 52 mods, 10 resource packs, and 1 shader.
+**Frontier** includes everything in Vanilla Plus: 52 mods, 10 resource packs, and 1 shader in total. Five building mods add windows, fences and walls, bridges, doors, and more stair designs. In unexplored areas you can find improved villages, ruins, towers, Nether buildings, and pillager camps and fortresses; MVS alone advertises [over 130 structure designs](https://modrinth.com/mod/moogs-voyager-structures). Villages also gain sword- and crossbow-wielding guards who defend their residents from monsters.
 
 ## Install
 
-A public download link is not available yet. If you have received the MinePack ZIP, follow these steps:
-
-1. Extract the entire ZIP into a folder. Keep the extracted files together.
+1. Download [MinePack-Installer-1.0.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.0/MinePack-Installer-1.0.0-win-x64.zip) from the first release and extract the entire ZIP into a folder. Keep the extracted files together.
 2. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Frontier**, then click **Install pack**. MinePack prepares the selected pack and updates its Launcher profile. It may close a running official Launcher during setup, then tries to open it when installation is complete.
 3. In the official Minecraft Launcher, select the **MinePack** profile and click **Play**. On the first launch, the Launcher may download Minecraft's base files. If it did not open automatically, open it yourself and select MinePack.
+
+The EXE is not digitally signed yet, so Windows may show a SmartScreen warning. Download the ZIP only from the release page linked above.
 
 ## Game folders and worlds
 
@@ -131,7 +131,7 @@ For an external multiplayer server, these block mods must also be installed on t
 </details>
 
 <details>
-<summary>Frontier additions — world &amp; structures (4)</summary>
+<summary>Frontier additions — world &amp; structures (5)</summary>
 
 These are added to all Vanilla Plus files and the five Macaw's mods above.
 
@@ -139,8 +139,9 @@ These are added to all Vanilla Plus files and the five Macaw's mods above.
 - [MNS — Moog's Nether Structures](https://modrinth.com/mod/nGUXvjTa)
 - [MVS — Moog's Voyager Structures](https://modrinth.com/mod/OQAgZMH1)
 - [Structory](https://modrinth.com/datapack/aKCwCJlY) (Fabric mod version)
+- [It Takes a Pillage Continuation](https://modrinth.com/mod/QOJOg1gE)
 
-The required libraries [Library Ferret](https://modrinth.com/mod/DOB2l4oJ) and [Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy) are included. New structures appear in unexplored chunks. External servers need these world generation mods and libraries installed; singleplayer uses the integrated server.
+The pack also adds [Voxy WorldGen](https://modrinth.com/mod/xT0lnNE9) and the required libraries [Library Ferret](https://modrinth.com/mod/DOB2l4oJ), [Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy), and [Resourceful Lib](https://modrinth.com/mod/G1hIVOrD). New structures appear in unexplored chunks. External servers need these world generation mods and libraries installed; singleplayer uses the integrated server.
 
 </details>
 
@@ -154,3 +155,7 @@ Subtle Effects is included in both builds, with Fzzy Config and Fabric Language 
 Frontier also enables [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) for Guard Villagers models and [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) for the detailed movements. These are client-side resource packs; their appearance still needs an in-game check.
 
 </details>
+
+## License
+
+MinePack's original source code and documentation are available under [0BSD](LICENSE): you may use, modify, and distribute them without attribution. Mods, resource packs, the shader, the font, and Minecraft belong to their respective owners; 0BSD does not change their terms.
