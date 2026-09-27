@@ -264,7 +264,7 @@
 
     <Grid Background="{StaticResource Dirt}">
         <Border Height="64" Background="{StaticResource GrassEdge}" VerticalAlignment="Top"/>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+        <ScrollViewer x:Name="MainContentScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       PanningMode="VerticalOnly" Margin="0">
             <StackPanel Margin="24,28,24,28" MaxWidth="800">
                 <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12" Padding="20,16">
@@ -427,5 +427,26 @@
                 </Border>
             </StackPanel>
         </ScrollViewer>
+        <Grid x:Name="UninstallConfirmOverlay" Panel.ZIndex="100" Background="#B8000000"
+              Visibility="Collapsed" Focusable="True" FocusManager.IsFocusScope="True"
+              KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle"
+              PreviewKeyDown="UninstallConfirmOverlay_PreviewKeyDown">
+            <Border Style="{StaticResource WoodPanel}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Margin="22" Padding="22" MaxWidth="570">
+                <StackPanel>
+                    <TextBlock Text="{loc:Localized Key=UiUninstallConfirmTitle}" FontSize="24"
+                               FontWeight="Bold" Margin="0,0,0,12"/>
+                    <TextBlock Text="{loc:Localized Key=UiUninstallConfirmMessage}" FontSize="18"
+                               LineHeight="26" Margin="0,0,0,20"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button x:Name="UninstallCancelButton" Content="{loc:Localized Key=UiCancel}"
+                                Style="{StaticResource ActionButton}" Margin="0,0,10,0"
+                                Click="UninstallCancel_Click"/>
+                        <Button x:Name="UninstallConfirmButton" Content="{loc:Localized Key=UiUninstall}"
+                                Style="{StaticResource ActionButton}" Click="UninstallConfirm_Click"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

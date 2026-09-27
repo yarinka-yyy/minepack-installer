@@ -2,7 +2,9 @@ using System.Diagnostics;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Navigation;
+using System.Windows.Threading;
 using MinePack.Core;
 using Microsoft.Win32;
 
@@ -14,6 +16,8 @@ public partial class MainWindow : Window
     private readonly MinecraftLauncherController _launcherController;
     private readonly FabricLauncherService _launcher;
     private CancellationTokenSource? _operationCancellation;
+    private IInputElement? _uninstallReturnFocus;
+    private bool _operationCanBeCancelled = true;
     private string? _gameDirectory;
 
     public MainWindow()
@@ -69,13 +73,36 @@ public partial class MainWindow : Window
             await RunOperationAsync(Operation.ImportWorlds, picker.FolderName);
     }
 
-    private async void Uninstall_Click(object sender, RoutedEventArgs e)
+    private void Uninstall_Click(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this,
-                LocalizedText.Get("UiUninstallConfirmMessage"),
-                LocalizedText.Get("UiUninstallConfirmTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
-            return;
+        _uninstallReturnFocus = UninstallButton;
+        MainContentScrollViewer.IsEnabled = false;
+        UninstallConfirmOverlay.Visibility = Visibility.Visible;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => UninstallCancelButton.Focus()));
+    }
+
+    private void UninstallConfirmOverlay_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape) return;
+        e.Handled = true;
+        CloseUninstallConfirmation();
+    }
+
+    private void UninstallCancel_Click(object sender, RoutedEventArgs e) => CloseUninstallConfirmation();
+
+    private async void UninstallConfirm_Click(object sender, RoutedEventArgs e)
+    {
+        CloseUninstallConfirmation();
         await RunOperationAsync(Operation.Uninstall);
+    }
+
+    private void CloseUninstallConfirmation()
+    {
+        UninstallConfirmOverlay.Visibility = Visibility.Collapsed;
+        MainContentScrollViewer.IsEnabled = true;
+        var returnFocus = _uninstallReturnFocus ?? UninstallButton;
+        _uninstallReturnFocus = null;
+        Keyboard.Focus(returnFocus);
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)
@@ -93,6 +120,7 @@ public partial class MainWindow : Window
         if (_operationCancellation is not null) return;
         var cancellation = new CancellationTokenSource();
         _operationCancellation = cancellation;
+        _operationCanBeCancelled = operation != Operation.Uninstall;
         SetBusy(true);
         var filesInstalled = false;
         var filesRemoved = false;
@@ -120,10 +148,13 @@ public partial class MainWindow : Window
 
             if (operation == Operation.ImportWorlds)
             {
-                var instance = _installer.GetActiveInstancePath(root)
-                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("InstallBeforeImport"));
                 var worldProgress = new Progress<string>(message => ProgressLabel.Text = message);
-                var imported = await WorldImportService.ImportAsync(sourceWorlds!, instance, worldProgress, cancellation.Token);
+                var imported = await Task.Run(async () =>
+                {
+                    var instance = _installer.GetActiveInstancePath(root)
+                        ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("InstallBeforeImport"));
+                    return await WorldImportService.ImportAsync(sourceWorlds!, instance, worldProgress, cancellation.Token);
+                }, cancellation.Token);
                 StateHeading.Text = LocalizedText.Get("WorldImportComplete");
                 StatusBox.Text = LocalizedText.Get("WorldImportSummary", imported.Imported, imported.Skipped);
                 InstructionsBox.Text = LocalizedText.Get("WorldImportSafety");
@@ -155,7 +186,7 @@ public partial class MainWindow : Window
 
             if (operation == Operation.ConfigureLauncher)
             {
-                _gameDirectory = _installer.GetActiveInstancePath(root)
+                _gameDirectory = await Task.Run(() => _installer.GetActiveInstancePath(root), cancellation.Token)
                     ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("InstallBeforeLauncherRepair"));
                 filesInstalled = true;
                 await ConfigureLauncherAsync(_gameDirectory, cancellation.Token);
@@ -165,58 +196,55 @@ public partial class MainWindow : Window
             InstallResult result;
             if (operation == Operation.Install)
             {
-                _launcher.CheckProfileReady();
+                await Task.Run(_launcher.CheckProfileReady, cancellation.Token);
                 ProgressLabel.Text = LocalizedText.Get("ClosingLauncherProgress");
                 launcherTarget = await Task.Run(() => _launcherController.CloseBeforeInstallAsync(cancellation.Token), cancellation.Token);
                 await Task.Run(_launcher.CheckReady, cancellation.Token);
-                var active = _installer.GetActiveInstancePath(root);
-                var current = active is null ? null : InstallationManifest.Load(active);
+                var (active, current) = await Task.Run(() =>
+                {
+                    var instance = _installer.GetActiveInstancePath(root);
+                    return (instance, instance is null ? null : InstallationManifest.Load(instance));
+                }, cancellation.Token);
                 result = current?.PackVersion == selectedPack.Version &&
                          current.PackArchiveSha512.Equals(selectedPack.Hash, StringComparison.OrdinalIgnoreCase)
                     ? await Task.Run(() => _installer.RepairAsync(active!, selectedPack.Path, selectedPack.Hash, progress, cancellation.Token), cancellation.Token)
                     : await Task.Run(() => _installer.InstallAsync(selectedPack.Path, selectedPack.Hash, root, progress, cancellation.Token), cancellation.Token);
             }
-            else
+            else if (operation == Operation.Uninstall)
             {
-                var instance = _installer.GetActiveInstancePath(root);
-                if (instance is null)
+                var uninstall = await Task.Run(async () =>
                 {
-                    if (operation != Operation.Uninstall)
-                        throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("PackNotFoundInFolder"));
-                    _launcher.RemoveOwnProfile();
+                    var instance = _installer.GetActiveInstancePath(root);
+                    if (instance is null)
+                    {
+                        _launcher.RemoveOwnProfile();
+                        return (Instance: (string?)null, Result: (InstallResult?)null);
+                    }
+                    var installedVersion = InstallationManifest.Load(instance).PackVersion;
+                    var (packPath, packHash) = PinnedArchive(installedVersion);
+                    _launcher.RemoveOwnProfile(instance);
+                    return (Instance: instance, Result: (InstallResult?)await _installer.UninstallAsync(instance, packPath, packHash));
+                }, cancellation.Token);
+                if (uninstall.Result is null)
+                {
                     StateHeading.Text = LocalizedText.Get("ProfileRemoved");
                     ProgressLabel.Text = LocalizedText.Get("OperationComplete");
                     StatusBox.Text = LocalizedText.Get("NoActivePackProfileRemoved");
                     InstructionsBox.Text = LocalizedText.Get("OtherProfilesUnchanged");
                     return;
                 }
-                var installedVersion = InstallationManifest.Load(instance).PackVersion;
-                var (installedPackPath, installedPackHash) = installedVersion switch
+                result = uninstall.Result;
+            }
+            else
+            {
+                var (instance, manifest) = await Task.Run(() =>
                 {
-                    TestPackRelease.PackVersion => (VanillaPlusPackPath, TestPackRelease.ArtifactSha512),
-                    Vanilla2PlusRelease.PackVersion => (Vanilla2PlusPackPath, Vanilla2PlusRelease.ArtifactSha512),
-                    "0.16.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.GuardArtifactFileName), Vanilla2PlusRelease.GuardArtifactSha512),
-                    "0.14.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PriorArtifactFileName), Vanilla2PlusRelease.PriorArtifactSha512),
-                    "0.13.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PreviousArtifactFileName), Vanilla2PlusRelease.PreviousArtifactSha512),
-                    "0.12.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.LegacyArtifactFileName), Vanilla2PlusRelease.LegacyArtifactSha512),
-                    "0.11.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.OriginalArtifactFileName), Vanilla2PlusRelease.OriginalArtifactSha512),
-                    "0.10.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PriorArtifactFileName), TestPackRelease.PriorArtifactSha512),
-                    "0.9.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.MapArtifactFileName), TestPackRelease.MapArtifactSha512),
-                    "0.8.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.AnimationArtifactFileName), TestPackRelease.AnimationArtifactSha512),
-                    "0.7.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.GraphicsArtifactFileName), TestPackRelease.GraphicsArtifactSha512),
-                    "0.6.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.InventoryArtifactFileName), TestPackRelease.InventoryArtifactSha512),
-                    "0.5.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VisualArtifactFileName), TestPackRelease.VisualArtifactSha512),
-                    "0.4.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.C2meArtifactFileName), TestPackRelease.C2meArtifactSha512),
-                    "0.3.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VoxyArtifactFileName), TestPackRelease.VoxyArtifactSha512),
-                    "0.2.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PreviousArtifactFileName), TestPackRelease.PreviousArtifactSha512),
-                    "0.1.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LegacyArtifactFileName), TestPackRelease.LegacyArtifactSha512),
-                    _ => throw new InstallerException("RELEASE_UNKNOWN", LocalizedText.Get("PinnedArchiveUnavailable"))
-                };
-                if (operation == Operation.Uninstall)
-                    _launcher.RemoveOwnProfile(instance);
-                result = operation == Operation.Repair
-                    ? await Task.Run(() => _installer.RepairAsync(instance, installedPackPath, installedPackHash, progress, cancellation.Token), cancellation.Token)
-                    : await Task.Run(() => _installer.UninstallAsync(instance, installedPackPath, installedPackHash), cancellation.Token);
+                    var active = _installer.GetActiveInstancePath(root)
+                        ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("PackNotFoundInFolder"));
+                    return (active, InstallationManifest.Load(active));
+                }, cancellation.Token);
+                var (installedPackPath, installedPackHash) = PinnedArchive(manifest.PackVersion);
+                result = await Task.Run(() => _installer.RepairAsync(instance, installedPackPath, installedPackHash, progress, cancellation.Token), cancellation.Token);
             }
 
             if (result.Success)
@@ -322,6 +350,7 @@ public partial class MainWindow : Window
         {
             cancellation.Dispose();
             _operationCancellation = null;
+            _operationCanBeCancelled = true;
             SetBusy(false);
         }
     }
@@ -329,15 +358,18 @@ public partial class MainWindow : Window
     private async Task ConfigureLauncherAsync(string gameDirectory, CancellationToken cancellationToken)
     {
         ProgressLabel.Text = LocalizedText.Get("ConfigureLauncherProgress");
-        var manifest = InstallationManifest.Load(gameDirectory);
-        if (manifest.MinecraftVersion == TestPackRelease.MinecraftVersion)
-            await Task.Run(() => _launcher.ConfigureAsync(gameDirectory, cancellationToken), cancellationToken);
-        else
+        await Task.Run(async () =>
         {
-            using var previousLauncher = new FabricLauncherService(minecraftVersion: manifest.MinecraftVersion,
-                ensureLauncherClosed: _launcherController.EnsureClosed);
-            await Task.Run(() => previousLauncher.ConfigureAsync(gameDirectory, cancellationToken), cancellationToken);
-        }
+            var manifest = InstallationManifest.Load(gameDirectory);
+            if (manifest.MinecraftVersion == TestPackRelease.MinecraftVersion)
+                await _launcher.ConfigureAsync(gameDirectory, cancellationToken);
+            else
+            {
+                using var previousLauncher = new FabricLauncherService(minecraftVersion: manifest.MinecraftVersion,
+                    ensureLauncherClosed: _launcherController.EnsureClosed);
+                await previousLauncher.ConfigureAsync(gameDirectory, cancellationToken);
+            }
+        }, cancellationToken);
         StateHeading.Text = LocalizedText.Get("PackReady");
         ProgressLabel.Text = LocalizedText.Get("InstallComplete");
         StatusBox.Text = LocalizedText.Get("LaunchInstruction");
@@ -408,6 +440,30 @@ public partial class MainWindow : Window
     private static string FormatDiagnostic(string code, string? logPath) =>
         $"{LocalizedText.Get("DiagnosticCode", code)}\n{LocalizedText.Get("DiagnosticLog", logPath ?? LocalizedText.Get("NotCreated"))}";
 
+    private static (string Path, string Hash) PinnedArchive(string version) => version switch
+    {
+        TestPackRelease.PackVersion => (Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar)), TestPackRelease.ArtifactSha512),
+        "0.15.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.SmoothArtifactFileName), TestPackRelease.SmoothArtifactSha512),
+        Vanilla2PlusRelease.PackVersion => (Path.Combine(AppContext.BaseDirectory, Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar)), Vanilla2PlusRelease.ArtifactSha512),
+        "0.17.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.WorldgenArtifactFileName), Vanilla2PlusRelease.WorldgenArtifactSha512),
+        "0.16.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.GuardArtifactFileName), Vanilla2PlusRelease.GuardArtifactSha512),
+        "0.14.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PriorArtifactFileName), Vanilla2PlusRelease.PriorArtifactSha512),
+        "0.13.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PreviousArtifactFileName), Vanilla2PlusRelease.PreviousArtifactSha512),
+        "0.12.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.LegacyArtifactFileName), Vanilla2PlusRelease.LegacyArtifactSha512),
+        "0.11.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.OriginalArtifactFileName), Vanilla2PlusRelease.OriginalArtifactSha512),
+        "0.10.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PriorArtifactFileName), TestPackRelease.PriorArtifactSha512),
+        "0.9.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.MapArtifactFileName), TestPackRelease.MapArtifactSha512),
+        "0.8.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.AnimationArtifactFileName), TestPackRelease.AnimationArtifactSha512),
+        "0.7.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.GraphicsArtifactFileName), TestPackRelease.GraphicsArtifactSha512),
+        "0.6.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.InventoryArtifactFileName), TestPackRelease.InventoryArtifactSha512),
+        "0.5.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VisualArtifactFileName), TestPackRelease.VisualArtifactSha512),
+        "0.4.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.C2meArtifactFileName), TestPackRelease.C2meArtifactSha512),
+        "0.3.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VoxyArtifactFileName), TestPackRelease.VoxyArtifactSha512),
+        "0.2.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PreviousArtifactFileName), TestPackRelease.PreviousArtifactSha512),
+        "0.1.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LegacyArtifactFileName), TestPackRelease.LegacyArtifactSha512),
+        _ => throw new InstallerException("RELEASE_UNKNOWN", LocalizedText.Get("PinnedArchiveUnavailable"))
+    };
+
     private void Cancel_Click(object sender, RoutedEventArgs e) => _operationCancellation?.Cancel();
 
     protected override void OnClosing(CancelEventArgs e)
@@ -415,8 +471,12 @@ public partial class MainWindow : Window
         if (_operationCancellation is not null)
         {
             e.Cancel = true;
-            StatusBox.Text = LocalizedText.Get("CancelCurrentOperation");
-            _operationCancellation.Cancel();
+            if (_operationCanBeCancelled)
+            {
+                StatusBox.Text = LocalizedText.Get("CancelCurrentOperation");
+                _operationCancellation.Cancel();
+            }
+            else StatusBox.Text = LocalizedText.Get("OperationWait");
             return;
         }
         base.OnClosing(e);
@@ -431,8 +491,8 @@ public partial class MainWindow : Window
         InstallButton.IsEnabled = !busy;
         RepairButton.IsEnabled = !busy;
         UninstallButton.IsEnabled = !busy;
-        CancelButton.IsEnabled = busy;
-        CancelButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        CancelButton.IsEnabled = busy && _operationCanBeCancelled;
+        CancelButton.Visibility = busy && _operationCanBeCancelled ? Visibility.Visible : Visibility.Collapsed;
         RetryLauncherButton.IsEnabled = !busy;
         ImportWorldsButton.IsEnabled = !busy;
         OpenFolderButton.IsEnabled = !busy;

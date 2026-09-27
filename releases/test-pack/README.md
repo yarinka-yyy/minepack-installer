@@ -1,5 +1,9 @@
 # Test pack releases
 
+## 0.18.0 — Vanilla Plus without Smooth Swapping
+
+Minecraft `26.2`, Fabric Loader `0.19.5`. Removes only Smooth Swapping from `0.15.0`; the other 46 pinned downloads remain unchanged: 37 mods, 8 resource packs, and 1 shader. The Iris override remains. Archive SHA-512: `C7469A3820A4B9BF75132BD016FB99F5B18F3E6FF66CDF0DCFBCE937E5BA8309AD4062C813457B8F95401F6D2F3326ABDBCDBA067B911795B6C574CD9D525776`. Packwiz export, deterministic smoke, real temporary Install/Repair/Uninstall with SHA-512 verification, Release publish, and extracted ZIP hash checks passed. The `0.15.0` archive is retained to recognize and repair existing installations. Gameplay remains for the user's check.
+
 ## 0.15.0 — Smooth Swapping and Subtle Effects in Vanilla Plus
 
 Minecraft `26.2`, Fabric Loader `0.19.5`. This release preserves all 43 downloads in `0.10.0` and adds the exact files already present in Vanilla 2 Plus `0.14.0`:

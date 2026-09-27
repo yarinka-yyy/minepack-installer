@@ -136,10 +136,11 @@ internal static class Smoke
         };
         var sharedNewMods = new[]
         {
-            "smoothswapping-0.9.10-26.2-fabric.jar", "SubtleEffects-fabric-26.2-1.14.3.jar",
+            "SubtleEffects-fabric-26.2-1.14.3.jar",
             "fzzy_config-0.7.6+26.2.jar", "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar"
         };
-        True(pack.Files.Count == 47 && sharedNewMods.All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
+        True(pack.Files.Count == 46 && sharedNewMods.All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
+             !pack.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
              !pack.Files.Any(file => file.Path.Contains("firstperson", StringComparison.OrdinalIgnoreCase) ||
                                           file.Path.Contains("notenoughanimations", StringComparison.OrdinalIgnoreCase)) &&
              pack.Files.Any(file => file.Path == "shaderpacks/ComplementaryReimagined_r5.9.3.zip") &&
@@ -168,7 +169,15 @@ internal static class Smoke
              pack.Files.Where(file => !priorVanillaPlus.Files.Any(oldFile => oldFile.Path == file.Path))
                  .Select(file => file.Path).ToHashSet(StringComparer.Ordinal)
                  .SetEquals(sharedNewMods.Select(name => "mods/" + name)),
-            "Vanilla Plus adds exactly two mods and their two dependencies while preserving 0.10.0");
+            "Vanilla Plus keeps the other 0.15.0 additions while preserving 0.10.0");
+        var smoothVanillaPlus = PackArchive.Open(
+            Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.SmoothArtifactFileName),
+            TestPackRelease.SmoothArtifactSha512);
+        True(smoothVanillaPlus.VersionId == "0.15.0" && smoothVanillaPlus.Files.Count == 47 &&
+             smoothVanillaPlus.Files.Where(file => !file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase))
+                 .All(oldFile => pack.Files.Any(file => file.Path == oldFile.Path && file.Sha512 == oldFile.Sha512 &&
+                     file.Downloads.SequenceEqual(oldFile.Downloads))),
+            "Vanilla Plus removes only Smooth Swapping from its previous pinned release");
         var originalVanilla2PlusPath = Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.OriginalArtifactFileName);
         var originalVanilla2Plus = PackArchive.Open(originalVanilla2PlusPath, Vanilla2PlusRelease.OriginalArtifactSha512);
         True(originalVanilla2Plus.VersionId == "0.11.0" && originalVanilla2Plus.Files.Count == 48 &&
@@ -197,6 +206,11 @@ internal static class Smoke
         var guardVanilla2Plus = PackArchive.Open(guardVanilla2PlusPath, Vanilla2PlusRelease.GuardArtifactSha512);
         True(guardVanilla2Plus.VersionId == "0.16.0" && guardVanilla2Plus.Files.Count == 61,
             "Vanilla 2 Plus 0.16.0 remains pinned for Repair");
+        var worldgenVanilla2Plus = PackArchive.Open(
+            Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.WorldgenArtifactFileName),
+            Vanilla2PlusRelease.WorldgenArtifactSha512);
+        True(worldgenVanilla2Plus.VersionId == "0.17.0" && worldgenVanilla2Plus.Files.Count == 64,
+            "Frontier 0.17.0 remains pinned for Repair");
         var vanilla2PlusPath = Path.Combine(AppContext.BaseDirectory,
             Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var vanilla2Plus = PackArchive.Open(vanilla2PlusPath, Vanilla2PlusRelease.ArtifactSha512);
@@ -204,14 +218,16 @@ internal static class Smoke
         Equal("MinePack Vanilla 2 Plus", vanilla2Plus.Name, "Vanilla 2 Plus archive name");
         Equal(TestPackRelease.MinecraftVersion, vanilla2Plus.MinecraftVersion, "Vanilla 2 Plus Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, vanilla2Plus.FabricLoaderVersion, "Vanilla 2 Plus Fabric Loader version");
-        True(vanilla2Plus.Files.Count == 64 &&
-             guardVanilla2Plus.Files.All(baseFile => vanilla2Plus.Files.Any(file => file.Path == baseFile.Path &&
+        True(vanilla2Plus.Files.Count == 63 &&
+             worldgenVanilla2Plus.Files.Where(file => !file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase))
+                 .All(baseFile => vanilla2Plus.Files.Any(file => file.Path == baseFile.Path &&
                  file.Sha512 == baseFile.Sha512 && file.Downloads.SequenceEqual(baseFile.Downloads))) &&
+             !vanilla2Plus.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
              pack.Files.All(baseFile => vanilla2Plus.Files.Any(file => file.Path == baseFile.Path &&
                  file.Sha512 == baseFile.Sha512 && file.Downloads.SequenceEqual(baseFile.Downloads))) &&
              vanilla2Plus.Overrides.Select(file => file.Path).ToHashSet(StringComparer.Ordinal)
                  .SetEquals(["config/iris.properties", "config/guardvillagers.json", "config/voxyworldgenv2.json"]),
-            "Vanilla 2 Plus preserves all downloads and adds the Voxy WorldGen config override");
+            "Frontier removes Smooth Swapping, preserves other downloads and includes Voxy WorldGen config");
         using (var archive = ZipFile.OpenRead(vanilla2PlusPath))
         using (var config = JsonDocument.Parse(archive.GetEntry("overrides/config/guardvillagers.json")!.Open()))
             True(config.RootElement.GetProperty("followHero").GetBoolean() == false &&
@@ -221,15 +237,15 @@ internal static class Smoke
                 "pinned guard config allows inventory, follow, and patrol without Hero of the Village");
         using (var archive = ZipFile.OpenRead(vanilla2PlusPath))
         using (var config = JsonDocument.Parse(archive.GetEntry("overrides/config/voxyworldgenv2.json")!.Open()))
-            Equal(512, config.RootElement.GetProperty("generationRadius").GetInt32(),
-                "pinned Voxy WorldGen config uses a 512-chunk radius");
+            Equal(128, config.RootElement.GetProperty("generationRadius").GetInt32(),
+                "pinned Voxy WorldGen config uses the 128-chunk default radius");
 
         var catalog = PackCatalog.VanillaPlusGroups.SelectMany(group => group.Items).ToArray();
         var vanilla2PlusCatalog = PackCatalog.Items;
-        True(catalog.Length == 47 && catalog.Count(item => item.Kind == "mod") == 38 &&
+        True(catalog.Length == 46 && catalog.Count(item => item.Kind == "mod") == 37 &&
              catalog.Count(item => item.Kind == "resourcepack") == 8 && catalog.Count(item => item.Kind == "shader") == 1 &&
              catalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal).SetEquals(pack.Files.Select(file => file.Path)) &&
-             vanilla2PlusCatalog.Count == 64 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 53 &&
+             vanilla2PlusCatalog.Count == 63 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 52 &&
              vanilla2PlusCatalog.Count(item => item.Kind == "resourcepack") == 10 &&
              vanilla2PlusCatalog.Count(item => item.Kind == "datapack") == 1 &&
              vanilla2PlusCatalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal).SetEquals(vanilla2Plus.Files.Select(file => file.Path)) &&
@@ -281,11 +297,11 @@ internal static class Smoke
             Equal("World & Structures — 6", PackCatalog.Vanilla2PlusGroups[^1].Heading, "English Vanilla 2 Plus worldgen category");
             Equal("Technical Foundation — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Vanilla 2 Plus dependencies");
             Equal("Resource Packs — 10", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Vanilla 2 Plus resource packs");
-            Equal("Pack version 0.17.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
+            Equal("Pack version 0.19.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
             Equal("Installer version 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "English installer version");
-            Equal("53 mods · 10 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
-            Equal("38 mods · 8 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
-            Equal("Performance & Render Distance — 8|Graphics & Animations — 9|Tools & Quality of Life — 10|Sound — 2|Technical Foundation — 9|Resource Packs — 8|Shader — 1",
+            Equal("52 mods · 10 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
+            Equal("37 mods · 8 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
+            Equal("Performance & Render Distance — 8|Graphics & Animations — 9|Tools & Quality of Life — 9|Sound — 2|Technical Foundation — 9|Resource Packs — 8|Shader — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "English catalog headings and counts");
             Equal("Copied worlds: 2. Skipped existing names: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "English formatted text");
 
@@ -299,11 +315,11 @@ internal static class Smoke
             Equal("Мир и структуры — 6", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Russian Vanilla 2 Plus worldgen category");
             Equal("Техническая основа — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Vanilla 2 Plus dependencies");
             Equal("Ресурспаки — 10", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Vanilla 2 Plus resource packs");
-            Equal("Версия сборки 0.17.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
+            Equal("Версия сборки 0.19.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
             Equal("Версия установщика 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Russian installer version");
-            Equal("53 мода · 10 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
-            Equal("38 модов · 8 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
-            Equal("Производительность и дальность — 8|Графика и анимации — 9|Инструменты и удобство — 10|Звук — 2|Техническая основа — 9|Ресурспаки — 8|Шейдер — 1",
+            Equal("52 мода · 10 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
+            Equal("37 модов · 8 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
+            Equal("Производительность и дальность — 8|Графика и анимации — 9|Инструменты и удобство — 9|Звук — 2|Техническая основа — 9|Ресурспаки — 8|Шейдер — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "Russian catalog headings and counts");
             Equal("Скопировано миров: 2. Пропущено совпадений имён: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "Russian formatted text");
 
@@ -602,12 +618,13 @@ internal static class Smoke
 
         var instance = install.GameDirectory ?? throw new InvalidOperationException("Actual release install did not return an instance directory.");
         var manifest = InstallationManifest.Load(instance);
-        True(manifest.Files.Count == 48 && new[]
+        True(manifest.Files.Count == 47 && new[]
         {
-            "smoothswapping-0.9.10-26.2-fabric.jar", "SubtleEffects-fabric-26.2-1.14.3.jar",
+            "SubtleEffects-fabric-26.2-1.14.3.jar",
             "fzzy_config-0.7.6+26.2.jar", "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar"
-        }.All(name => manifest.Files.Any(file => file.Path == "mods/" + name)),
-            "actual Vanilla Plus install manages both moved mods and required libraries");
+        }.All(name => manifest.Files.Any(file => file.Path == "mods/" + name)) &&
+            !manifest.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)),
+            "actual Vanilla Plus install excludes Smooth Swapping and manages the remaining effects mod and libraries");
         foreach (var file in manifest.Files)
         {
             var path = Path.Combine(instance, file.Path.Replace('/', Path.DirectorySeparatorChar));
@@ -679,8 +696,8 @@ internal static class Smoke
         var instance = install.GameDirectory ?? throw new InvalidOperationException("Vanilla 2 Plus install did not return an instance directory.");
         var manifest = InstallationManifest.Load(instance);
         Equal(Vanilla2PlusRelease.PackVersion, manifest.PackVersion, "installed Vanilla 2 Plus manifest version");
-        True(manifest.Files.Count == 65 && manifest.Files.Any(file => file.Path == "config/iris.properties"),
-            "Vanilla 2 Plus manifest records 64 downloads and the Iris config override");
+        True(manifest.Files.Count == 64 && manifest.Files.Any(file => file.Path == "config/iris.properties"),
+            "Frontier manifest records 63 downloads and the Iris config override");
         foreach (var file in manifest.Files)
         {
             var path = Path.Combine(instance, file.Path.Replace('/', Path.DirectorySeparatorChar));
@@ -694,14 +711,15 @@ internal static class Smoke
             "mcw-stairs-1.0.2-mc26.2fabric.jar", "bettervillage-fabric-26.2-4.0.0.jar",
             "libraryferret-fabric-26.2-5.0.0.jar", "MoogsNetherStructures-universal-1.21-3.1.1.jar",
             "MoogsStructureLib-fabric-26.2-3.3.0.jar", "MoogsVoyagerStructures-universal-1.21-5.1.3.jar",
-            "Structory_26.2_v1.3.7.jar", "smoothswapping-0.9.10-26.2-fabric.jar",
+            "Structory_26.2_v1.3.7.jar",
             "SubtleEffects-fabric-26.2-1.14.3.jar", "guardvillagers-2.1.3-26.2.jar",
             "fzzy_config-0.7.6+26.2.jar", "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar",
             "takesapillage-fabric-1.0.12+mc26.2.jar", "ResourcefulLib-5.0.4.jar",
             "Voxy World Gen V2-fabric-26.2-2.4.3.jar"
         };
-        True(newModFiles.All(name => manifest.Files.Any(file => file.Path == "mods/" + name)),
-            "all Vanilla 2 Plus additions and dependencies are installed and managed");
+        True(newModFiles.All(name => manifest.Files.Any(file => file.Path == "mods/" + name)) &&
+             !manifest.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)),
+            "all Frontier additions are managed without Smooth Swapping");
         True(Vanilla2PlusRelease.InitialResourcePacks.Skip(8).All(name =>
                 manifest.Files.Any(file => file.Path == "resourcepacks/" + name)),
             "both Guard Villagers animation resource packs are installed and managed");
@@ -721,7 +739,7 @@ internal static class Smoke
                 "Vanilla 2 Plus preconfigures guards without managing later player changes");
         var voxyConfigPath = Path.Combine(instance, "config", "voxyworldgenv2.json");
         using (var voxyConfig = JsonDocument.Parse(File.ReadAllText(voxyConfigPath)))
-            True(voxyConfig.RootElement.GetProperty("generationRadius").GetInt32() == 512 &&
+            True(voxyConfig.RootElement.GetProperty("generationRadius").GetInt32() == 128 &&
                  !manifest.Files.Any(file => file.Path == "config/voxyworldgenv2.json"),
                 "Vanilla 2 Plus preconfigures Voxy WorldGen without managing later player changes");
         var worldPath = Path.Combine(instance, "saves", "plan004-test-world", "level.dat");
@@ -812,17 +830,73 @@ internal static class Smoke
             FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
             PackArchiveSha512 = TestPackRelease.AnimationArtifactSha512
         }.SaveAtomic(oldInstance);
-        string ProfileWithoutMarker(string gameDir, string name = "MinePack Test Pack") => JsonSerializer.Serialize(new
+        string ProfileWithoutMarker(string gameDir, string name = "MinePack Test Pack", string lastVersionId = "fabric-loader-0.19.5-26.2") => JsonSerializer.Serialize(new
         {
             profiles = new Dictionary<string, object>
             {
                 [LauncherProfile.ProfileKey] = new
                 {
                     name, type = "custom",
-                    lastVersionId = "fabric-loader-0.19.5-26.2", gameDir
+                    lastVersionId, gameDir
                 }
             }
         });
+        foreach (var (version, hash) in new[]
+                 {
+                     ("0.15.0", TestPackRelease.SmoothArtifactSha512),
+                     ("0.17.0", Vanilla2PlusRelease.WorldgenArtifactSha512)
+                 })
+        {
+            var instance = Path.Combine(tempRoot, "previous-owned-instance", "instances",
+                $"test-pack-{version}-{hash[..12].ToLowerInvariant()}");
+            new InstallationManifest
+            {
+                PackVersion = version,
+                MinecraftVersion = TestPackRelease.MinecraftVersion,
+                FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+                PackArchiveSha512 = hash
+            }.SaveAtomic(instance);
+            using var removedPrevious = JsonDocument.Parse(LauncherProfile.RemoveFixtureCandidate(ProfileWithoutMarker(instance)));
+            True(!removedPrevious.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
+                $"previous {version} profile remains recognized for uninstall");
+        }
+        var reinstallInstances = Path.Combine(tempRoot, "reinstall-owned-instance", "instances");
+        Directory.CreateDirectory(reinstallInstances);
+        var reinstallBaseName = $"test-pack-{Vanilla2PlusRelease.PackVersion}-{Vanilla2PlusRelease.ArtifactSha512[..12].ToLowerInvariant()}-reinstall-";
+        string CreateReinstallFixture(string suffix, bool saveManifest = true, string? manifestHash = null, string? manifestVersion = null, bool nested = false)
+        {
+            var parent = nested ? Path.Combine(reinstallInstances, "nested") : reinstallInstances;
+            Directory.CreateDirectory(parent);
+            var instance = Path.Combine(parent, reinstallBaseName + suffix);
+            Directory.CreateDirectory(instance);
+            if (saveManifest)
+            {
+                new InstallationManifest
+                {
+                    PackVersion = manifestVersion ?? Vanilla2PlusRelease.PackVersion,
+                    MinecraftVersion = TestPackRelease.MinecraftVersion,
+                    FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+                    PackArchiveSha512 = manifestHash ?? Vanilla2PlusRelease.ArtifactSha512
+                }.SaveAtomic(instance);
+            }
+            return instance;
+        }
+        void RejectMarkerlessProfile(string profileJson, string label)
+        {
+            try
+            {
+                _ = LauncherProfile.BuildFixtureCandidate(profileJson, Path.Combine(tempRoot, "replacement-instance"),
+                    TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
+                throw new InvalidOperationException($"Expected {label} profile rejection during restore.");
+            }
+            catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
+            try
+            {
+                _ = LauncherProfile.RemoveFixtureCandidate(profileJson);
+                throw new InvalidOperationException($"Expected {label} profile rejection during uninstall.");
+            }
+            catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
+        }
         var markerless = ProfileWithoutMarker(oldInstance);
         var reconfigured = LauncherProfile.BuildFixtureCandidate(markerless, Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
         using (var parsed = JsonDocument.Parse(reconfigured))
@@ -843,6 +917,81 @@ internal static class Smoke
         using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveFixtureCandidate(markerless)))
             True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
                 "markerless MinePack profile can be removed while its manifest exists");
+
+        var reinstallInstance = CreateReinstallFixture(Guid.NewGuid().ToString("N"));
+        var reinstallRoot = new JsonObject
+        {
+            ["settings"] = new JsonObject { ["custom"] = true },
+            ["profiles"] = JsonNode.Parse(ProfileWithoutMarker(reinstallInstance, "MinePack"))!["profiles"]!.DeepClone()
+        };
+        ((JsonObject)reinstallRoot["profiles"]!)["vanilla"] = new JsonObject
+        {
+            ["name"] = "Existing", ["type"] = "custom", ["customField"] = 17
+        };
+        var markerlessReinstall = reinstallRoot.ToJsonString();
+        var restoredReinstall = LauncherProfile.BuildFixtureCandidate(markerlessReinstall,
+            Path.Combine(tempRoot, "reinstall-replacement"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
+        using (var parsed = JsonDocument.Parse(restoredReinstall))
+        {
+            var restoredProfile = parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey);
+            Equal("MinePack", restoredProfile.GetProperty("name").GetString(),
+                "markerless reinstall profile is restored in place");
+            Equal(Path.GetFullPath(Path.Combine(tempRoot, "reinstall-replacement")), restoredProfile.GetProperty("gameDir").GetString(),
+                "reinstall profile restore selects the requested instance");
+            Equal(2, parsed.RootElement.GetProperty("profiles").EnumerateObject().Count(),
+                "reinstall profile restore does not duplicate MinePack or drop the foreign profile");
+            Equal(17, parsed.RootElement.GetProperty("profiles").GetProperty("vanilla").GetProperty("customField").GetInt32(),
+                "reinstall profile restore preserves a foreign profile");
+            True(parsed.RootElement.GetProperty("settings").GetProperty("custom").GetBoolean(),
+                "reinstall profile restore preserves root settings");
+        }
+        var removedReinstall = LauncherProfile.RemoveFixtureCandidate(markerlessReinstall, reinstallInstance);
+        using (var parsed = JsonDocument.Parse(removedReinstall))
+        {
+            True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
+                "markerless reinstall profile can be removed for its exact instance");
+            Equal(17, parsed.RootElement.GetProperty("profiles").GetProperty("vanilla").GetProperty("customField").GetInt32(),
+                "reinstall profile uninstall preserves a foreign profile");
+            True(parsed.RootElement.GetProperty("settings").GetProperty("custom").GetBoolean(),
+                "reinstall profile uninstall preserves root settings");
+        }
+        Equal(markerlessReinstall,
+            LauncherProfile.RemoveFixtureCandidate(markerlessReinstall, Path.Combine(tempRoot, "another-instance")),
+            "reinstall profile is preserved when expected gameDir differs");
+
+        foreach (var (suffix, label) in new[]
+                 {
+                     (new string('a', 31), "short reinstall suffix"),
+                     (new string('a', 31) + "g", "non-hex reinstall suffix"),
+                     (new string('A', 32), "uppercase reinstall suffix")
+                 })
+            RejectMarkerlessProfile(ProfileWithoutMarker(CreateReinstallFixture(suffix), "MinePack"), label);
+
+        RejectMarkerlessProfile(ProfileWithoutMarker(CreateReinstallFixture(Guid.NewGuid().ToString("N"), saveManifest: false), "MinePack"),
+            "missing-manifest reinstall");
+        RejectMarkerlessProfile(ProfileWithoutMarker(CreateReinstallFixture(Guid.NewGuid().ToString("N"),
+            manifestHash: TestPackRelease.ArtifactSha512), "MinePack"), "foreign-manifest reinstall");
+        RejectMarkerlessProfile(ProfileWithoutMarker(CreateReinstallFixture(Guid.NewGuid().ToString("N"),
+            manifestVersion: "9.9.9"), "MinePack"), "unknown-version reinstall");
+        RejectMarkerlessProfile(ProfileWithoutMarker(reinstallInstance, "MinePack", "fabric-loader-0.19.5-26.3"),
+            "wrong-lastVersionId reinstall");
+        RejectMarkerlessProfile(ProfileWithoutMarker(reinstallInstance, "Someone else's profile"), "foreign-name reinstall");
+        var foreignMarkerReinstall = JsonSerializer.Serialize(new
+        {
+            profiles = new Dictionary<string, object>
+            {
+                [LauncherProfile.ProfileKey] = new
+                {
+                    name = "MinePack", type = "custom", lastVersionId = "fabric-loader-0.19.5-26.2",
+                    gameDir = reinstallInstance, minepackInstallerId = "foreign-installer"
+                }
+            }
+        });
+        RejectMarkerlessProfile(foreignMarkerReinstall, "foreign-marker reinstall");
+        RejectMarkerlessProfile(ProfileWithoutMarker(CreateReinstallFixture(Guid.NewGuid().ToString("N"), nested: true), "MinePack"),
+            "nested reinstall directory");
+        Pass("markerless reinstall profiles restore and uninstall only with exact pinned manifest and directory ownership");
+
         var previousInstance = Path.Combine(tempRoot, "owned-instance", "instances",
             "test-pack-0.9.0-" + TestPackRelease.MapArtifactSha512[..12].ToLowerInvariant());
         new InstallationManifest

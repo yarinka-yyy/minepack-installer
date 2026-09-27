@@ -10,7 +10,7 @@ hash = "ecdc47e26c1b274613251b8935d35c7225b4e1b12b7671388999dacd0f7178cb"
 
 [[files]]
 file = "config/voxyworldgenv2.json"
-hash = "336dbb61b9a0733a4e6b23d770ddd3453f4d53fc74cecc195b6751208d76b2e4"
+hash = "1deaa11ca42aec2ec3b26c038b5c9e525830402ced57605ff971758203329bd6"
 
 [[files]]
 file = "mods/advancement-plaques.pw.toml"
@@ -235,11 +235,6 @@ metafile = true
 [[files]]
 file = "mods/resourceful-lib.pw.toml"
 hash = "85abccaee90ea0b213687eaacafde09bcd30fb3fbcf6404e8e31245929f2e69b"
-metafile = true
-
-[[files]]
-file = "mods/smooth-swapping.pw.toml"
-hash = "750c36eda8614eee8517b9f3872e490da51da850752afe1ecc3860d3e6d56347"
 metafile = true
 
 [[files]]

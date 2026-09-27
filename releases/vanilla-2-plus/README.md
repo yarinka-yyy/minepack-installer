@@ -1,4 +1,10 @@
-# Vanilla 2 Plus 0.17.0
+# Frontier releases
+
+## 0.19.0 — remove Smooth Swapping and reset Voxy WorldGen radius
+
+Minecraft `26.2` · Fabric Loader `0.19.5` · 52 mods, 10 resource packs, 1 shader. Compared with `0.17.0`, only Smooth Swapping is removed from the 64 downloads. The initial `config/voxyworldgenv2.json` sets `generationRadius` to the upstream default of `128` chunks; other settings and the Guard Villagers override are unchanged. This override is applied only on a fresh instance and remains unmanaged so later player edits survive Repair and Uninstall. The archive has 63 pinned downloads and three overrides. SHA-512: `EDA5F98DA58A14BE7C5A608946559483E0DB38C60F85E98B64B45C9C7F7FB4063B5270A578E00C47139026BAA41AD23B6521804B4FD2C939CDE6340D4B755C67`. Packwiz export, deterministic smoke, real temporary Install/Repair/Uninstall with SHA-512 verification, Release publish, and extracted ZIP hash checks passed. The `0.17.0` archive is retained to recognize and repair existing installations. Gameplay and FPS remain for the user's check.
+
+## Previous candidate: 0.17.0
 
 Minecraft `26.2` · Fabric Loader `0.19.5` · 53 mods, 10 resource packs, 1 shader.
 

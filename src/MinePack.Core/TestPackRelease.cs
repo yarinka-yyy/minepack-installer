@@ -4,9 +4,11 @@ namespace MinePack.Core;
 
 public static class TestPackRelease
 {
-    public const string ArtifactFileName = "test-pack-0.15.0.mrpack";
+    public const string ArtifactFileName = "test-pack-0.18.0.mrpack";
     public const string ArtifactRelativePath = "releases/test-pack/" + ArtifactFileName;
-    public const string ArtifactSha512 = "9698BCBFE76BC6072ADB2609F2EDF17D4E823A5DB850BA0B54BE16E2EA39A967F6536C3FF025E7363BC6DED76D28BA1280DA1ACB8BD09D9FDA209889524ED45A";
+    public const string ArtifactSha512 = "C7469A3820A4B9BF75132BD016FB99F5B18F3E6FF66CDF0DCFBCE937E5BA8309AD4062C813457B8F95401F6D2F3326ABDBCDBA067B911795B6C574CD9D525776";
+    public const string SmoothArtifactFileName = "test-pack-0.15.0.mrpack";
+    public const string SmoothArtifactSha512 = "9698BCBFE76BC6072ADB2609F2EDF17D4E823A5DB850BA0B54BE16E2EA39A967F6536C3FF025E7363BC6DED76D28BA1280DA1ACB8BD09D9FDA209889524ED45A";
     public const string PriorArtifactFileName = "test-pack-0.10.0.mrpack";
     public const string PriorArtifactSha512 = "FDEA02362FB025310E26C3DE14DE18B907574BB412A0ADEC800881ECD6D8F31095D4021691EB0A35DCECB318E042F56360A36EDA79372453F658BC46090327E1";
     public const string MapArtifactFileName = "test-pack-0.9.0.mrpack";
@@ -27,7 +29,7 @@ public static class TestPackRelease
     public const string PreviousArtifactSha512 = "76320C3EBB6B32D53EB0E58B8E4DD3FF721CEB2F718E2D18CB976A020DC2C4104F2E586277314DCC24227DC0DEA18CF6661835F01E04F61AEB51D22F88A8FF83";
     public const string LegacyArtifactFileName = "test-pack-0.1.0.mrpack";
     public const string LegacyArtifactSha512 = "453fc54446e6d7b379c7c07ca6f995998d6cba01791b0749d6929fce98bce59561aaa598b255344b342396251877a0e7aceccc3100ea179484d0a967ceba0ff5";
-    public const string PackVersion = "0.15.0";
+    public const string PackVersion = "0.18.0";
     public const string MinecraftVersion = "26.2";
     public const string FabricLoaderVersion = "0.19.5";
     public const string FabricApiVersion = "0.161.0+26.2";

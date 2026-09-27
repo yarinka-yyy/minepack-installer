@@ -131,8 +131,10 @@ public sealed class InstallService : IDisposable
             };
             await VerifyManagedFilesAsync(stagingRoot, manifest.Files, cancellationToken);
             if (pack.ArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(TestPackRelease.SmoothArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(TestPackRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.WorldgenArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.GuardArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PreviousArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
@@ -140,6 +142,7 @@ public sealed class InstallService : IDisposable
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.OriginalArtifactSha512, StringComparison.OrdinalIgnoreCase))
             {
                 var guardAnimationPacks = pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                    pack.ArchiveSha512.Equals(Vanilla2PlusRelease.WorldgenArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.GuardArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase);
                 var resourcePacks = guardAnimationPacks ? Vanilla2PlusRelease.InitialResourcePacks : TestPackRelease.InitialResourcePacks;
@@ -446,6 +449,9 @@ public sealed class InstallService : IDisposable
 
     private static bool IsInitialUserConfig(PackArchive pack, string path) =>
         (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) &&
+         (path.Equals("config/guardvillagers.json", StringComparison.OrdinalIgnoreCase) ||
+          path.Equals("config/voxyworldgenv2.json", StringComparison.OrdinalIgnoreCase))) ||
+        (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.WorldgenArtifactSha512, StringComparison.OrdinalIgnoreCase) &&
          (path.Equals("config/guardvillagers.json", StringComparison.OrdinalIgnoreCase) ||
           path.Equals("config/voxyworldgenv2.json", StringComparison.OrdinalIgnoreCase))) ||
         (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.GuardArtifactSha512, StringComparison.OrdinalIgnoreCase) &&

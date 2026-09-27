@@ -90,7 +90,9 @@ public static class LauncherProfile
                 "0.9.0" => TestPackRelease.MapArtifactSha512,
                 "0.10.0" => TestPackRelease.PriorArtifactSha512,
                 TestPackRelease.PackVersion => TestPackRelease.ArtifactSha512,
+                "0.15.0" => TestPackRelease.SmoothArtifactSha512,
                 Vanilla2PlusRelease.PackVersion => Vanilla2PlusRelease.ArtifactSha512,
+                "0.17.0" => Vanilla2PlusRelease.WorldgenArtifactSha512,
                 "0.16.0" => Vanilla2PlusRelease.GuardArtifactSha512,
                 "0.14.0" => Vanilla2PlusRelease.PriorArtifactSha512,
                 "0.13.0" => Vanilla2PlusRelease.PreviousArtifactSha512,
@@ -98,14 +100,32 @@ public static class LauncherProfile
                 "0.11.0" => Vanilla2PlusRelease.OriginalArtifactSha512,
                 _ => null
             };
-            var expectedMinecraftVersion = manifest.PackVersion is "0.3.0" or "0.4.0" or "0.5.0" or "0.6.0" or "0.7.0" or "0.8.0" or "0.9.0" or "0.10.0" or "0.11.0" or "0.12.0" or "0.13.0" or "0.14.0" or "0.16.0" or TestPackRelease.PackVersion or Vanilla2PlusRelease.PackVersion
+            var expectedMinecraftVersion = manifest.PackVersion is "0.3.0" or "0.4.0" or "0.5.0" or "0.6.0" or "0.7.0" or "0.8.0" or "0.9.0" or "0.10.0" or "0.11.0" or "0.12.0" or "0.13.0" or "0.14.0" or "0.15.0" or "0.16.0" or "0.17.0" or TestPackRelease.PackVersion or Vanilla2PlusRelease.PackVersion
                 ? TestPackRelease.MinecraftVersion : "26.3";
+            var expectedDirectoryName = $"test-pack-{manifest.PackVersion}-{expectedHash?[..12].ToLowerInvariant()}";
+            var actualDirectoryName = Path.GetFileName(path);
+            var isDirectlyInInstances = string.Equals(Directory.GetParent(path)?.Name, "instances", StringComparison.OrdinalIgnoreCase);
+            var isExpectedDirectory = string.Equals(actualDirectoryName, expectedDirectoryName, StringComparison.OrdinalIgnoreCase);
+            const string reinstallMarker = "-reinstall-";
+            var suffixStart = expectedDirectoryName.Length + reinstallMarker.Length;
+            var isReinstallDirectory = actualDirectoryName.Length == suffixStart + 32 &&
+                                       actualDirectoryName.StartsWith(expectedDirectoryName, StringComparison.OrdinalIgnoreCase) &&
+                                       actualDirectoryName.AsSpan(expectedDirectoryName.Length, reinstallMarker.Length).SequenceEqual(reinstallMarker) &&
+                                       IsLowerHex32(actualDirectoryName.AsSpan(suffixStart));
             return expectedHash is not null &&
                    manifest.PackArchiveSha512.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) &&
                    manifest.MinecraftVersion == expectedMinecraftVersion &&
                    manifest.FabricLoaderVersion == TestPackRelease.FabricLoaderVersion &&
                    Text(profile["lastVersionId"]) == $"fabric-loader-{manifest.FabricLoaderVersion}-{manifest.MinecraftVersion}" &&
-                   Path.GetFileName(path).Equals($"test-pack-{manifest.PackVersion}-{expectedHash[..12].ToLowerInvariant()}", StringComparison.OrdinalIgnoreCase);
+                   isDirectlyInInstances && (isExpectedDirectory || isReinstallDirectory);
+
+            static bool IsLowerHex32(ReadOnlySpan<char> value)
+            {
+                if (value.Length != 32) return false;
+                foreach (var character in value)
+                    if (character is not (>= '0' and <= '9' or >= 'a' and <= 'f')) return false;
+                return true;
+            }
         }
         catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {

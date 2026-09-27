@@ -2,10 +2,12 @@ namespace MinePack.Core;
 
 public static class Vanilla2PlusRelease
 {
-    public const string ArtifactFileName = "vanilla-2-plus-0.17.0.mrpack";
+    public const string ArtifactFileName = "vanilla-2-plus-0.19.0.mrpack";
     public const string ArtifactRelativePath = "releases/vanilla-2-plus/" + ArtifactFileName;
-    public const string ArtifactSha512 = "4631317E04F547AD72E93B9C40E8C6BEB2FDDDD081D9A63F36C62D24BB9EAD6A0FFC52257260FE584223C6E134120DF7E8B4B05C1E3D5BF24631EDB37F488014";
-    public const string PackVersion = "0.17.0";
+    public const string ArtifactSha512 = "EDA5F98DA58A14BE7C5A608946559483E0DB38C60F85E98B64B45C9C7F7FB4063B5270A578E00C47139026BAA41AD23B6521804B4FD2C939CDE6340D4B755C67";
+    public const string PackVersion = "0.19.0";
+    public const string WorldgenArtifactFileName = "vanilla-2-plus-0.17.0.mrpack";
+    public const string WorldgenArtifactSha512 = "4631317E04F547AD72E93B9C40E8C6BEB2FDDDD081D9A63F36C62D24BB9EAD6A0FFC52257260FE584223C6E134120DF7E8B4B05C1E3D5BF24631EDB37F488014";
     public const string GuardArtifactFileName = "vanilla-2-plus-0.16.0.mrpack";
     public const string GuardArtifactSha512 = "19E98E3D10001E163FEA20870B0D63B462F62B717A0422D4DD87F7AF11B07160325BDBF851D3B3E581F13F389741A239B88CA9630C17927A96DCC7D83951B0AD";
     public const string PriorArtifactFileName = "vanilla-2-plus-0.14.0.mrpack";

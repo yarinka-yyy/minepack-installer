@@ -6,12 +6,12 @@ MinePack устанавливает закреплённую сборку для
 
 Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 
-Выберите одну сборку: в **Vanilla Plus 0.15.0** — 38 модов, 8 ресурспаков и 1 шейдер. В **Frontier 0.17.0** — 53 мода, 10 ресурспаков и 1 шейдер, в том числе Guard Villagers, It Takes a Pillage Continuation, Voxy WorldGen и анимации Freshly Modded. Охранники доступны без эффекта «Герой деревни», а радиус генерации Voxy WorldGen изначально равен 512 чанкам. Установщик скачивает закреплённые файлы, проверяет их хеши и использует один профиль MinePack с отдельной папкой игры для активной сборки. Версия приложения 0.18.0 отделена от версий сборок.
+Выберите одну сборку: в **Vanilla Plus 0.18.0** — 37 модов, 8 ресурспаков и 1 шейдер. В **Frontier 0.19.0** — 52 мода, 10 ресурспаков и 1 шейдер, в том числе Guard Villagers, It Takes a Pillage Continuation, Voxy WorldGen и анимации Freshly Modded. Охранники доступны без эффекта «Герой деревни», а радиус генерации Voxy WorldGen изначально равен стандартным 128 чанкам. Smooth Swapping больше не входит в сборки. Установщик скачивает закреплённые файлы, проверяет их хеши и использует один профиль MinePack с отдельной папкой игры для активной сборки. Версия приложения 0.18.2 сохраняет исправления восстановления профиля и отзывчивости операций из 0.18.1; версии сборок остаются отдельными.
 
 ## Установка
 
 1. Публичную загрузку установщика пока не удалось подтвердить; ссылка пока не опубликована.
-2. Для локальной проверки используйте `artifacts/MinePack-Installer-0.18.0-win-x64.zip`. Перед запуском распакуйте ZIP целиком; все файлы должны остаться вместе. Этот тестовый архив не является публичным релизом.
+2. Для локальной проверки используйте `artifacts/MinePack-Installer-0.18.2-win-x64.zip`. Перед запуском распакуйте ZIP целиком; все файлы должны остаться вместе. Этот тестовый архив не является публичным релизом.
 3. Запустите `MinePack.Installer.exe`, выберите **Vanilla Plus** или **Frontier** и нажмите **«Установить сборку»**. MinePack сам закроет открытый официальный Launcher, установит выбранную сборку и обновит профиль MinePack, затем отправит запрос на запуск Launcher.
 4. Выберите профиль **MinePack** и нажмите **«Играть»**. При первом запуске Launcher загрузит базовые файлы Minecraft.
 
@@ -53,7 +53,7 @@ Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 </details>
 
 <details>
-<summary>Инструменты и удобство (10)</summary>
+<summary>Инструменты и удобство (9)</summary>
 
 - [Chunky](https://modrinth.com/mod/fALzjamp)
 - [Inventory Sorting](https://modrinth.com/mod/5ibSyLAz)
@@ -64,7 +64,6 @@ Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 - [Leaf Me Alone](https://modrinth.com/mod/ppMUvsIg)
 - [InvMove](https://modrinth.com/mod/REfW2AEX)
 - [Mod Menu](https://modrinth.com/mod/mOgUt4GM)
-- [Smooth Swapping](https://modrinth.com/mod/ydZic5r4) — анимация перемещения предметов в инвентаре
 
 </details>
 
@@ -146,7 +145,7 @@ Windows · Fabric · Minecraft 26.2 · официальный Minecraft Launcher
 
 - [Guard Villagers (Fabric/Quilt)](https://modrinth.com/mod/59rkB3YY) — охранники деревень
 
-Smooth Swapping и Subtle Effects входят в обе сборки вместе с Fzzy Config и Fabric Language Kotlin для Subtle Effects. Smooth Swapping повторно проверяется после того, как не заработал в ранней сборке; Mod Menu открывает его настройки. Для охранников на внешнем сервере требуется серверная установка Guard Villagers.
+Subtle Effects входит в обе сборки вместе с Fzzy Config и Fabric Language Kotlin. Для охранников на внешнем сервере требуется серверная установка Guard Villagers.
 
 Frontier также включает [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) с моделями охранников и [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) с подробными движениями. Оба ресурспака работают на стороне игрока; их внешний вид ещё нужно проверить в игре.
 
@@ -154,16 +153,16 @@ Frontier также включает [F.M.R.P](https://modrinth.com/resourcepack
 
 ## Сборка из исходного кода и локальный пакет
 
-Версия приложения — 0.18.0; закреплённые версии сборок остаются Vanilla Plus 0.15.0 и Frontier 0.17.0. Для публикации обычной сборки в Windows нужен .NET 10 SDK:
+Версия приложения — 0.18.2; закреплённые версии сборок — Vanilla Plus 0.18.0 и Frontier 0.19.0. Для публикации обычной сборки в Windows нужен .NET 10 SDK:
 
 ```powershell
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -o artifacts/publish-0.18.0
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -p:UseSharedCompilation=false -m:1 -o artifacts/publish-0.18.2
 ```
 
 Команда публикации single-file-кандидата (архивы `releases/` и лицензия шрифта остаются рядом с EXE):
 
 ```powershell
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -o artifacts/publish-0.18.0-singlefile
+dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:UseSharedCompilation=false -m:1 -o artifacts/publish-0.18.2-singlefile
 ```
 
-Локальный ZIP для QA: `artifacts/MinePack-Installer-0.18.0-win-x64.zip`. Сначала распакуйте ZIP целиком и запускайте `MinePack.Installer.exe` рядом с папками `releases/` и `Assets/`.
+Локальный ZIP для QA: `artifacts/MinePack-Installer-0.18.2-win-x64.zip`. Сначала распакуйте ZIP целиком и запускайте `MinePack.Installer.exe` рядом с папками `releases/` и `Assets/`.
