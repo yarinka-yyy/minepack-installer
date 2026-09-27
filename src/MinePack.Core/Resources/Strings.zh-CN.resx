@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="UiSubtitle" xml:space="preserve"><value>一键安装 Minecraft 模组</value></data>
+  <data name="UiDescription" xml:space="preserve"><value>MinePack 会下载模组和所需组件，并在 Minecraft Launcher 中创建独立的游戏配置。各个游戏存档彼此分开。</value></data>
+  <data name="UiRequirements" xml:space="preserve"><value>需要官方 Minecraft Launcher 和 Minecraft: Java Edition 账号。</value></data>
+  <data name="UiMinecraftVersion" xml:space="preserve"><value>适用于 Minecraft 26.2</value></data>
+  <data name="UiBuildInfo" xml:space="preserve"><value>Minecraft 26.2 · Fabric 加载器 0.19.5 · Fabric API 0.161.0+26.2</value></data>
+  <data name="UiPackVersion" xml:space="preserve"><value>整合包版本 {0}</value></data>
+  <data name="UiInstallerVersion" xml:space="preserve"><value>安装程序版本 {0}</value></data>
+  <data name="UiPackCountsVanillaPlus" xml:space="preserve"><value>37 个模组 · 8 个资源包 · 1 个光影包</value></data>
+  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>52 个模组 · 10 个资源包 · 1 个光影包</value></data>
+  <data name="UiChoosePack" xml:space="preserve"><value>选择要安装的整合包</value></data>
+  <data name="UiCatalogTitle" xml:space="preserve"><value>整合包内容</value></data>
+  <data name="UiOpenOnModrinth" xml:space="preserve"><value>在 Modrinth 上查看</value></data>
+  <data name="UiInstallLocation" xml:space="preserve"><value>安装位置</value></data>
+  <data name="UiBrowse" xml:space="preserve"><value>浏览…</value></data>
+  <data name="UiInstall" xml:space="preserve"><value>安装整合包</value></data>
+  <data name="UiCancel" xml:space="preserve"><value>取消</value></data>
+  <data name="UiReady" xml:space="preserve"><value>准备就绪，可以安装</value></data>
+  <data name="UiWaiting" xml:space="preserve"><value>等待中</value></data>
+  <data name="UiInstallPrompt" xml:space="preserve"><value>点击“安装整合包”开始。</value></data>
+  <data name="UiAdditionalActions" xml:space="preserve"><value>更多操作</value></data>
+  <data name="UiRepair" xml:space="preserve"><value>检查并修复</value></data>
+  <data name="UiImportWorlds" xml:space="preserve"><value>导入存档</value></data>
+  <data name="UiRestoreLauncher" xml:space="preserve"><value>恢复启动器配置</value></data>
+  <data name="UiUninstall" xml:space="preserve"><value>卸载整合包</value></data>
+  <data name="UiLauncherHint" xml:space="preserve"><value>如果文件下载完成后仍看不到该配置，请点击“恢复启动器配置”。</value></data>
+  <data name="UiDetails" xml:space="preserve"><value>详细信息</value></data>
+  <data name="UiOpenFolder" xml:space="preserve"><value>打开文件夹</value></data>
+  <data name="UiOpenLog" xml:space="preserve"><value>打开日志</value></data>
+  <data name="UiWorldFolderDialog" xml:space="preserve"><value>选择要复制存档的配置对应的 saves 文件夹</value></data>
+  <data name="UiInstallFolderDialog" xml:space="preserve"><value>选择 MinePack 数据文件夹</value></data>
+  <data name="UiUninstallConfirmMessage" xml:space="preserve"><value>将删除 MinePack 管理的文件。存档、截图和其他个人文件会保留。</value></data>
+  <data name="UiUninstallConfirmTitle" xml:space="preserve"><value>卸载 MinePack</value></data>
+  <data name="CatalogPerformance" xml:space="preserve"><value>性能与区块渲染距离</value></data>
+  <data name="CatalogGraphics" xml:space="preserve"><value>画面与动画</value></data>
+  <data name="CatalogTools" xml:space="preserve"><value>工具与便利功能</value></data>
+  <data name="CatalogSound" xml:space="preserve"><value>声音</value></data>
+  <data name="CatalogTechnical" xml:space="preserve"><value>基础组件</value></data>
+  <data name="CatalogResourcePacks" xml:space="preserve"><value>资源包</value></data>
+  <data name="CatalogShader" xml:space="preserve"><value>光影包</value></data>
+  <data name="CatalogBuilding" xml:space="preserve"><value>建筑方块</value></data>
+  <data name="CatalogWorldgen" xml:space="preserve"><value>世界与结构</value></data>
+  <data name="OperationWait" xml:space="preserve"><value>正在执行所选操作，请稍候。</value></data>
+  <data name="OperationInstalling" xml:space="preserve"><value>正在安装整合包</value></data>
+  <data name="OperationWorking" xml:space="preserve"><value>正在处理</value></data>
+  <data name="PreparingFiles" xml:space="preserve"><value>正在准备文件…</value></data>
+  <data name="SearchingPack" xml:space="preserve"><value>正在查找已安装的整合包…</value></data>
+  <data name="RestoringProfile" xml:space="preserve"><value>正在恢复启动器配置…</value></data>
+  <data name="CopyingWorlds" xml:space="preserve"><value>正在复制存档…</value></data>
+  <data name="PreparingUninstall" xml:space="preserve"><value>正在准备卸载…</value></data>
+  <data name="PublishedPackMissing" xml:space="preserve"><value>已发布的程序文件夹中未找到固定版本的 .mrpack 整合包。</value></data>
+  <data name="InstallBeforeImport" xml:space="preserve"><value>请先安装要导入存档的目标整合包。</value></data>
+  <data name="WorldImportComplete" xml:space="preserve"><value>存档导入完成</value></data>
+  <data name="WorldImportSummary" xml:space="preserve"><value>已复制存档：{0}。因名称已存在而跳过：{1}。</value></data>
+  <data name="WorldImportSafety" xml:space="preserve"><value>源存档未更改。打开其他 Minecraft 版本的存档前请先备份：游戏可能会转换存档格式。</value></data>
+  <data name="OperationComplete" xml:space="preserve"><value>操作完成</value></data>
+  <data name="InstallBeforeLauncherRepair" xml:space="preserve"><value>请先安装整合包。</value></data>
+  <data name="PackNotFoundInFolder" xml:space="preserve"><value>在所选文件夹中找不到整合包。</value></data>
+  <data name="ProfileRemoved" xml:space="preserve"><value>配置已删除</value></data>
+  <data name="NoActivePackProfileRemoved" xml:space="preserve"><value>当前没有活动的整合包。已从启动器中删除 MinePack 配置。</value></data>
+  <data name="OtherProfilesUnchanged" xml:space="preserve"><value>其他启动器配置未更改。</value></data>
+  <data name="PinnedArchiveUnavailable" xml:space="preserve"><value>此程序不包含与当前安装版本对应的固定归档文件。</value></data>
+  <data name="PackUninstalled" xml:space="preserve"><value>整合包已卸载</value></data>
+  <data name="UserFilesPreserved" xml:space="preserve"><value>如果存档、截图和其他个人文件位于整合包文件夹中，这些文件也已保留。</value></data>
+  <data name="OperationCancelledHeading" xml:space="preserve"><value>操作已取消</value></data>
+  <data name="OperationFailedHeading" xml:space="preserve"><value>无法完成操作</value></data>
+  <data name="OperationStoppedStatus" xml:space="preserve"><value>操作已停止。已保存的文件仍保留。</value></data>
+  <data name="WorldImportFailedHeading" xml:space="preserve"><value>存档导入未完成</value></data>
+  <data name="WorldImportPartialSafety" xml:space="preserve"><value>已复制的存档仍保留；源存档未更改。</value></data>
+  <data name="OperationIncomplete" xml:space="preserve"><value>操作未完成</value></data>
+  <data name="FilesRemovedProfileRemains" xml:space="preserve"><value>文件已删除，但配置仍保留</value></data>
+  <data name="PackInstalledProfilePending" xml:space="preserve"><value>整合包已安装，但配置尚未就绪</value></data>
+  <data name="NeedAnotherStep" xml:space="preserve"><value>还需要完成一个步骤</value></data>
+  <data name="RetryUninstallProfile" xml:space="preserve"><value>修复问题后，再次点击“卸载整合包”以删除 MinePack 配置。</value></data>
+  <data name="RetryConfigureProfile" xml:space="preserve"><value>整合包文件已保存。修复问题后，点击“恢复启动器配置”；无需重新下载模组。</value></data>
+  <data name="FixAndRetry" xml:space="preserve"><value>请先解决显示的问题，然后重试。</value></data>
+  <data name="WorldImportStopped" xml:space="preserve"><value>存档导入已停止</value></data>
+  <data name="WorldCopyCancelled" xml:space="preserve"><value>复制操作已取消。已复制的存档已保留；源存档未更改。</value></data>
+  <data name="OperationCancelledStatus" xml:space="preserve"><value>操作已取消。</value></data>
+  <data name="InstalledProfilePendingStatus" xml:space="preserve"><value>整合包文件已安装，但尚未设置启动器配置。准备好后，请点击“恢复启动器配置”。</value></data>
+  <data name="WorldImportFailedStatus" xml:space="preserve"><value>无法复制存档。请检查文件夹访问权限和可用磁盘空间。</value></data>
+  <data name="WorldImportFailureSafety" xml:space="preserve"><value>源存档未更改；已复制的存档仍保留。</value></data>
+  <data name="OperationUnexpectedFailure" xml:space="preserve"><value>无法完成操作。</value></data>
+  <data name="ActionFailedHelp" xml:space="preserve"><value>无法执行操作。请检查文件夹路径、访问权限和日志。</value></data>
+  <data name="RetryUninstall" xml:space="preserve"><value>关闭启动器，然后再次点击“卸载整合包”。</value></data>
+  <data name="RetryConfigure" xml:space="preserve"><value>文件已保存。修复问题后，点击“恢复启动器配置”。</value></data>
+  <data name="OperationFailedProgress" xml:space="preserve"><value>操作失败</value></data>
+  <data name="ConfigureLauncherProgress" xml:space="preserve"><value>正在下载 Fabric 并创建独立的启动器配置…</value></data>
+  <data name="ClosingLauncherProgress" xml:space="preserve"><value>正在检查 Minecraft Launcher，并在需要时将其关闭…</value></data>
+  <data name="PackReady" xml:space="preserve"><value>整合包已就绪</value></data>
+  <data name="InstallComplete" xml:space="preserve"><value>安装完成</value></data>
+  <data name="LaunchInstruction" xml:space="preserve"><value>打开官方 Minecraft Launcher，选择 MinePack 配置，然后点击“启动”。</value></data>
+  <data name="LauncherStartRequestedStatus" xml:space="preserve"><value>已请求启动 Minecraft Launcher。请选择 MinePack 配置并点击“启动”。</value></data>
+  <data name="LauncherStartFailedStatus" xml:space="preserve"><value>整合包已就绪，但无法打开 Minecraft Launcher。请手动打开并选择 MinePack。</value></data>
+  <data name="LauncherStartUnavailableStatus" xml:space="preserve"><value>整合包已就绪。未找到已注册的官方 Minecraft Launcher，无法自动打开。请手动打开并选择 MinePack。</value></data>
+  <data name="FirstLaunchDownload" xml:space="preserve"><value>首次启动时，Launcher 会下载 Minecraft 的基础文件。</value></data>
+  <data name="GameFolderLabel" xml:space="preserve"><value>游戏文件夹：{0}</value></data>
+  <data name="InstalledFolderNotFound" xml:space="preserve"><value>尚未找到已安装的游戏文件夹。</value></data>
+  <data name="OpenFolderFailed" xml:space="preserve"><value>无法打开文件夹（{0}）。</value></data>
+  <data name="LogAfterFirstOperation" xml:space="preserve"><value>完成首次操作后，日志才会显示。</value></data>
+  <data name="OpenLogFailed" xml:space="preserve"><value>无法打开日志（{0}）。</value></data>
+  <data name="OpenModrinthFailed" xml:space="preserve"><value>无法在浏览器中打开 Modrinth 页面。</value></data>
+  <data name="DiagnosticCode" xml:space="preserve"><value>代码：{0}</value></data>
+  <data name="DiagnosticLog" xml:space="preserve"><value>日志：{0}</value></data>
+  <data name="NotCreated" xml:space="preserve"><value>尚未创建</value></data>
+  <data name="CancelCurrentOperation" xml:space="preserve"><value>正在取消当前操作。取消完成后即可关闭窗口。</value></data>
+  <data name="PackFileMissing" xml:space="preserve"><value>未找到整合包文件。</value></data>
+  <data name="PinnedPackCorrupt" xml:space="preserve"><value>固定版本的整合包文件已损坏。</value></data>
+  <data name="ArchiveTooManyEntries" xml:space="preserve"><value>压缩包中的条目过多。</value></data>
+  <data name="PackTooManyFiles" xml:space="preserve"><value>整合包中的文件过多。</value></data>
+  <data name="ArchiveDuplicatePath" xml:space="preserve"><value>压缩包中存在重复路径。</value></data>
+  <data name="ArchiveFileParentConflict" xml:space="preserve"><value>压缩包中的某个文件被用作其他文件的父目录。</value></data>
+  <data name="ArchiveDirectoryFileConflict" xml:space="preserve"><value>压缩包中的某个目录路径被用作文件。</value></data>
+  <data name="PackIndexInvalid" xml:space="preserve"><value>整合包索引无效。</value></data>
+  <data name="PackIndexTooLarge" xml:space="preserve"><value>整合包索引超过允许的大小。</value></data>
+  <data name="ArchiveUnsupportedDirectory" xml:space="preserve"><value>压缩包包含不受支持的目录。</value></data>
+  <data name="ArchiveUnsupportedFile" xml:space="preserve"><value>压缩包包含不受支持的文件。</value></data>
+  <data name="PackOverridesConflict" xml:space="preserve"><value>整合包包含相互冲突的覆盖路径。</value></data>
+  <data name="PackOverridesTooLarge" xml:space="preserve"><value>覆盖文件超过允许的大小。</value></data>
+  <data name="ModrinthIndexMissing" xml:space="preserve"><value>压缩包中缺少 modrinth.index.json。</value></data>
+  <data name="IndexedFileOverridesConflict" xml:space="preserve"><value>索引文件与覆盖文件发生冲突。</value></data>
+  <data name="PackArchiveInvalid" xml:space="preserve"><value>整合包压缩文件已损坏或使用了不受支持的格式。</value></data>
+  <data name="PackIndexJsonInvalid" xml:space="preserve"><value>整合包索引包含无效的 JSON。</value></data>
+  <data name="PackReadFailed" xml:space="preserve"><value>无法读取整合包文件。</value></data>
+  <data name="PackChangedAfterCheck" xml:space="preserve"><value>整合包压缩文件在验证后发生了变化。</value></data>
+  <data name="OverrideFileMissing" xml:space="preserve"><value>覆盖文件已从压缩包中消失。</value></data>
+  <data name="OverrideExtractedTooLarge" xml:space="preserve"><value>解压后的覆盖文件超过允许的大小。</value></data>
+  <data name="OverrideSizeMismatch" xml:space="preserve"><value>覆盖文件大小与压缩包记录不符。</value></data>
+  <data name="PackSchemaUnsupported" xml:space="preserve"><value>不支持此整合包架构版本或游戏。</value></data>
+  <data name="PackNameOrVersionInvalid" xml:space="preserve"><value>整合包名称或版本无效。</value></data>
+  <data name="PackDependencyUnsupported" xml:space="preserve"><value>整合包包含不受支持的依赖类型。</value></data>
+  <data name="IndexedFileStructureUnsupported" xml:space="preserve"><value>索引中包含结构不受支持的文件。</value></data>
+  <data name="IndexDuplicatePath" xml:space="preserve"><value>索引中存在重复路径。</value></data>
+  <data name="IndexSha512Invalid" xml:space="preserve"><value>索引中包含无效的 SHA-512 哈希值。</value></data>
+  <data name="DownloadListInvalid" xml:space="preserve"><value>此文件未指定任何允许的下载来源。</value></data>
+  <data name="DownloadAddressInvalid" xml:space="preserve"><value>下载地址使用了不受支持的格式。</value></data>
+  <data name="IndexFileSizeInvalid" xml:space="preserve"><value>索引中指定的文件大小无效。</value></data>
+  <data name="FileEnvironmentInvalid" xml:space="preserve"><value>文件环境无效。</value></data>
+  <data name="OptionalFilesUnsupported" xml:space="preserve"><value>此版本的安装程序只支持必需的客户端文件。</value></data>
+  <data name="DownloadSourceBlocked" xml:space="preserve"><value>文件来源不在允许的 HTTPS 地址列表中。</value></data>
+  <data name="ReservedPackPath" xml:space="preserve"><value>整合包不能管理标记文件、存档或截图。</value></data>
+  <data name="IndexRequiredFieldMissing" xml:space="preserve"><value>索引缺少必需字段 {0}。</value></data>
+  <data name="ArchiveLinkBlocked" xml:space="preserve"><value>压缩包中不允许包含链接或重解析点。</value></data>
+  <data name="FilePathUnsafe" xml:space="preserve"><value>文件路径必须是相对路径且安全。</value></data>
+  <data name="FilePathSegmentBlocked" xml:space="preserve"><value>文件路径包含禁止使用的部分。</value></data>
+  <data name="PackPathEscape" xml:space="preserve"><value>该路径指向整合包文件夹之外。</value></data>
+  <data name="DirectoryReparseBlocked" xml:space="preserve"><value>目录中包含链接或重解析点。</value></data>
+  <data name="DownloadNetworkFailed" xml:space="preserve"><value>无法从 Modrinth 下载文件。</value></data>
+  <data name="DownloadFailed" xml:space="preserve"><value>无法下载整合包文件。</value></data>
+  <data name="DownloadRedirectBlocked" xml:space="preserve"><value>重定向指向了未获批准的地址。</value></data>
+  <data name="DownloadRedirectInvalid" xml:space="preserve"><value>重定向次数过多，或缺少目标地址。</value></data>
+  <data name="HttpTemporaryFailure" xml:space="preserve"><value>服务器暂时返回了 HTTP {0}。</value></data>
+  <data name="HttpFailure" xml:space="preserve"><value>服务器返回了 HTTP {0}。</value></data>
+  <data name="DownloadSizeMismatch" xml:space="preserve"><value>下载文件大小与索引记录不符。</value></data>
+  <data name="DownloadTooLarge" xml:space="preserve"><value>下载文件超过索引记录的大小。</value></data>
+  <data name="DownloadTooShort" xml:space="preserve"><value>下载文件小于索引记录的大小。</value></data>
+  <data name="DownloadHashMismatch" xml:space="preserve"><value>下载文件的 SHA-512 哈希值与索引不符。</value></data>
+  <data name="DownloadRedirectLimit" xml:space="preserve"><value>重定向次数过多。</value></data>
+  <data name="ManifestEmpty" xml:space="preserve"><value>本地清单为空。</value></data>
+  <data name="ManifestCorrupt" xml:space="preserve"><value>本地清单已损坏。</value></data>
+  <data name="ManifestReadFailed" xml:space="preserve"><value>无法读取本地清单。</value></data>
+  <data name="ManifestSchemaUnsupported" xml:space="preserve"><value>不支持此本地清单版本。</value></data>
+  <data name="ManifestVersionsOrHashInvalid" xml:space="preserve"><value>本地清单包含无效的版本或哈希值。</value></data>
+  <data name="ManifestDuplicateOrReservedPath" xml:space="preserve"><value>本地清单包含重复路径或保留路径。</value></data>
+  <data name="ManifestHashOrSizeInvalid" xml:space="preserve"><value>本地清单包含无效的哈希值或文件大小。</value></data>
+  <data name="ManifestDownloadSourceInvalid" xml:space="preserve"><value>本地清单包含无效的下载来源。</value></data>
+  <data name="AlreadyInstalled" xml:space="preserve"><value>此版本已安装。请使用“检查并修复”。</value></data>
+  <data name="PreparingInstance" xml:space="preserve"><value>正在准备独立游戏文件夹</value></data>
+  <data name="DownloadingFile" xml:space="preserve"><value>正在下载 {0}</value></data>
+  <data name="VerifiedFile" xml:space="preserve"><value>已验证 {0}</value></data>
+  <data name="AppliedOverride" xml:space="preserve"><value>已应用 {0}</value></data>
+  <data name="PinnedResourcePackMissing" xml:space="preserve"><value>固定版本的整合包缺少必需的资源包。</value></data>
+  <data name="PinnedBbeMissing" xml:space="preserve"><value>发布版整合包中缺少 Better Block Entities。</value></data>
+  <data name="PinnedBbeConfigExists" xml:space="preserve"><value>发布版整合包已包含 Better Block Entities 设置。</value></data>
+  <data name="InstallFilesComplete" xml:space="preserve"><value>文件安装完成</value></data>
+  <data name="PackFilesInstalled" xml:space="preserve"><value>整合包文件已安装。</value></data>
+  <data name="InstallCancelled" xml:space="preserve"><value>安装已取消。之前的活动版本未更改。</value></data>
+  <data name="InstallFailed" xml:space="preserve"><value>无法完成安装。请打开诊断日志。</value></data>
+  <data name="RestoredFile" xml:space="preserve"><value>已恢复 {0}</value></data>
+  <data name="ManifestOverridesMismatch" xml:space="preserve"><value>本地清单与发布版覆盖文件不符。</value></data>
+  <data name="RepairedHashMismatch" xml:space="preserve"><value>恢复后的文件与本地清单不符。</value></data>
+  <data name="RepairAllHealthy" xml:space="preserve"><value>所有受管理文件均正常。</value></data>
+  <data name="RepairFilesRestored" xml:space="preserve"><value>已恢复文件：{0}。</value></data>
+  <data name="RepairCancelled" xml:space="preserve"><value>检查或修复已取消。</value></data>
+  <data name="RepairFailed" xml:space="preserve"><value>无法修复安装。请打开诊断日志。</value></data>
+  <data name="UninstallFilesRemovedWithData" xml:space="preserve"><value>受管理文件已删除；用户数据已保留。</value></data>
+  <data name="UninstallFilesRemoved" xml:space="preserve"><value>受管理文件已删除。</value></data>
+  <data name="UninstallFailed" xml:space="preserve"><value>无法卸载整合包。请打开诊断日志。</value></data>
+  <data name="VanillaPathBlocked" xml:space="preserve"><value>为确保安全，请选择 vanilla .minecraft 之外的文件夹。</value></data>
+  <data name="ActiveMarkerCorrupt" xml:space="preserve"><value>活动安装标记文件已损坏；现有标记未更改。</value></data>
+  <data name="InstallFileVerificationFailed" xml:space="preserve"><value>文件验证失败：{0}</value></data>
+  <data name="InstalledReleaseMismatch" xml:space="preserve"><value>已安装清单属于另一个整合包版本。</value></data>
+  <data name="ManifestReleaseMismatch" xml:space="preserve"><value>本地清单与固定版本的发布内容不符。</value></data>
+  <data name="ManifestUnknownOverride" xml:space="preserve"><value>本地清单包含未知的覆盖文件。</value></data>
+  <data name="ManifestUnknownManagedFile" xml:space="preserve"><value>本地清单包含未知的受管理文件。</value></data>
+  <data name="DriveRootUnsafe" xml:space="preserve"><value>不能将磁盘根目录选作安装文件夹。</value></data>
+  <data name="FabricNetworkFailed" xml:space="preserve"><value>无法连接官方 Fabric 服务器。请检查网络后重试。</value></data>
+  <data name="PinnedFabricProfileUnavailable" xml:space="preserve"><value>无法从官方服务器获取固定版本的 Fabric 配置。</value></data>
+  <data name="FabricProfileHashInvalid" xml:space="preserve"><value>Fabric 配置完整性验证失败。</value></data>
+  <data name="FabricVersionConflict" xml:space="preserve"><value>同名 Fabric 版本已存在，但内容与固定版本不符。其他文件未更改。</value></data>
+  <data name="OfficialLauncherNotFound" xml:space="preserve"><value>未找到官方 Minecraft Launcher。请先安装并打开一次。</value></data>
+  <data name="LauncherProfilesMissing" xml:space="preserve"><value>未找到启动器配置文件。请先打开一次官方 Minecraft Launcher，然后将其关闭。</value></data>
+  <data name="LauncherProfilesAmbiguous" xml:space="preserve"><value>找到两个启动器配置文件。自动选择可能会修改错误的配置。</value></data>
+  <data name="LauncherRunning" xml:space="preserve"><value>Minecraft Launcher 正在运行。MinePack 未更改配置。请将其关闭后重试。</value></data>
+  <data name="LauncherCloseTimeout" xml:space="preserve"><value>Minecraft Launcher 未能及时关闭。安装尚未开始。请关闭它后重试。</value></data>
+  <data name="LauncherCloseFailed" xml:space="preserve"><value>MinePack 无法安全地请求关闭 Minecraft Launcher。安装尚未开始。</value></data>
+  <data name="LauncherIdentityUnknown" xml:space="preserve"><value>检测到可能是 Minecraft Launcher 的进程，但无法验证其官方身份。MinePack 未关闭该进程，也未开始安装。</value></data>
+  <data name="LauncherTargetsAmbiguous" xml:space="preserve"><value>检测到多个已注册的官方 Minecraft Launcher，无法安全选择，因此安装尚未开始。</value></data>
+  <data name="LauncherDiscoveryFailed" xml:space="preserve"><value>Windows 无法读取已注册应用列表，因此无法安全检查 Minecraft Launcher。</value></data>
+  <data name="FabricArchiveUnexpected" xml:space="preserve"><value>官方 Fabric 压缩包的结构异常。</value></data>
+  <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>Fabric 压缩包中的版本与固定版本不符。</value></data>
+  <data name="LauncherProfileChanged" xml:space="preserve"><value>安装期间启动器配置发生了变化。请关闭 Minecraft Launcher 后重试。</value></data>
+  <data name="LauncherJsonInvalid" xml:space="preserve"><value>启动器配置文件包含无效的 JSON。</value></data>
+  <data name="LauncherProfileListUnsupported" xml:space="preserve"><value>启动器配置列表使用了不受支持的格式。</value></data>
+  <data name="LauncherProfileIdConflict" xml:space="preserve"><value>MinePack 配置 ID 已被其他配置使用。</value></data>
+  <data name="LauncherProfileUnowned" xml:space="preserve"><value>该配置没有标记为由此安装程序创建，因此未作更改。</value></data>
+  <data name="WorldSourceMissing" xml:space="preserve"><value>未找到存档文件夹。请选择另一个配置中的 saves 文件夹。</value></data>
+  <data name="WorldTargetVanilla" xml:space="preserve"><value>不能将存档导入常规的 .minecraft 文件夹。</value></data>
+  <data name="WorldFoldersOverlap" xml:space="preserve"><value>源文件夹与整合包文件夹不能相互包含。</value></data>
+  <data name="WorldIsOpen" xml:space="preserve"><value>存档“{0}”当前处于打开状态。导入前请先关闭 Minecraft。</value></data>
+  <data name="WorldCopied" xml:space="preserve"><value>已复制存档：{0}</value></data>
+</root>

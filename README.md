@@ -2,24 +2,29 @@
 
 English · [Русский](README.ru.md)
 
-MinePack installs a pinned modpack for **official Minecraft: Java Edition** through the official Minecraft Launcher. Your account stays in the Launcher.
+MinePack helps you install a curated collection of mods for **official Minecraft: Java Edition** without setting up each mod by hand. It downloads the selected files, checks them, and puts the game in a separate MinePack folder.
 
-For Windows · Fabric · Minecraft 26.2 · Official Minecraft Launcher
+MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. To play, you need the official Minecraft Launcher and an account with access to Java Edition. The packs require Fabric; MinePack prepares it during installation, so you do not need to install Fabric separately.
 
-Choose one build: **Vanilla Plus 0.18.0** has 37 mods, 8 resource packs, and 1 shader. **Frontier 0.19.0** has 52 mods, 10 resource packs, and 1 shader. It includes Guard Villagers, It Takes a Pillage Continuation, Voxy WorldGen, and Freshly Modded animations. Guard Villagers works without Hero of the Village, and Voxy WorldGen starts with its default 128-chunk generation radius. Smooth Swapping is no longer included. The installer downloads pinned files, checks their hashes, and uses one MinePack profile with a separate game folder for the active build. Installer version 0.18.2 retains the profile recovery and responsive operations from 0.18.1; pack versions remain separate.
+## Choose a pack
+
+**Vanilla Plus** includes 37 mods, 8 resource packs, and 1 shader. It focuses on performance and render distance, graphics and animations, useful tools, and sound.
+
+**Frontier** includes everything in Vanilla Plus, plus building options, village guards, and new structures. It has 52 mods, 10 resource packs, and 1 shader.
 
 ## Install
 
-1. A public installer download has not been confirmed yet, so there is no download link here.
-2. For local testing, use `artifacts/MinePack-Installer-0.18.2-win-x64.zip`. Extract the complete ZIP folder before running the installer; keep its files together. This test ZIP is not a public release.
-3. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Frontier**, and click **Install pack**. MinePack closes an open official Launcher, installs the selected build and updates the MinePack profile, then sends a request to open the Launcher.
-4. Choose the **MinePack** profile and click **Play**. On the first launch, the Launcher downloads the Minecraft base files.
+A public download link is not available yet. If you have received the MinePack ZIP, follow these steps:
 
-## Game files and worlds
+1. Extract the entire ZIP into a folder. Keep the extracted files together.
+2. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Frontier**, then click **Install pack**. MinePack prepares the selected pack and updates its Launcher profile. It may close a running official Launcher during setup, then tries to open it when installation is complete.
+3. In the official Minecraft Launcher, select the **MinePack** profile and click **Play**. On the first launch, the Launcher may download Minecraft's base files. If it did not open automatically, open it yourself and select MinePack.
 
-By default, MinePack stores its data in `%LOCALAPPDATA%\MinePack`; you can choose another folder in the installer. Each build gets its own folder under `instances`, with separate `mods`, `resourcepacks`, `shaderpacks`, `saves`, and game settings. The MinePack profile points to the active folder. Switching builds keeps the previous folder and its worlds; MinePack does not copy worlds between builds.
+## Game folders and worlds
 
-The vanilla `.minecraft` folder, its worlds, and other Launcher profiles are left alone. An older MinePack version stays in its own folder until a new installation succeeds. Repair and uninstall keep worlds and other user files. World import copies worlds and leaves the originals in place. Back up a world before opening it in a different Minecraft version.
+MinePack keeps its files in `%LOCALAPPDATA%\MinePack` by default; you can choose another folder in the installer. Each pack has a separate game folder. Switching packs keeps the previous folder and its worlds. MinePack does not automatically copy worlds between packs.
+
+Repair and uninstall keep your worlds and other personal files. Uninstall removes files managed by MinePack and its Launcher profile. **Import worlds** copies worlds into the active pack and leaves the originals in place. Back up a world before opening it in another Minecraft version. The regular `.minecraft` folder and other Launcher profiles are left alone.
 
 ## Included mods and files
 
@@ -36,7 +41,6 @@ The vanilla `.minecraft` folder, its worlds, and other Launcher profiles are lef
 - [Clumps](https://modrinth.com/mod/Wnxd13zP)
 
 </details>
-
 <details>
 <summary>Graphics &amp; Animations (9)</summary>
 
@@ -150,19 +154,3 @@ Subtle Effects is included in both builds, with Fzzy Config and Fabric Language 
 Frontier also enables [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) for Guard Villagers models and [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) for the detailed movements. These are client-side resource packs; their appearance still needs an in-game check.
 
 </details>
-
-## Build from source and local package
-
-The installer application is version 0.18.2. The pinned pack versions are Vanilla Plus 0.18.0 and Frontier 0.19.0. On Windows with the .NET 10 SDK, publish the ordinary build with:
-
-```powershell
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -p:UseSharedCompilation=false -m:1 -o artifacts/publish-0.18.2
-```
-
-To publish the single-file candidate (the `releases/` archives and font license remain alongside the EXE):
-
-```powershell
-dotnet publish src/MinePack.Installer -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:UseSharedCompilation=false -m:1 -o artifacts/publish-0.18.2-singlefile
-```
-
-The local QA ZIP is `artifacts/MinePack-Installer-0.18.2-win-x64.zip`. Extract the whole ZIP before starting `MinePack.Installer.exe`; do not move the EXE away from its `releases/` and `Assets/` folders.

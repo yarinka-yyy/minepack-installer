@@ -276,16 +276,25 @@ internal static class Smoke
         {
             foreach (var (name, expected) in new[]
                      {
-                         ("ru-RU", "ru"), ("ru", "ru"), ("en-US", "en"), ("en-GB", "en"), ("de-DE", "en")
+                         ("ru-RU", "ru"), ("ru", "ru"), ("en-US", "en"), ("en-GB", "en"),
+                         ("zh-CN", "zh-CN"), ("zh-SG", "zh-CN"), ("zh-TW", "zh-CN"), ("zh-Hans", "zh-CN"),
+                         ("de-DE", "en"), ("ja-JP", "en")
                      })
                 Equal(expected, LocalizedText.SelectUiCulture(CultureInfo.GetCultureInfo(name)).Name, $"UI culture for {name}");
 
             var resourceDirectory = Path.Combine(Environment.CurrentDirectory, "src", "MinePack.Core", "Resources");
             var english = ReadResourceFile(Path.Combine(resourceDirectory, "Strings.resx"));
             var russian = ReadResourceFile(Path.Combine(resourceDirectory, "Strings.ru.resx"));
+            var chinese = ReadResourceFile(Path.Combine(resourceDirectory, "Strings.zh-CN.resx"));
             True(english.Keys.Order().SequenceEqual(russian.Keys.Order()), "English and Russian resource keys match");
+            True(english.Keys.Order().SequenceEqual(chinese.Keys.Order()), "English and Simplified Chinese resource keys match");
             foreach (var key in english.Keys)
+            {
                 True(Placeholders(english[key]).SequenceEqual(Placeholders(russian[key])), $"resource placeholders match for {key}");
+                True(Placeholders(english[key]).SequenceEqual(Placeholders(chinese[key])), $"Chinese resource placeholders match for {key}");
+                True(chinese[key] != english[key] && chinese[key].Any(character => character is >= '\u3400' and <= '\u9FFF'),
+                    $"Chinese resource is translated and does not fall back to English for {key}");
+            }
 
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en");
             Equal("Ready to install", LocalizedText.Get("UiReady"), "English startup text");
@@ -304,6 +313,23 @@ internal static class Smoke
             Equal("Performance & Render Distance — 8|Graphics & Animations — 9|Tools & Quality of Life — 9|Sound — 2|Technical Foundation — 9|Resource Packs — 8|Shader — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "English catalog headings and counts");
             Equal("Copied worlds: 2. Skipped existing names: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "English formatted text");
+
+            CultureInfo.CurrentUICulture = LocalizedText.SelectUiCulture(CultureInfo.GetCultureInfo("zh-SG"));
+            Equal("zh-CN", CultureInfo.CurrentUICulture.Name, "Chinese UI culture canonicalized to Simplified Chinese");
+            Equal("准备就绪，可以安装", LocalizedText.Get("UiReady"), "Chinese startup text");
+            Equal("正在准备独立游戏文件夹", LocalizedText.Get("PreparingInstance"), "Chinese progress text");
+            Equal("整合包文件已安装。", LocalizedText.Get("PackFilesInstalled"), "Chinese success text");
+            Equal("未找到整合包文件。", LocalizedText.Get("PackFileMissing"), "Chinese error text");
+            Equal("性能与区块渲染距离", LocalizedText.Get("CatalogPerformance"), "Chinese catalog text");
+            Equal("整合包版本 0.19.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
+            Equal("安装程序版本 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Chinese installer version");
+            Equal("52 个模组 · 10 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
+            Equal("37 个模组 · 8 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
+            Equal("已复制存档：2。因名称已存在而跳过：1。", LocalizedText.Get("WorldImportSummary", 2, 1), "Chinese formatted text");
+            Equal("建筑方块 — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Chinese Vanilla 2 Plus building category");
+            Equal("世界与结构 — 6", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Chinese Vanilla 2 Plus worldgen category");
+            Equal("资源包 — 10", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading,
+                "Chinese Vanilla 2 Plus resource pack category");
 
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ru");
             Equal("Готово к установке", LocalizedText.Get("UiReady"), "Russian startup text");

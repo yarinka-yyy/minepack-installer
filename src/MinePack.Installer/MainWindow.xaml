@@ -274,7 +274,8 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Text="MINEPACK" FontSize="34" FontWeight="Bold" Foreground="#B5F18B"/>
+                            <TextBlock Text="MINEPACK" FontFamily="/MinePack.Installer;component/Assets/#Monocraft"
+                                       FontSize="34" FontWeight="Bold" Foreground="#B5F18B"/>
                             <TextBlock Grid.Column="1" Text="{loc:Localized Key=UiMinecraftVersion}"
                                        FontSize="21" FontWeight="Bold" Foreground="#C8F5A8"
                                        HorizontalAlignment="Right" VerticalAlignment="Center"/>

@@ -8,7 +8,12 @@ public static class LocalizedText
     private static readonly ResourceManager Resources = new("MinePack.Core.Resources.Strings", typeof(LocalizedText).Assembly);
 
     public static CultureInfo SelectUiCulture(CultureInfo systemUiCulture) =>
-        CultureInfo.GetCultureInfo(systemUiCulture.TwoLetterISOLanguageName == "ru" ? "ru" : "en");
+        CultureInfo.GetCultureInfo(systemUiCulture.TwoLetterISOLanguageName switch
+        {
+            "ru" => "ru",
+            "zh" => "zh-CN",
+            _ => "en"
+        });
 
     public static string Get(string key, params object?[] arguments)
     {
