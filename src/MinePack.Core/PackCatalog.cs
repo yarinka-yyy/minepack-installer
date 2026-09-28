@@ -78,7 +78,12 @@ public static class PackCatalog
         .Select(group => group.Key == "CatalogPerformance"
             ? group with { Items = group.Items.Append(new CatalogItem("Voxy WorldGen", "CatalogPerformance", "mod", "xT0lnNE9", "mods/Voxy World Gen V2-fabric-26.2-2.4.3.jar")).ToArray() }
             : group.Key == "CatalogGraphics"
-            ? group with { Items = group.Items.Append(new CatalogItem("Nyf's Spiders", "CatalogGraphics", "mod", "", "mods/nyfsspiders-fabric-26.2-3.0.0-minepack.1.jar")).ToArray() }
+            ? group with { Items = group.Items.Concat(new[]
+                {
+                    new CatalogItem("Nyf's Spiders", "CatalogGraphics", "mod", "", "mods/nyfsspiders-fabric-26.2-3.0.0-minepack.1.jar"),
+                    new CatalogItem("Continuity", "CatalogGraphics", "mod", "1IjD5062", "mods/continuity-3.0.1+26.2.jar"),
+                    new CatalogItem("CIT Resewn Continuation", "CatalogGraphics", "mod", "8auYYPlH", "mods/citresewn-continuation-1.2.2-fork.13+26.2.jar")
+                }).ToArray() }
             : group.Key == "CatalogTools"
             ? group with { Items = group.Items.Append(new CatalogItem("World Play Time", "CatalogTools", "mod", "", "mods/worldplaytime-1.2.5-minepack.1-26.2-FABRIC.jar")).ToArray() }
             : group.Key == "CatalogTechnical"
@@ -93,7 +98,8 @@ public static class PackCatalog
                 ? group with { Items = group.Items.Concat(new[]
                 {
                     new CatalogItem("Semos Animations Lib", "CatalogResourcePacks", "resourcepack", "SY2QNRYK", "resourcepacks/Semos Animations Lib 2.0.4.zip"),
-                    new CatalogItem("F.M.R.P", "CatalogResourcePacks", "resourcepack", "u4nhiAdP", "resourcepacks/Freshly Modded 3.0.5.zip")
+                    new CatalogItem("F.M.R.P", "CatalogResourcePacks", "resourcepack", "u4nhiAdP", "resourcepacks/Freshly Modded 3.0.5.zip"),
+                    new CatalogItem("xali's Enhanced Vanilla (MinePack 26.2 port)", "CatalogResourcePacks", "resourcepack", "", "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip")
                 }).ToArray() }
             : group)
         .Append(Group("CatalogBuilding", "mod",

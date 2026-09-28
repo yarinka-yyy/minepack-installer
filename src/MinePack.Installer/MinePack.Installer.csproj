@@ -27,6 +27,7 @@
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.1.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.1.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.2.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.2.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.3.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.3.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.4.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.4.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\README.md" Link="releases\test-pack\README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
   </ItemGroup>
 
@@ -34,7 +35,7 @@
     <OutputType>WinExe</OutputType>
     <ApplicationIcon>Assets\MinePackIcon.ico</ApplicationIcon>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>1.0.3</Version>
+    <Version>1.0.4</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

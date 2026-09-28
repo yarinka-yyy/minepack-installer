@@ -71,6 +71,11 @@ hash = "8e4512056e448a6f3d1ac179961eb699c15fbe000284e0aee041b5971b417302"
 metafile = true
 
 [[files]]
+file = "mods/cit-resewn-continuation.pw.toml"
+hash = "bfa62f4186537e29c5e554572ccc2e93f1d9d841044da125e80cb4174063a936"
+metafile = true
+
+[[files]]
 file = "mods/cloth-config.pw.toml"
 hash = "7fa9592b9948b8809018a4e7c3ca7da4d19fc5ef8c03021414cb22ae0253f083"
 metafile = true
@@ -78,6 +83,11 @@ metafile = true
 [[files]]
 file = "mods/clumps.pw.toml"
 hash = "3e4d788583a36e9d145407fadce148f037e5229bff430f7dcd281d4d426c9ee6"
+metafile = true
+
+[[files]]
+file = "mods/continuity.pw.toml"
+hash = "57ec34a7f37b99e4638f5214d1de0bef916e981743d3648c57cad1e8e399982b"
 metafile = true
 
 [[files]]
@@ -357,6 +367,10 @@ metafile = true
 file = "resourcepacks/semos-animations-lib.pw.toml"
 hash = "3bd79a2e8fb89d9d094ea8c53ca657193d6a18f5173f7efdb69c8de79e053057"
 metafile = true
+
+[[files]]
+file = "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip"
+hash = "3dda9307df5e295624c5bbde1c4c1cb88a64d02ee1cafb53f447fa56d68b42d7"
 
 [[files]]
 file = "shaderpacks/complementary-reimagined.pw.toml"

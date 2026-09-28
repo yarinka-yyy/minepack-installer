@@ -10,7 +10,9 @@ MinePack 适用于 Windows，安装的是 Minecraft: Java Edition 26.2 整合包
 
 **Vanilla Plus** 包含 37 个模组、8 个资源包和 1 个光影包。生物和村民的动作更加生动；光影和视觉内容改变了光照、水面、植物与粒子的效果。Voxy 能让你在通常的视距之外看到已经探索过的地形，性能模组则帮助游戏保持流畅。世界地图、物品栏整理、物品提示和更有层次的声音让日常游玩更方便。
 
-**Frontier** 包含 Vanilla Plus 的全部内容，总计 61 个模组、10 个资源包和 1 个光影包。五个建筑模组带来窗户、栅栏与围墙、桥梁、门和更多楼梯样式。在尚未探索的区域，你还能发现改进的村庄、遗迹、高塔、下界建筑、掠夺者营地，以及由 YUNG's 模组重新设计的地牢、神庙、矿井、要塞和下界堡垒；仅 MVS 就宣称拥有[超过 130 种建筑结构](https://modrinth.com/mod/moogs-voyager-structures)。村庄里会出现持剑或弩的守卫。蜘蛛可以攀爬墙壁和天花板，世界选择界面也会显示每个世界的游玩时长。
+**Frontier** 在当前源码中包含 Vanilla Plus 的全部内容，总计 63 个模组、11 个资源包和 1 个光影包。五个建筑模组带来窗户、栅栏与围墙、桥梁、门和更多楼梯样式。在尚未探索的区域，你还能发现改进的村庄、遗迹、高塔、下界建筑、掠夺者营地，以及由 YUNG's 模组重新设计的地牢、神庙、矿井、要塞和下界堡垒；仅 MVS 就宣称拥有[超过 130 种建筑结构](https://modrinth.com/mod/moogs-voyager-structures)。村庄里会出现持剑或弩的守卫。蜘蛛可以攀爬墙壁和天花板，世界选择界面也会显示每个世界的游玩时长。MinePack 非官方移植的 xali's Enhanced Vanilla 默认启用，并配有 Continuity 和 CIT Resewn Continuation；ZIP 内注明作者 xalixilax 和 CC BY-NC 4.0 许可。
+
+`main` 分支包含尚未发布的 1.0.4 候选版本。下方公开下载仍为 1.0.3，其 Frontier 0.19.3 不包含 xali's Enhanced Vanilla。
 
 ## 安装
 

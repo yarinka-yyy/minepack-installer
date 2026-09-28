@@ -2,10 +2,12 @@ namespace MinePack.Core;
 
 public static class Vanilla2PlusRelease
 {
-    public const string ArtifactFileName = "vanilla-2-plus-0.19.3.mrpack";
+    public const string ArtifactFileName = "vanilla-2-plus-0.19.4.mrpack";
     public const string ArtifactRelativePath = "releases/vanilla-2-plus/" + ArtifactFileName;
-    public const string ArtifactSha512 = "5D62203DD9A729207BB509F08BCF67F81A27F87C68E86913FB2ABBA043CB4FC7EAAB65A31AB4E72E134E0EDDB393B1BC9B58B136ADD4A0F46C8D3FA5C1BBFAF7";
-    public const string PackVersion = "0.19.3";
+    public const string ArtifactSha512 = "C456ED02D11506C04D3281D95189A0178B403071EF721F377A85053D3A69A81F7103A538A5CAE7A48F8C81A54715A1510FC20976058E1154F6D0F8F4E10C163F";
+    public const string PackVersion = "0.19.4";
+    public const string SpidersArtifactFileName = "vanilla-2-plus-0.19.3.mrpack";
+    public const string SpidersArtifactSha512 = "5D62203DD9A729207BB509F08BCF67F81A27F87C68E86913FB2ABBA043CB4FC7EAAB65A31AB4E72E134E0EDDB393B1BC9B58B136ADD4A0F46C8D3FA5C1BBFAF7";
     public const string YungsArtifactFileName = "vanilla-2-plus-0.19.2.mrpack";
     public const string YungsArtifactSha512 = "BEE5575B637E697C96DE783E8D252644BD24E92330346B2BF30BC55FDBCC2E166B27798139A3202C3E7E39B20EFD662A9D56EF3FCDF091BBB1075D4518D32A87";
     public const string TunedArtifactFileName = "vanilla-2-plus-0.19.1.mrpack";
@@ -28,7 +30,8 @@ public static class Vanilla2PlusRelease
     [
         ..TestPackRelease.InitialResourcePacks,
         "Semos Animations Lib 2.0.4.zip",
-        "Freshly Modded 3.0.5.zip"
+        "Freshly Modded 3.0.5.zip",
+        "xalis-enhanced-vanilla-26.2-minepack.1.zip"
     ];
     public static string InitialOptions => TestPackRelease.BuildInitialOptions(InitialResourcePacks);
 }

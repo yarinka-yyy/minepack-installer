@@ -134,6 +134,7 @@ public sealed class InstallService : IDisposable
                 pack.ArchiveSha512.Equals(TestPackRelease.SmoothArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(TestPackRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.SpidersArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.YungsArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.TunedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.WorldgenArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
@@ -144,17 +145,21 @@ public sealed class InstallService : IDisposable
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.OriginalArtifactSha512, StringComparison.OrdinalIgnoreCase))
             {
                 var guardAnimationPacks = pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                    pack.ArchiveSha512.Equals(Vanilla2PlusRelease.SpidersArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.YungsArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.TunedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.WorldgenArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.GuardArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase);
-                var resourcePacks = guardAnimationPacks ? Vanilla2PlusRelease.InitialResourcePacks : TestPackRelease.InitialResourcePacks;
+                var resourcePacks = guardAnimationPacks
+                    ? pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase)
+                        ? Vanilla2PlusRelease.InitialResourcePacks : Vanilla2PlusRelease.InitialResourcePacks[..^1]
+                    : TestPackRelease.InitialResourcePacks;
                 if (resourcePacks.Any(name => !manifest.Files.Any(file =>
                     file.Path.Equals("resourcepacks/" + name, StringComparison.OrdinalIgnoreCase))))
                     throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedResourcePackMissing"));
                 await File.WriteAllTextAsync(Path.Combine(stagingRoot, "options.txt"),
-                    guardAnimationPacks ? Vanilla2PlusRelease.InitialOptions : TestPackRelease.InitialOptions, cancellationToken);
+                    TestPackRelease.BuildInitialOptions(resourcePacks), cancellationToken);
                 if (!manifest.Files.Any(file => file.Path.Equals("mods/bbe-fabric-1.3.7+mc26.2.jar", StringComparison.OrdinalIgnoreCase)))
                     throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedBbeMissing"));
                 var bbeConfig = SafePath.Resolve(stagingRoot, "config/BBEConfig.json");
