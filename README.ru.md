@@ -10,9 +10,11 @@ MinePack работает в Windows и устанавливает сборки 
 
 **Vanilla Plus** включает 37 модов, 8 ресурспаков и 1 шейдер. Существа и жители двигаются выразительнее, а шейдер и визуальные дополнения меняют освещение, воду, растения и частицы. Voxy показывает уже исследованный ландшафт далеко за обычной дальностью прорисовки; моды производительности помогают игре работать плавнее. Карта мира, сортировка инвентаря, подсказки о предметах и более объёмное звучание делают повседневную игру удобнее.
 
-**Frontier** включает всё содержимое Vanilla Plus: всего 52 мода, 10 ресурспаков и 1 шейдер. Пять строительных модов добавляют окна, заборы и стены, мосты, двери и новые варианты лестниц. В ещё не исследованных областях встречаются обновлённые деревни, руины, башни, постройки Незера, лагеря и крепости разбойников; один только MVS заявляет [более 130 видов построек](https://modrinth.com/mod/moogs-voyager-structures). В деревнях появляются жители-охранники с мечами и арбалетами, которые защищают жителей от монстров.
+**Frontier** включает всё содержимое Vanilla Plus: всего 59 модов, 10 ресурспаков и 1 шейдер. Пять строительных модов добавляют окна, заборы и стены, мосты, двери и новые варианты лестниц. В ещё не исследованных областях встречаются обновлённые деревни, руины, башни, постройки Незера, лагеря разбойников, а также переработанные модами YUNG's подземелья, храмы, шахты, крепости и крепости Незера; один только MVS заявляет [более 130 видов построек](https://modrinth.com/mod/moogs-voyager-structures). В деревнях появляются жители-охранники с мечами и арбалетами, которые защищают жителей от монстров.
 
 ## Установка
+
+Доступный по ссылке релиз 1.0.0 вышел до этих дополнений Frontier. ZIP версии 1.0.2 подготовлен локально, но ещё не опубликован как GitHub Release.
 
 1. Скачайте [MinePack-Installer-1.0.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.0/MinePack-Installer-1.0.0-win-x64.zip) со страницы первого релиза и полностью распакуйте его в папку. Не перемещайте файлы отдельно друг от друга.
 2. Запустите `MinePack.Installer.exe`, выберите **Vanilla Plus** или **Frontier**, затем нажмите **«Установить сборку»**. MinePack подготовит сборку и обновит свой профиль Launcher. Во время установки он может закрыть запущенный официальный Launcher, а по завершении попробует открыть его снова.
@@ -131,7 +133,7 @@ EXE пока не подписан цифровой подписью: Windows м
 </details>
 
 <details>
-<summary>Дополнения Frontier — мир и структуры (5)</summary>
+<summary>Дополнения Frontier — мир и структуры (11)</summary>
 
 Они добавляются ко всему составу Vanilla Plus и пяти модам Macaw's выше.
 
@@ -140,8 +142,14 @@ EXE пока не подписан цифровой подписью: Windows м
 - [MVS — Moog's Voyager Structures](https://modrinth.com/mod/OQAgZMH1)
 - [Structory](https://modrinth.com/datapack/aKCwCJlY) (вариант мода для Fabric)
 - [It Takes a Pillage Continuation](https://modrinth.com/mod/QOJOg1gE)
+- [YUNG's Better Desert Temples](https://github.com/YUNG-GANG/YUNGs-Better-Desert-Temples)
+- [YUNG's Better Dungeons](https://github.com/YUNG-GANG/YUNGs-Better-Dungeons)
+- [YUNG's Better Jungle Temples](https://github.com/YUNG-GANG/YUNGs-Better-Jungle-Temples)
+- [YUNG's Better Mineshafts](https://github.com/YUNG-GANG/YUNGs-Better-Mineshafts)
+- [YUNG's Better Nether Fortresses](https://github.com/YUNG-GANG/YUNGs-Better-Fortresses)
+- [YUNG's Better Strongholds](https://github.com/YUNG-GANG/YUNGs-Better-Strongholds)
 
-Сборка также добавляет [Voxy WorldGen](https://modrinth.com/mod/xT0lnNE9) и обязательные библиотеки [Library Ferret](https://modrinth.com/mod/DOB2l4oJ), [Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy) и [Resourceful Lib](https://modrinth.com/mod/G1hIVOrD). Новые структуры появляются в ещё не исследованных чанках. Для игры на внешнем сервере эти моды генерации и библиотеки нужны также на сервере; одиночная игра использует встроенный сервер.
+Сборка также добавляет [Voxy WorldGen](https://modrinth.com/mod/xT0lnNE9) и обязательные библиотеки [Library Ferret](https://modrinth.com/mod/DOB2l4oJ), [Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy), [Resourceful Lib](https://modrinth.com/mod/G1hIVOrD) и [YUNG's API](https://github.com/YUNG-GANG/YUNGs-API). Семь файлов YUNG's включены в архив как форки для Minecraft 26.2. Новые структуры появляются в ещё не исследованных чанках. Для игры на внешнем сервере эти моды генерации и библиотеки нужны также на сервере; одиночная игра использует встроенный сервер.
 
 </details>
 

@@ -1,5 +1,9 @@
 # Frontier releases
 
+## 0.19.2 — YUNG's structure mods for Minecraft 26.2
+
+Minecraft `26.2` · Fabric Loader `0.19.5` · 59 mods, 10 resource packs, 1 shader. The 63 pinned downloads and initial configs from `0.19.1` remain unchanged. Seven local LGPLv3 compatibility forks are bundled in `overrides/mods/`: YUNG's API, Better Desert Temples, Better Dungeons, Better Jungle Temples, Better Mineshafts, Better Nether Fortresses, and Better Strongholds. The former `0.19.1` archive remains available for Repair. SHA-512: `BEE5575B637E697C96DE783E8D252644BD24E92330346B2BF30BC55FDBCC2E166B27798139A3202C3E7E39B20EFD662A9D56EF3FCDF091BBB1075D4518D32A87`.
+
 ## 0.19.1 — lower Voxy WorldGen background load
 
 The initial Voxy WorldGen config keeps `generationRadius=128` and changes `maxActiveTasks` from 6 to 3, based on the user's Prism Launcher play test. Downloads, mods, and other settings match 0.19.0. The config is applied to new installations only; later player changes remain untouched by Repair and Uninstall. SHA-512: `3C4CA97D8B469D750F852D16EBD402E8C6AD328ACB16AB267B87AB6CDDAF03505103EC933AFA03172A8E8704498898B8E05C6140D27F831A0F051A36CA309823`.

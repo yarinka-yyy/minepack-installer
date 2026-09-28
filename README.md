@@ -10,9 +10,11 @@ MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. T
 
 **Vanilla Plus** includes 37 mods, 8 resource packs, and 1 shader. Mobs and villagers move more expressively, while the shader and visual additions change lighting, water, plants, and particles. Voxy displays terrain you have already explored far beyond the usual render distance; performance mods help keep the game smooth. A world map, inventory sorting, item hints, and richer sound make everyday play more convenient.
 
-**Frontier** includes everything in Vanilla Plus: 52 mods, 10 resource packs, and 1 shader in total. Five building mods add windows, fences and walls, bridges, doors, and more stair designs. In unexplored areas you can find improved villages, ruins, towers, Nether buildings, and pillager camps and fortresses; MVS alone advertises [over 130 structure designs](https://modrinth.com/mod/moogs-voyager-structures). Villages also gain sword- and crossbow-wielding guards who defend their residents from monsters.
+**Frontier** includes everything in Vanilla Plus: 59 mods, 10 resource packs, and 1 shader in total. Five building mods add windows, fences and walls, bridges, doors, and more stair designs. In unexplored areas you can find improved villages, ruins, towers, Nether buildings, pillager camps, and YUNG's redesigned dungeons, temples, mineshafts, strongholds, and Nether fortresses; MVS alone advertises [over 130 structure designs](https://modrinth.com/mod/moogs-voyager-structures). Villages also gain sword- and crossbow-wielding guards who defend their residents from monsters.
 
 ## Install
+
+The linked 1.0.0 release predates these Frontier additions. The 1.0.2 ZIP is prepared locally and has not been published as a GitHub Release yet.
 
 1. Download [MinePack-Installer-1.0.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.0/MinePack-Installer-1.0.0-win-x64.zip) from the first release and extract the entire ZIP into a folder. Keep the extracted files together.
 2. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Frontier**, then click **Install pack**. MinePack prepares the selected pack and updates its Launcher profile. It may close a running official Launcher during setup, then tries to open it when installation is complete.
@@ -131,7 +133,7 @@ For an external multiplayer server, these block mods must also be installed on t
 </details>
 
 <details>
-<summary>Frontier additions — world &amp; structures (5)</summary>
+<summary>Frontier additions — world &amp; structures (11)</summary>
 
 These are added to all Vanilla Plus files and the five Macaw's mods above.
 
@@ -140,8 +142,14 @@ These are added to all Vanilla Plus files and the five Macaw's mods above.
 - [MVS — Moog's Voyager Structures](https://modrinth.com/mod/OQAgZMH1)
 - [Structory](https://modrinth.com/datapack/aKCwCJlY) (Fabric mod version)
 - [It Takes a Pillage Continuation](https://modrinth.com/mod/QOJOg1gE)
+- [YUNG's Better Desert Temples](https://github.com/YUNG-GANG/YUNGs-Better-Desert-Temples)
+- [YUNG's Better Dungeons](https://github.com/YUNG-GANG/YUNGs-Better-Dungeons)
+- [YUNG's Better Jungle Temples](https://github.com/YUNG-GANG/YUNGs-Better-Jungle-Temples)
+- [YUNG's Better Mineshafts](https://github.com/YUNG-GANG/YUNGs-Better-Mineshafts)
+- [YUNG's Better Nether Fortresses](https://github.com/YUNG-GANG/YUNGs-Better-Fortresses)
+- [YUNG's Better Strongholds](https://github.com/YUNG-GANG/YUNGs-Better-Strongholds)
 
-The pack also adds [Voxy WorldGen](https://modrinth.com/mod/xT0lnNE9) and the required libraries [Library Ferret](https://modrinth.com/mod/DOB2l4oJ), [Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy), and [Resourceful Lib](https://modrinth.com/mod/G1hIVOrD). New structures appear in unexplored chunks. External servers need these world generation mods and libraries installed; singleplayer uses the integrated server.
+The pack also adds [Voxy WorldGen](https://modrinth.com/mod/xT0lnNE9) and the required libraries [Library Ferret](https://modrinth.com/mod/DOB2l4oJ), [Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy), [Resourceful Lib](https://modrinth.com/mod/G1hIVOrD), and [YUNG's API](https://github.com/YUNG-GANG/YUNGs-API). The seven YUNG's files are bundled compatibility forks for Minecraft 26.2. New structures appear in unexplored chunks. External servers need these world generation mods and libraries installed; singleplayer uses the integrated server.
 
 </details>
 

@@ -12,7 +12,7 @@
   <data name="UiPackVersion" xml:space="preserve"><value>Pack version {0}</value></data>
   <data name="UiInstallerVersion" xml:space="preserve"><value>Installer version {0}</value></data>
   <data name="UiPackCountsVanillaPlus" xml:space="preserve"><value>37 mods · 8 resource packs · 1 shader</value></data>
-  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>52 mods · 10 resource packs · 1 shader</value></data>
+  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>59 mods · 10 resource packs · 1 shader</value></data>
   <data name="UiChoosePack" xml:space="preserve"><value>Choose a pack to install</value></data>
   <data name="UiCatalogTitle" xml:space="preserve"><value>Included in the pack</value></data>
   <data name="UiOpenOnModrinth" xml:space="preserve"><value>Open on Modrinth</value></data>

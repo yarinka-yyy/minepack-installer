@@ -13,6 +13,34 @@ file = "config/voxyworldgenv2.json"
 hash = "10a2ae6225b872b681e18bc1170b4cde28ad076b5f1d74088effc668f7afadba"
 
 [[files]]
+file = "mods/YungsApi-26.2-Fabric-6.1.3-minepack.1.jar"
+hash = "0c03efe456698bf64cc58797d6ff852aebbbaf67f85ad8dcf4dd9eb985821604"
+
+[[files]]
+file = "mods/YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.1.jar"
+hash = "2ee144f747c2f54cb675484b1728ccc468b36e2dead2282e1ab7aff0194f1fd2"
+
+[[files]]
+file = "mods/YungsBetterDungeons-26.2-Fabric-6.1.1-minepack.1.jar"
+hash = "2307e18e81d55b7dec688f19cda22426ef8cc23e6b9267b98717be23ec66c046"
+
+[[files]]
+file = "mods/YungsBetterJungleTemples-26.2-Fabric-4.1.1-minepack.1.jar"
+hash = "a9e062061cc176a93de6f0722af3b7583199dc8a12238b43fd9f05fd51123ac3"
+
+[[files]]
+file = "mods/YungsBetterMineshafts-26.2-Fabric-6.1.1-minepack.1.jar"
+hash = "8a86d77211874f02ed4008e7d30cf272296d89167e31a32e8878ed0bbfab329f"
+
+[[files]]
+file = "mods/YungsBetterNetherFortresses-26.2-Fabric-4.1.1-minepack.1.jar"
+hash = "e660988ef669d409ccd0177c337d16038c4769cf7dc035698bd3308ee1fb8cbd"
+
+[[files]]
+file = "mods/YungsBetterStrongholds-26.2-Fabric-6.1.1-minepack.1.jar"
+hash = "d76c94f9a00890892e922bfa38c82a6d04e064f99ae4902533233de01dcf0aa2"
+
+[[files]]
 file = "mods/advancement-plaques.pw.toml"
 hash = "250f6f7cda563380af599db2609966c401296d2a01a15b132bf74a5966b70c5d"
 metafile = true

@@ -3,7 +3,7 @@ namespace MinePack.Core;
 public sealed record CatalogItem(string Name, string GroupKey, string Kind, string ProjectId, string FilePath)
 {
     public string Group => LocalizedText.Get(GroupKey);
-    public Uri ModrinthUrl => new($"https://modrinth.com/{Kind}/{ProjectId}");
+    public Uri? ModrinthUrl => string.IsNullOrWhiteSpace(ProjectId) ? null : new($"https://modrinth.com/{Kind}/{ProjectId}");
 }
 
 public sealed record CatalogGroup(string Key, IReadOnlyList<CatalogItem> Items)
@@ -82,7 +82,8 @@ public static class PackCatalog
                 {
                     new CatalogItem("Library Ferret", "CatalogTechnical", "mod", "DOB2l4oJ", "mods/libraryferret-fabric-26.2-5.0.0.jar"),
                     new CatalogItem("Moog's Structure Lib", "CatalogTechnical", "mod", "1oUDhxuy", "mods/MoogsStructureLib-fabric-26.2-3.3.0.jar"),
-                    new CatalogItem("Resourceful Lib", "CatalogTechnical", "mod", "G1hIVOrD", "mods/ResourcefulLib-5.0.4.jar")
+                    new CatalogItem("Resourceful Lib", "CatalogTechnical", "mod", "G1hIVOrD", "mods/ResourcefulLib-5.0.4.jar"),
+                    new CatalogItem("YUNG's API", "CatalogTechnical", "mod", "", "mods/YungsApi-26.2-Fabric-6.1.3-minepack.1.jar")
                 }).ToArray() }
             : group.Key == "CatalogResourcePacks"
                 ? group with { Items = group.Items.Concat(new[]
@@ -104,7 +105,13 @@ public static class PackCatalog
             new CatalogItem("MVS - Moog's Voyager Structures", "CatalogWorldgen", "mod", "OQAgZMH1", "mods/MoogsVoyagerStructures-universal-1.21-5.1.3.jar"),
             new CatalogItem("Structory", "CatalogWorldgen", "datapack", "aKCwCJlY", "mods/Structory_26.2_v1.3.7.jar"),
             new CatalogItem("Guard Villagers (Fabric/Quilt)", "CatalogWorldgen", "mod", "59rkB3YY", "mods/guardvillagers-2.1.3-26.2.jar"),
-            new CatalogItem("It Takes a Pillage Continuation", "CatalogWorldgen", "mod", "QOJOg1gE", "mods/takesapillage-fabric-1.0.12+mc26.2.jar")
+            new CatalogItem("It Takes a Pillage Continuation", "CatalogWorldgen", "mod", "QOJOg1gE", "mods/takesapillage-fabric-1.0.12+mc26.2.jar"),
+            new CatalogItem("YUNG's Better Desert Temples", "CatalogWorldgen", "mod", "", "mods/YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.1.jar"),
+            new CatalogItem("YUNG's Better Dungeons", "CatalogWorldgen", "mod", "", "mods/YungsBetterDungeons-26.2-Fabric-6.1.1-minepack.1.jar"),
+            new CatalogItem("YUNG's Better Jungle Temples", "CatalogWorldgen", "mod", "", "mods/YungsBetterJungleTemples-26.2-Fabric-4.1.1-minepack.1.jar"),
+            new CatalogItem("YUNG's Better Mineshafts", "CatalogWorldgen", "mod", "", "mods/YungsBetterMineshafts-26.2-Fabric-6.1.1-minepack.1.jar"),
+            new CatalogItem("YUNG's Better Nether Fortresses", "CatalogWorldgen", "mod", "", "mods/YungsBetterNetherFortresses-26.2-Fabric-4.1.1-minepack.1.jar"),
+            new CatalogItem("YUNG's Better Strongholds", "CatalogWorldgen", "mod", "", "mods/YungsBetterStrongholds-26.2-Fabric-6.1.1-minepack.1.jar")
         ])).ToArray();
 
     public static IReadOnlyList<CatalogGroup> Groups => VanillaPlusGroups;

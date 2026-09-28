@@ -134,6 +134,7 @@ public sealed class InstallService : IDisposable
                 pack.ArchiveSha512.Equals(TestPackRelease.SmoothArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(TestPackRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.TunedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.WorldgenArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.GuardArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
@@ -142,6 +143,7 @@ public sealed class InstallService : IDisposable
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.OriginalArtifactSha512, StringComparison.OrdinalIgnoreCase))
             {
                 var guardAnimationPacks = pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                    pack.ArchiveSha512.Equals(Vanilla2PlusRelease.TunedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.WorldgenArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.GuardArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase);

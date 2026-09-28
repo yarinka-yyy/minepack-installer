@@ -10,9 +10,11 @@ MinePack 适用于 Windows，安装的是 Minecraft: Java Edition 26.2 整合包
 
 **Vanilla Plus** 包含 37 个模组、8 个资源包和 1 个光影包。生物和村民的动作更加生动；光影和视觉内容改变了光照、水面、植物与粒子的效果。Voxy 能让你在通常的视距之外看到已经探索过的地形，性能模组则帮助游戏保持流畅。世界地图、物品栏整理、物品提示和更有层次的声音让日常游玩更方便。
 
-**Frontier** 包含 Vanilla Plus 的全部内容，总计 52 个模组、10 个资源包和 1 个光影包。五个建筑模组带来窗户、栅栏与围墙、桥梁、门和更多楼梯样式。在尚未探索的区域，你还能发现改进的村庄、遗迹、高塔、下界建筑，以及掠夺者营地和堡垒；仅 MVS 就宣称拥有[超过 130 种建筑结构](https://modrinth.com/mod/moogs-voyager-structures)。村庄里还会出现持剑或弩的守卫，帮助村民抵御怪物。
+**Frontier** 包含 Vanilla Plus 的全部内容，总计 59 个模组、10 个资源包和 1 个光影包。五个建筑模组带来窗户、栅栏与围墙、桥梁、门和更多楼梯样式。在尚未探索的区域，你还能发现改进的村庄、遗迹、高塔、下界建筑、掠夺者营地，以及由 YUNG's 模组重新设计的地牢、神庙、矿井、要塞和下界堡垒；仅 MVS 就宣称拥有[超过 130 种建筑结构](https://modrinth.com/mod/moogs-voyager-structures)。村庄里还会出现持剑或弩的守卫，帮助村民抵御怪物。
 
 ## 安装
+
+下方链接指向尚未包含这些 Frontier 新内容的 1.0.0 版本。1.0.2 ZIP 已在本地准备，但尚未发布为 GitHub Release。
 
 1. 从首个版本页面下载 [MinePack-Installer-1.0.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.0/MinePack-Installer-1.0.0-win-x64.zip)，并将整个 ZIP 解压到一个文件夹中。请将解压后的文件放在一起。
 2. 运行 `MinePack.Installer.exe`，选择 **Vanilla Plus** 或 **Frontier**，然后点击**安装整合包**。MinePack 会准备所选整合包并更新它在 Launcher 中的配置。安装时，它可能会关闭正在运行的官方 Launcher；完成后会尝试重新打开。
@@ -131,7 +133,7 @@ MinePack 默认将文件保存在 `%LOCALAPPDATA%\MinePack`；你也可以在安
 </details>
 
 <details>
-<summary>Frontier 附加内容：世界与建筑结构 (5)</summary>
+<summary>Frontier 附加内容：世界与建筑结构 (11)</summary>
 
 这些内容会加入上述 Vanilla Plus 和五个 Macaw's 模组。
 
@@ -140,8 +142,14 @@ MinePack 默认将文件保存在 `%LOCALAPPDATA%\MinePack`；你也可以在安
 - [MVS — Moog's Voyager Structures](https://modrinth.com/mod/OQAgZMH1)
 - [Structory](https://modrinth.com/datapack/aKCwCJlY)（Fabric 模组版本）
 - [It Takes a Pillage Continuation](https://modrinth.com/mod/QOJOg1gE)
+- [YUNG's Better Desert Temples](https://github.com/YUNG-GANG/YUNGs-Better-Desert-Temples)
+- [YUNG's Better Dungeons](https://github.com/YUNG-GANG/YUNGs-Better-Dungeons)
+- [YUNG's Better Jungle Temples](https://github.com/YUNG-GANG/YUNGs-Better-Jungle-Temples)
+- [YUNG's Better Mineshafts](https://github.com/YUNG-GANG/YUNGs-Better-Mineshafts)
+- [YUNG's Better Nether Fortresses](https://github.com/YUNG-GANG/YUNGs-Better-Fortresses)
+- [YUNG's Better Strongholds](https://github.com/YUNG-GANG/YUNGs-Better-Strongholds)
 
-整合包还加入 [Voxy WorldGen](https://modrinth.com/mod/xT0lnNE9)，以及必需的 [Library Ferret](https://modrinth.com/mod/DOB2l4oJ)、[Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy) 和 [Resourceful Lib](https://modrinth.com/mod/G1hIVOrD)。新建筑结构只会出现在尚未探索的区块中。外部服务器也需要安装这些世界生成模组及其依赖；单人游戏使用内置服务器。
+整合包还加入 [Voxy WorldGen](https://modrinth.com/mod/xT0lnNE9)，以及必需的 [Library Ferret](https://modrinth.com/mod/DOB2l4oJ)、[Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy)、[Resourceful Lib](https://modrinth.com/mod/G1hIVOrD) 和 [YUNG's API](https://github.com/YUNG-GANG/YUNGs-API)。七个 YUNG's 文件作为适配 Minecraft 26.2 的分支版本随整合包提供。新建筑结构只会出现在尚未探索的区块中。外部服务器也需要安装这些世界生成模组及其依赖；单人游戏使用内置服务器。
 
 </details>
 

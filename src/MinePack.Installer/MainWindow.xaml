@@ -331,6 +331,16 @@
                                                         <StackPanel>
                                                             <TextBlock Text="{Binding Name}" FontSize="17"/>
                                                             <TextBlock FontSize="14" Margin="0,3,0,0">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding ProjectId}" Value="">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
                                                                 <Hyperlink NavigateUri="{Binding ModrinthUrl}"
                                                                            RequestNavigate="ModrinthLink_RequestNavigate"
                                                                            Foreground="#A8E789"

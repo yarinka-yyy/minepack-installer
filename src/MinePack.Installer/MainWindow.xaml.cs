@@ -445,6 +445,7 @@ public partial class MainWindow : Window
         TestPackRelease.PackVersion => (Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar)), TestPackRelease.ArtifactSha512),
         "0.15.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.SmoothArtifactFileName), TestPackRelease.SmoothArtifactSha512),
         Vanilla2PlusRelease.PackVersion => (Path.Combine(AppContext.BaseDirectory, Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar)), Vanilla2PlusRelease.ArtifactSha512),
+        "0.19.1" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.TunedArtifactFileName), Vanilla2PlusRelease.TunedArtifactSha512),
         "0.19.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.UntunedArtifactFileName), Vanilla2PlusRelease.UntunedArtifactSha512),
         "0.17.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.WorldgenArtifactFileName), Vanilla2PlusRelease.WorldgenArtifactSha512),
         "0.16.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.GuardArtifactFileName), Vanilla2PlusRelease.GuardArtifactSha512),
