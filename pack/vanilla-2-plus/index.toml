@@ -241,6 +241,10 @@ hash = "c4c27f20592bbf7ff810662addbfa66580ddfc5d9ee838cb0d77c05df47e77b7"
 metafile = true
 
 [[files]]
+file = "mods/nyfsspiders-fabric-26.2-3.0.0-minepack.1.jar"
+hash = "46ddc806f21758ee0f4af492cddc2b7956d917fcb894f4775a2d697b3dc5cd2a"
+
+[[files]]
 file = "mods/pick-up-notifier.pw.toml"
 hash = "cb97138eae13d3b0069f1705ec0e9da41a2bf5ec2114ce8b9b17909186efe738"
 metafile = true
@@ -294,6 +298,10 @@ metafile = true
 file = "mods/voxy.pw.toml"
 hash = "93462b004525a25f82e8faec0e6c54a37cffb214117639f604d997bc026af17c"
 metafile = true
+
+[[files]]
+file = "mods/worldplaytime-1.2.5-minepack.1-26.2-FABRIC.jar"
+hash = "a940695d1cb3230d42c307e1a5ffe4422425413044732a3d3e37852caf55d700"
 
 [[files]]
 file = "mods/xaeros-world-map.pw.toml"

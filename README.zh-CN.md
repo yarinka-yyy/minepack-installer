@@ -10,11 +10,11 @@ MinePack 适用于 Windows，安装的是 Minecraft: Java Edition 26.2 整合包
 
 **Vanilla Plus** 包含 37 个模组、8 个资源包和 1 个光影包。生物和村民的动作更加生动；光影和视觉内容改变了光照、水面、植物与粒子的效果。Voxy 能让你在通常的视距之外看到已经探索过的地形，性能模组则帮助游戏保持流畅。世界地图、物品栏整理、物品提示和更有层次的声音让日常游玩更方便。
 
-**Frontier** 包含 Vanilla Plus 的全部内容，总计 59 个模组、10 个资源包和 1 个光影包。五个建筑模组带来窗户、栅栏与围墙、桥梁、门和更多楼梯样式。在尚未探索的区域，你还能发现改进的村庄、遗迹、高塔、下界建筑、掠夺者营地，以及由 YUNG's 模组重新设计的地牢、神庙、矿井、要塞和下界堡垒；仅 MVS 就宣称拥有[超过 130 种建筑结构](https://modrinth.com/mod/moogs-voyager-structures)。村庄里还会出现持剑或弩的守卫，帮助村民抵御怪物。
+**Frontier** 包含 Vanilla Plus 的全部内容，总计 61 个模组、10 个资源包和 1 个光影包。五个建筑模组带来窗户、栅栏与围墙、桥梁、门和更多楼梯样式。在尚未探索的区域，你还能发现改进的村庄、遗迹、高塔、下界建筑、掠夺者营地，以及由 YUNG's 模组重新设计的地牢、神庙、矿井、要塞和下界堡垒；仅 MVS 就宣称拥有[超过 130 种建筑结构](https://modrinth.com/mod/moogs-voyager-structures)。村庄里会出现持剑或弩的守卫。蜘蛛可以攀爬墙壁和天花板，世界选择界面也会显示每个世界的游玩时长。
 
 ## 安装
 
-下方链接指向尚未包含这些 Frontier 新内容的 1.0.0 版本。1.0.2 ZIP 已在本地准备，但尚未发布为 GitHub Release。
+下方链接指向尚未包含这些 Frontier 新内容的 1.0.0 版本。1.0.3 ZIP 已在本地准备，但尚未发布为 GitHub Release。
 
 1. 从首个版本页面下载 [MinePack-Installer-1.0.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.0/MinePack-Installer-1.0.0-win-x64.zip)，并将整个 ZIP 解压到一个文件夹中。请将解压后的文件放在一起。
 2. 运行 `MinePack.Installer.exe`，选择 **Vanilla Plus** 或 **Frontier**，然后点击**安装整合包**。MinePack 会准备所选整合包并更新它在 Launcher 中的配置。安装时，它可能会关闭正在运行的官方 Launcher；完成后会尝试重新打开。
@@ -161,6 +161,16 @@ MinePack 默认将文件保存在 `%LOCALAPPDATA%\MinePack`；你也可以在安
 两个整合包都包含 Subtle Effects，以及 Fzzy Config 和 Fabric Language Kotlin。在多人服务器上使用守卫功能时，服务器也需要安装 Guard Villagers。
 
 Frontier 还加入 [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) 提供守卫模型，以及 [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) 提供更细致的动作。这两个资源包只在玩家客户端使用；实际外观仍需要在游戏中检查。
+
+</details>
+
+<details>
+<summary>Frontier 附加内容：蜘蛛与游玩时长 (2)</summary>
+
+- [Nyf's Spiders](https://modrinth.com/mod/nyfs-spiders)，原作者 Nyfaria — 适配 Minecraft 26.2 的分支版本，让蜘蛛能够攀爬墙壁和天花板。
+- [World Play Time](https://modrinth.com/mod/world-play-time) — 适配 Minecraft 26.2 的分支版本，在世界选择界面显示每个世界的游玩时长。
+
+这两个 JAR 都随 Frontier 提供。World Play Time 只在客户端运行；如需在多人服务器上改变蜘蛛行为，服务器也需要安装 Nyf's Spiders。
 
 </details>
 

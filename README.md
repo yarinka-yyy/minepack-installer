@@ -10,11 +10,11 @@ MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. T
 
 **Vanilla Plus** includes 37 mods, 8 resource packs, and 1 shader. Mobs and villagers move more expressively, while the shader and visual additions change lighting, water, plants, and particles. Voxy displays terrain you have already explored far beyond the usual render distance; performance mods help keep the game smooth. A world map, inventory sorting, item hints, and richer sound make everyday play more convenient.
 
-**Frontier** includes everything in Vanilla Plus: 59 mods, 10 resource packs, and 1 shader in total. Five building mods add windows, fences and walls, bridges, doors, and more stair designs. In unexplored areas you can find improved villages, ruins, towers, Nether buildings, pillager camps, and YUNG's redesigned dungeons, temples, mineshafts, strongholds, and Nether fortresses; MVS alone advertises [over 130 structure designs](https://modrinth.com/mod/moogs-voyager-structures). Villages also gain sword- and crossbow-wielding guards who defend their residents from monsters.
+**Frontier** includes everything in Vanilla Plus: 61 mods, 10 resource packs, and 1 shader in total. Five building mods add windows, fences and walls, bridges, doors, and more stair designs. In unexplored areas you can find improved villages, ruins, towers, Nether buildings, pillager camps, and YUNG's redesigned dungeons, temples, mineshafts, strongholds, and Nether fortresses; MVS alone advertises [over 130 structure designs](https://modrinth.com/mod/moogs-voyager-structures). Villages gain sword- and crossbow-wielding guards. Spiders can climb walls and ceilings, and the world selection screen shows how long you have played each world.
 
 ## Install
 
-The linked 1.0.0 release predates these Frontier additions. The 1.0.2 ZIP is prepared locally and has not been published as a GitHub Release yet.
+The linked 1.0.0 release predates these Frontier additions. The 1.0.3 ZIP is prepared locally and has not been published as a GitHub Release yet.
 
 1. Download [MinePack-Installer-1.0.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.0/MinePack-Installer-1.0.0-win-x64.zip) from the first release and extract the entire ZIP into a folder. Keep the extracted files together.
 2. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Frontier**, then click **Install pack**. MinePack prepares the selected pack and updates its Launcher profile. It may close a running official Launcher during setup, then tries to open it when installation is complete.
@@ -161,6 +161,16 @@ The pack also adds [Voxy WorldGen](https://modrinth.com/mod/xT0lnNE9) and the re
 Subtle Effects is included in both builds, with Fzzy Config and Fabric Language Kotlin. Multiplayer servers need Guard Villagers installed for its gameplay.
 
 Frontier also enables [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) for Guard Villagers models and [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) for the detailed movements. These are client-side resource packs; their appearance still needs an in-game check.
+
+</details>
+
+<details>
+<summary>Frontier additions — spiders and play time (2)</summary>
+
+- [Nyf's Spiders](https://modrinth.com/mod/nyfs-spiders) by Nyfaria — a Minecraft 26.2 compatibility fork that lets spiders climb walls and ceilings.
+- [World Play Time](https://modrinth.com/mod/world-play-time) — a Minecraft 26.2 compatibility fork that shows each world's play time in the world selection screen.
+
+Both JAR files are bundled with Frontier. World Play Time runs on the client; a multiplayer server needs Nyf's Spiders for its spider behavior.
 
 </details>
 

@@ -92,6 +92,7 @@ public static class LauncherProfile
                 TestPackRelease.PackVersion => TestPackRelease.ArtifactSha512,
                 "0.15.0" => TestPackRelease.SmoothArtifactSha512,
                 Vanilla2PlusRelease.PackVersion => Vanilla2PlusRelease.ArtifactSha512,
+                "0.19.2" => Vanilla2PlusRelease.YungsArtifactSha512,
                 "0.19.1" => Vanilla2PlusRelease.TunedArtifactSha512,
                 "0.19.0" => Vanilla2PlusRelease.UntunedArtifactSha512,
                 "0.17.0" => Vanilla2PlusRelease.WorldgenArtifactSha512,
@@ -102,7 +103,7 @@ public static class LauncherProfile
                 "0.11.0" => Vanilla2PlusRelease.OriginalArtifactSha512,
                 _ => null
             };
-            var expectedMinecraftVersion = manifest.PackVersion is "0.3.0" or "0.4.0" or "0.5.0" or "0.6.0" or "0.7.0" or "0.8.0" or "0.9.0" or "0.10.0" or "0.11.0" or "0.12.0" or "0.13.0" or "0.14.0" or "0.15.0" or "0.16.0" or "0.17.0" or "0.19.0" or "0.19.1" or TestPackRelease.PackVersion or Vanilla2PlusRelease.PackVersion
+            var expectedMinecraftVersion = manifest.PackVersion is "0.3.0" or "0.4.0" or "0.5.0" or "0.6.0" or "0.7.0" or "0.8.0" or "0.9.0" or "0.10.0" or "0.11.0" or "0.12.0" or "0.13.0" or "0.14.0" or "0.15.0" or "0.16.0" or "0.17.0" or "0.19.0" or "0.19.1" or "0.19.2" or TestPackRelease.PackVersion or Vanilla2PlusRelease.PackVersion
                 ? TestPackRelease.MinecraftVersion : "26.3";
             var expectedDirectoryName = $"test-pack-{manifest.PackVersion}-{expectedHash?[..12].ToLowerInvariant()}";
             var actualDirectoryName = Path.GetFileName(path);

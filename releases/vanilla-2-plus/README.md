@@ -1,5 +1,9 @@
 # Frontier releases
 
+## 0.19.3 — spiders and world play time
+
+Minecraft `26.2` · Fabric Loader `0.19.5` · 61 mods, 10 resource packs, 1 shader. The 63 pinned downloads and initial configs from `0.19.2` remain unchanged. Two more Minecraft 26.2 compatibility forks are bundled in `overrides/mods/`: Nyf's Spiders by Nyfaria and World Play Time. The former `0.19.2` archive remains available for Repair. SHA-512: `5D62203DD9A729207BB509F08BCF67F81A27F87C68E86913FB2ABBA043CB4FC7EAAB65A31AB4E72E134E0EDDB393B1BC9B58B136ADD4A0F46C8D3FA5C1BBFAF7`.
+
 ## 0.19.2 — YUNG's structure mods for Minecraft 26.2
 
 Minecraft `26.2` · Fabric Loader `0.19.5` · 59 mods, 10 resource packs, 1 shader. The 63 pinned downloads and initial configs from `0.19.1` remain unchanged. Seven local LGPLv3 compatibility forks are bundled in `overrides/mods/`: YUNG's API, Better Desert Temples, Better Dungeons, Better Jungle Temples, Better Mineshafts, Better Nether Fortresses, and Better Strongholds. The former `0.19.1` archive remains available for Repair. SHA-512: `BEE5575B637E697C96DE783E8D252644BD24E92330346B2BF30BC55FDBCC2E166B27798139A3202C3E7E39B20EFD662A9D56EF3FCDF091BBB1075D4518D32A87`.
