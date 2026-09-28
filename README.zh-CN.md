@@ -14,9 +14,7 @@ MinePack 适用于 Windows，安装的是 Minecraft: Java Edition 26.2 整合包
 
 ## 安装
 
-下方链接指向尚未包含这些 Frontier 新内容的 1.0.0 版本。1.0.3 ZIP 已在本地准备，但尚未发布为 GitHub Release。
-
-1. 从首个版本页面下载 [MinePack-Installer-1.0.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.0/MinePack-Installer-1.0.0-win-x64.zip)，并将整个 ZIP 解压到一个文件夹中。请将解压后的文件放在一起。
+1. 下载 [MinePack-Installer-1.0.3-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.3/MinePack-Installer-1.0.3-win-x64.zip)，并将整个 ZIP 解压到一个文件夹中。请将解压后的文件放在一起。
 2. 运行 `MinePack.Installer.exe`，选择 **Vanilla Plus** 或 **Frontier**，然后点击**安装整合包**。MinePack 会准备所选整合包并更新它在 Launcher 中的配置。安装时，它可能会关闭正在运行的官方 Launcher；完成后会尝试重新打开。
 3. 在官方 Minecraft Launcher 中选择 **MinePack** 配置并点击**开始游戏**。首次启动时，Launcher 可能还会下载 Minecraft 的基础文件。如果 Launcher 没有自动打开，请手动打开并选择 MinePack。
 
@@ -177,3 +175,5 @@ Frontier 还加入 [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) �
 ## 许可证
 
 MinePack 的原创源代码和文档使用 [0BSD](LICENSE) 许可证：你可以使用、修改和分发它们，无须注明作者。模组、资源包、光影包、字体和 Minecraft 属于各自的权利人；0BSD 不会改变它们的使用条款。
+
+随包提供的 Nyf's Spiders 分支版本仅获 Nyfaria 许可用于此仓库。若要在其他公开仓库或商业整合包中发布该分支版本，需另行取得 Nyfaria 的许可。

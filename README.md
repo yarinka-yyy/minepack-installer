@@ -14,9 +14,7 @@ MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. T
 
 ## Install
 
-The linked 1.0.0 release predates these Frontier additions. The 1.0.3 ZIP is prepared locally and has not been published as a GitHub Release yet.
-
-1. Download [MinePack-Installer-1.0.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.0/MinePack-Installer-1.0.0-win-x64.zip) from the first release and extract the entire ZIP into a folder. Keep the extracted files together.
+1. Download [MinePack-Installer-1.0.3-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.3/MinePack-Installer-1.0.3-win-x64.zip) and extract the entire ZIP into a folder. Keep the extracted files together.
 2. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Frontier**, then click **Install pack**. MinePack prepares the selected pack and updates its Launcher profile. It may close a running official Launcher during setup, then tries to open it when installation is complete.
 3. In the official Minecraft Launcher, select the **MinePack** profile and click **Play**. On the first launch, the Launcher may download Minecraft's base files. If it did not open automatically, open it yourself and select MinePack.
 
@@ -177,3 +175,5 @@ Both JAR files are bundled with Frontier. World Play Time runs on the client; a 
 ## License
 
 MinePack's original source code and documentation are available under [0BSD](LICENSE): you may use, modify, and distribute them without attribution. Mods, resource packs, the shader, the font, and Minecraft belong to their respective owners; 0BSD does not change their terms.
+
+The bundled Nyf's Spiders fork is included with Nyfaria's permission for this repository. Publishing it in another public repository or commercial modpack requires separate permission from Nyfaria.
