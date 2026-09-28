@@ -10,7 +10,7 @@ hash = "ecdc47e26c1b274613251b8935d35c7225b4e1b12b7671388999dacd0f7178cb"
 
 [[files]]
 file = "config/voxyworldgenv2.json"
-hash = "1deaa11ca42aec2ec3b26c038b5c9e525830402ced57605ff971758203329bd6"
+hash = "10a2ae6225b872b681e18bc1170b4cde28ad076b5f1d74088effc668f7afadba"
 
 [[files]]
 file = "mods/advancement-plaques.pw.toml"

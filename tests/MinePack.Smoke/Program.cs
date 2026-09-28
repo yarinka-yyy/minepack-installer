@@ -211,6 +211,10 @@ internal static class Smoke
             Vanilla2PlusRelease.WorldgenArtifactSha512);
         True(worldgenVanilla2Plus.VersionId == "0.17.0" && worldgenVanilla2Plus.Files.Count == 64,
             "Frontier 0.17.0 remains pinned for Repair");
+        var untunedVanilla2Plus = PackArchive.Open(
+            Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.UntunedArtifactFileName),
+            Vanilla2PlusRelease.UntunedArtifactSha512);
+        True(untunedVanilla2Plus.VersionId == "0.19.0", "Frontier 0.19.0 remains pinned for Repair");
         var vanilla2PlusPath = Path.Combine(AppContext.BaseDirectory,
             Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var vanilla2Plus = PackArchive.Open(vanilla2PlusPath, Vanilla2PlusRelease.ArtifactSha512);
@@ -237,8 +241,9 @@ internal static class Smoke
                 "pinned guard config allows inventory, follow, and patrol without Hero of the Village");
         using (var archive = ZipFile.OpenRead(vanilla2PlusPath))
         using (var config = JsonDocument.Parse(archive.GetEntry("overrides/config/voxyworldgenv2.json")!.Open()))
-            Equal(128, config.RootElement.GetProperty("generationRadius").GetInt32(),
-                "pinned Voxy WorldGen config uses the 128-chunk default radius");
+            True(config.RootElement.GetProperty("generationRadius").GetInt32() == 128 &&
+                 config.RootElement.GetProperty("maxActiveTasks").GetInt32() == 3,
+                "pinned Voxy WorldGen config keeps radius 128 and limits active tasks to three");
 
         var catalog = PackCatalog.VanillaPlusGroups.SelectMany(group => group.Items).ToArray();
         var vanilla2PlusCatalog = PackCatalog.Items;
@@ -306,7 +311,7 @@ internal static class Smoke
             Equal("World & Structures — 6", PackCatalog.Vanilla2PlusGroups[^1].Heading, "English Vanilla 2 Plus worldgen category");
             Equal("Technical Foundation — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Vanilla 2 Plus dependencies");
             Equal("Resource Packs — 10", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Vanilla 2 Plus resource packs");
-            Equal("Pack version 0.19.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
+            Equal("Pack version 0.19.1", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
             Equal("Installer version 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "English installer version");
             Equal("52 mods · 10 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
             Equal("37 mods · 8 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
@@ -321,7 +326,7 @@ internal static class Smoke
             Equal("整合包文件已安装。", LocalizedText.Get("PackFilesInstalled"), "Chinese success text");
             Equal("未找到整合包文件。", LocalizedText.Get("PackFileMissing"), "Chinese error text");
             Equal("性能与区块渲染距离", LocalizedText.Get("CatalogPerformance"), "Chinese catalog text");
-            Equal("整合包版本 0.19.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
+            Equal("整合包版本 0.19.1", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
             Equal("安装程序版本 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Chinese installer version");
             Equal("52 个模组 · 10 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
             Equal("37 个模组 · 8 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
@@ -341,7 +346,7 @@ internal static class Smoke
             Equal("Мир и структуры — 6", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Russian Vanilla 2 Plus worldgen category");
             Equal("Техническая основа — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Vanilla 2 Plus dependencies");
             Equal("Ресурспаки — 10", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Vanilla 2 Plus resource packs");
-            Equal("Версия сборки 0.19.0", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
+            Equal("Версия сборки 0.19.1", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
             Equal("Версия установщика 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Russian installer version");
             Equal("52 мода · 10 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
             Equal("37 модов · 8 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
@@ -766,6 +771,7 @@ internal static class Smoke
         var voxyConfigPath = Path.Combine(instance, "config", "voxyworldgenv2.json");
         using (var voxyConfig = JsonDocument.Parse(File.ReadAllText(voxyConfigPath)))
             True(voxyConfig.RootElement.GetProperty("generationRadius").GetInt32() == 128 &&
+                 voxyConfig.RootElement.GetProperty("maxActiveTasks").GetInt32() == 3 &&
                  !manifest.Files.Any(file => file.Path == "config/voxyworldgenv2.json"),
                 "Vanilla 2 Plus preconfigures Voxy WorldGen without managing later player changes");
         var worldPath = Path.Combine(instance, "saves", "plan004-test-world", "level.dat");

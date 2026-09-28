@@ -3,6 +3,6 @@
   "generationRadius": 128,
   "update_interval": 20,
   "maxQueueSize": 20000,
-  "maxActiveTasks": 6,
+  "maxActiveTasks": 3,
   "showF3MenuStats": true
 }

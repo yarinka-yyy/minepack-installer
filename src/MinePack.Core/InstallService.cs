@@ -451,6 +451,9 @@ public sealed class InstallService : IDisposable
         (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) &&
          (path.Equals("config/guardvillagers.json", StringComparison.OrdinalIgnoreCase) ||
           path.Equals("config/voxyworldgenv2.json", StringComparison.OrdinalIgnoreCase))) ||
+        (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.UntunedArtifactSha512, StringComparison.OrdinalIgnoreCase) &&
+         (path.Equals("config/guardvillagers.json", StringComparison.OrdinalIgnoreCase) ||
+          path.Equals("config/voxyworldgenv2.json", StringComparison.OrdinalIgnoreCase))) ||
         (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.WorldgenArtifactSha512, StringComparison.OrdinalIgnoreCase) &&
          (path.Equals("config/guardvillagers.json", StringComparison.OrdinalIgnoreCase) ||
           path.Equals("config/voxyworldgenv2.json", StringComparison.OrdinalIgnoreCase))) ||
