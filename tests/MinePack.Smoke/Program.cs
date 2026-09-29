@@ -242,6 +242,10 @@ internal static class Smoke
             Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.SpidersArtifactFileName),
             Vanilla2PlusRelease.SpidersArtifactSha512);
         True(spidersVanilla2Plus.VersionId == "0.19.3", "Frontier 0.19.3 remains pinned for Repair");
+        var xalisVanilla2Plus = PackArchive.Open(
+            Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.XalisArtifactFileName),
+            Vanilla2PlusRelease.XalisArtifactSha512);
+        True(xalisVanilla2Plus.VersionId == "0.19.4", "Frontier 0.19.4 remains pinned for Repair");
         var vanilla2PlusPath = Path.Combine(AppContext.BaseDirectory,
             Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var vanilla2Plus = PackArchive.Open(vanilla2PlusPath, Vanilla2PlusRelease.ArtifactSha512);
@@ -249,7 +253,7 @@ internal static class Smoke
         Equal("MinePack Vanilla 2 Plus", vanilla2Plus.Name, "Vanilla 2 Plus archive name");
         Equal(TestPackRelease.MinecraftVersion, vanilla2Plus.MinecraftVersion, "Vanilla 2 Plus Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, vanilla2Plus.FabricLoaderVersion, "Vanilla 2 Plus Fabric Loader version");
-        True(vanilla2Plus.Files.Count == 65 &&
+        True(vanilla2Plus.Files.Count == 68 &&
              worldgenVanilla2Plus.Files.Where(file => !file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase))
                  .All(baseFile => vanilla2Plus.Files.Any(file => file.Path == baseFile.Path &&
                  file.Sha512 == baseFile.Sha512 && file.Downloads.SequenceEqual(baseFile.Downloads))) &&
@@ -259,12 +263,27 @@ internal static class Smoke
              vanilla2Plus.Overrides.Select(file => file.Path).ToHashSet(StringComparer.Ordinal)
                  .SetEquals(new[] { "config/iris.properties", "config/guardvillagers.json", "config/voxyworldgenv2.json" }
                      .Concat(YungsJarNames.Concat(NewForkJarNames).Select(name => "mods/" + name))
-                     .Append("resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip")) &&
+                     .Append("resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip")
+                     .Append("resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip")) &&
              vanilla2Plus.Files.Any(file => file.Path == "mods/continuity-3.0.1+26.2.jar" &&
                  file.Sha512.Equals("3436b39fcdddce87f8eda0f35095067477636df2667195df3cb8eae2d002d3ff8ac44de97332668ee50e13ad91be5c532cbc6121878f1e6c904c98c1c9c67c0b", StringComparison.OrdinalIgnoreCase)) &&
              vanilla2Plus.Files.Any(file => file.Path == "mods/citresewn-continuation-1.2.2-fork.13+26.2.jar" &&
-                 file.Sha512.Equals("520f37c6c2c8dce4ad2648f8e7d8193c9f4796c83898ed0f9371232376362c54cddbe4c476ef3245162e9535c7d1e7799740f4417d051a6baf287daa0f685842", StringComparison.OrdinalIgnoreCase)),
-            "Frontier preserves downloads and pins xali, Continuity, and CIT Resewn Continuation");
+                 file.Sha512.Equals("520f37c6c2c8dce4ad2648f8e7d8193c9f4796c83898ed0f9371232376362c54cddbe4c476ef3245162e9535c7d1e7799740f4417d051a6baf287daa0f685842", StringComparison.OrdinalIgnoreCase)) &&
+             vanilla2Plus.Files.Any(file => file.Path == "mods/treeharvester-26.2.0-9.4.jar" &&
+                 file.Sha512.Equals("a740bd962e9ab71d67b7683f6e51aae948781d0150c94eec62f873fc94de7f6fe4ad40a48cc8502b6ebf52609b0340898ad7a3a46c29ce6c14ba0020d2b3cf10", StringComparison.OrdinalIgnoreCase)) &&
+             vanilla2Plus.Files.Any(file => file.Path == "mods/collective-26.2.0-8.40.jar" &&
+                 file.Sha512.Equals("1c35fa28b2ec42cc130c578ad9bb1f320477d881816044a4ba28429ec633c8bd6725fd1378a8ae41b88337ab43aff174d55db0468ed23c5cd16cca776d001c93", StringComparison.OrdinalIgnoreCase)) &&
+             vanilla2Plus.Files.Any(file => file.Path == "resourcepacks/§aRemodeled-Doors§8_§62.2.1.zip" &&
+                 file.Sha512.Equals("efe81850001ef80bed6dc880df1084f5e607c6ed295c88e6fbd2834e273101e275b1275c53cf2b2c40a1e6a98ead268d57873acdfc782ae4773e2151df34c6ce", StringComparison.OrdinalIgnoreCase)),
+            "Frontier preserves prior files and pins Tree Harvester, Collective, Remodeled Doors, and xali");
+        using (var archive = ZipFile.OpenRead(vanilla2PlusPath))
+        using (var overlay = archive.GetEntry("overrides/resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip")!.Open())
+        using (var memory = new MemoryStream())
+        {
+            overlay.CopyTo(memory);
+            Equal(HashFile(Path.Combine(Environment.CurrentDirectory, "pack", "vanilla-2-plus", "resourcepacks", "Remodeled-Doors-26.2-xalis-blockstates.1.zip")),
+                HashBytes(memory.ToArray()), "Frontier embeds the pinned door compatibility ZIP");
+        }
         using (var archive = ZipFile.OpenRead(vanilla2PlusPath))
         using (var config = JsonDocument.Parse(archive.GetEntry("overrides/config/guardvillagers.json")!.Open()))
             True(config.RootElement.GetProperty("followHero").GetBoolean() == false &&
@@ -283,13 +302,13 @@ internal static class Smoke
         True(catalog.Length == 46 && catalog.Count(item => item.Kind == "mod") == 37 &&
              catalog.Count(item => item.Kind == "resourcepack") == 8 && catalog.Count(item => item.Kind == "shader") == 1 &&
              catalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal).SetEquals(pack.Files.Select(file => file.Path)) &&
-             vanilla2PlusCatalog.Count == 75 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 63 &&
-             vanilla2PlusCatalog.Count(item => item.Kind == "resourcepack") == 11 &&
+             vanilla2PlusCatalog.Count == 79 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 65 &&
+             vanilla2PlusCatalog.Count(item => item.Kind == "resourcepack") == 13 &&
              vanilla2PlusCatalog.Count(item => item.Kind == "datapack") == 1 &&
              vanilla2PlusCatalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal)
-                 .SetEquals(vanilla2Plus.Files.Select(file => file.Path).Concat(YungsJarNames.Concat(NewForkJarNames).Select(name => "mods/" + name)).Append("resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip")) &&
+                 .SetEquals(vanilla2Plus.Files.Select(file => file.Path).Concat(YungsJarNames.Concat(NewForkJarNames).Select(name => "mods/" + name)).Append("resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip").Append("resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip")) &&
              vanilla2PlusCatalog.All(item => item.ModrinthUrl is null
-                 ? YungsJarNames.Concat(NewForkJarNames).Contains(Path.GetFileName(item.FilePath)) || item.FilePath == "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip"
+                 ? YungsJarNames.Concat(NewForkJarNames).Contains(Path.GetFileName(item.FilePath)) || item.FilePath is "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip" or "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip"
                  : item.ModrinthUrl.Scheme == Uri.UriSchemeHttps && item.ModrinthUrl.Host == "modrinth.com" && !string.IsNullOrWhiteSpace(item.ProjectId)),
             "Vanilla Plus and Vanilla 2 Plus catalogs exactly match their pinned releases");
         var initialOptions = TestPackRelease.InitialOptions.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
@@ -299,11 +318,13 @@ internal static class Smoke
             "fov:0.25", "fullscreen:true", "exclusiveFullscreen:true", "guiScale:4"
         }.All(initialOptions.Contains) && !initialOptions.Any(line => line.StartsWith("fullscreenResolution:", StringComparison.Ordinal)),
             "new profile defaults include requested controls, FOV, fullscreen and GUI scale without a fixed monitor mode");
-        True(Vanilla2PlusRelease.InitialResourcePacks.Length == 11 &&
+        True(Vanilla2PlusRelease.InitialResourcePacks.Length == 13 &&
              Vanilla2PlusRelease.InitialResourcePacks.Take(8).SequenceEqual(TestPackRelease.InitialResourcePacks) &&
              Vanilla2PlusRelease.InitialOptions.Contains("file/Semos Animations Lib 2.0.4.zip", StringComparison.Ordinal) &&
              Vanilla2PlusRelease.InitialOptions.Contains("file/Freshly Modded 3.0.5.zip", StringComparison.Ordinal) &&
              Vanilla2PlusRelease.InitialOptions.Contains("file/xalis-enhanced-vanilla-26.2-minepack.1.zip", StringComparison.Ordinal) &&
+             Vanilla2PlusRelease.InitialResourcePacks[^2] == "§aRemodeled-Doors§8_§62.2.1.zip" &&
+             Vanilla2PlusRelease.InitialResourcePacks[^1] == "Remodeled-Doors-26.2-xalis-blockstates.1.zip" &&
              !TestPackRelease.InitialOptions.Contains("Freshly Modded", StringComparison.Ordinal),
             "guard animation packs are enabled only for new Vanilla 2 Plus installations");
         Pass("pinned .mrpack opens and matches its SHA-512");
@@ -345,11 +366,11 @@ internal static class Smoke
             Equal("Performance & Render Distance", LocalizedText.Get("CatalogPerformance"), "English catalog text");
             Equal("Building Blocks — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "English Vanilla 2 Plus building category");
             Equal("World & Structures — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "English Vanilla 2 Plus worldgen category");
-            Equal("Technical Foundation — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Vanilla 2 Plus dependencies");
-            Equal("Resource Packs — 11", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Vanilla 2 Plus resource packs");
-            Equal("Pack version 0.19.4", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
+            Equal("Technical Foundation — 14", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Vanilla 2 Plus dependencies");
+            Equal("Resource Packs — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Vanilla 2 Plus resource packs");
+            Equal("Pack version 0.19.5", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
             Equal("Installer version 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "English installer version");
-            Equal("63 mods · 11 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
+            Equal("65 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
             Equal("37 mods · 8 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
             Equal("Performance & Render Distance — 8|Graphics & Animations — 9|Tools & Quality of Life — 9|Sound — 2|Technical Foundation — 9|Resource Packs — 8|Shader — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "English catalog headings and counts");
@@ -362,14 +383,14 @@ internal static class Smoke
             Equal("整合包文件已安装。", LocalizedText.Get("PackFilesInstalled"), "Chinese success text");
             Equal("未找到整合包文件。", LocalizedText.Get("PackFileMissing"), "Chinese error text");
             Equal("性能与区块渲染距离", LocalizedText.Get("CatalogPerformance"), "Chinese catalog text");
-            Equal("整合包版本 0.19.4", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
+            Equal("整合包版本 0.19.5", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
             Equal("安装程序版本 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Chinese installer version");
-            Equal("63 个模组 · 11 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
+            Equal("65 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
             Equal("37 个模组 · 8 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
             Equal("已复制存档：2。因名称已存在而跳过：1。", LocalizedText.Get("WorldImportSummary", 2, 1), "Chinese formatted text");
             Equal("建筑方块 — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Chinese Vanilla 2 Plus building category");
             Equal("世界与结构 — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Chinese Vanilla 2 Plus worldgen category");
-            Equal("资源包 — 11", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading,
+            Equal("资源包 — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading,
                 "Chinese Vanilla 2 Plus resource pack category");
 
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ru");
@@ -380,11 +401,11 @@ internal static class Smoke
             Equal("Производительность и дальность", LocalizedText.Get("CatalogPerformance"), "Russian catalog text");
             Equal("Строительные блоки — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Russian Vanilla 2 Plus building category");
             Equal("Мир и структуры — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Russian Vanilla 2 Plus worldgen category");
-            Equal("Техническая основа — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Vanilla 2 Plus dependencies");
-            Equal("Ресурспаки — 11", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Vanilla 2 Plus resource packs");
-            Equal("Версия сборки 0.19.4", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
+            Equal("Техническая основа — 14", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Vanilla 2 Plus dependencies");
+            Equal("Ресурспаки — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Vanilla 2 Plus resource packs");
+            Equal("Версия сборки 0.19.5", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
             Equal("Версия установщика 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Russian installer version");
-            Equal("63 мода · 11 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
+            Equal("65 модов · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
             Equal("37 модов · 8 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
             Equal("Производительность и дальность — 8|Графика и анимации — 9|Инструменты и удобство — 9|Звук — 2|Техническая основа — 9|Ресурспаки — 8|Шейдер — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "Russian catalog headings and counts");
@@ -763,9 +784,9 @@ internal static class Smoke
         var instance = install.GameDirectory ?? throw new InvalidOperationException("Vanilla 2 Plus install did not return an instance directory.");
         var manifest = InstallationManifest.Load(instance);
         Equal(Vanilla2PlusRelease.PackVersion, manifest.PackVersion, "installed Vanilla 2 Plus manifest version");
-        True(manifest.Files.Count == 76 && manifest.Files.Any(file => file.Path == "config/iris.properties") &&
+        True(manifest.Files.Count == 80 && manifest.Files.Any(file => file.Path == "config/iris.properties") &&
              YungsJarNames.Concat(NewForkJarNames).All(name => manifest.Files.Any(file => file.Path == "mods/" + name)),
-            "Frontier manifest records 65 downloads, nine embedded JARs, the xali ZIP, and the Iris config override");
+            "Frontier manifest records 68 downloads, nine embedded JARs, two embedded ZIPs, and the Iris config override");
         foreach (var file in manifest.Files)
         {
             var path = Path.Combine(instance, file.Path.Replace('/', Path.DirectorySeparatorChar));
@@ -796,7 +817,7 @@ internal static class Smoke
         var options = File.ReadAllLines(optionsPath);
         True(options[0] == "version:4903" &&
              File.ReadAllText(optionsPath).Contains("resourcePacks:" + JsonSerializer.Serialize(expectedPacks), StringComparison.Ordinal),
-            "Vanilla 2 Plus selects all ten resource packs plus Punchy on first launch");
+            "Vanilla 2 Plus selects all thirteen resource packs plus Punchy on first launch");
         var bbeConfigPath = Path.Combine(instance, "config", "BBEConfig.json");
         True(File.Exists(bbeConfigPath), "Vanilla 2 Plus applies the existing Better Block Entities config");
         var guardConfigPath = Path.Combine(instance, "config", "guardvillagers.json");

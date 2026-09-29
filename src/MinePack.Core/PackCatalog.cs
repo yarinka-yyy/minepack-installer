@@ -85,11 +85,16 @@ public static class PackCatalog
                     new CatalogItem("CIT Resewn Continuation", "CatalogGraphics", "mod", "8auYYPlH", "mods/citresewn-continuation-1.2.2-fork.13+26.2.jar")
                 }).ToArray() }
             : group.Key == "CatalogTools"
-            ? group with { Items = group.Items.Append(new CatalogItem("World Play Time", "CatalogTools", "mod", "", "mods/worldplaytime-1.2.5-minepack.1-26.2-FABRIC.jar")).ToArray() }
+            ? group with { Items = group.Items.Concat(new[]
+                {
+                    new CatalogItem("World Play Time", "CatalogTools", "mod", "", "mods/worldplaytime-1.2.5-minepack.1-26.2-FABRIC.jar"),
+                    new CatalogItem("Tree Harvester", "CatalogTools", "mod", "abooMhox", "mods/treeharvester-26.2.0-9.4.jar")
+                }).ToArray() }
             : group.Key == "CatalogTechnical"
             ? group with { Items = group.Items.Concat(new[]
                 {
                     new CatalogItem("Library Ferret", "CatalogTechnical", "mod", "DOB2l4oJ", "mods/libraryferret-fabric-26.2-5.0.0.jar"),
+                    new CatalogItem("Collective", "CatalogTechnical", "mod", "e0M1UDsY", "mods/collective-26.2.0-8.40.jar"),
                     new CatalogItem("Moog's Structure Lib", "CatalogTechnical", "mod", "1oUDhxuy", "mods/MoogsStructureLib-fabric-26.2-3.3.0.jar"),
                     new CatalogItem("Resourceful Lib", "CatalogTechnical", "mod", "G1hIVOrD", "mods/ResourcefulLib-5.0.4.jar"),
                     new CatalogItem("YUNG's API", "CatalogTechnical", "mod", "", "mods/YungsApi-26.2-Fabric-6.1.3-minepack.1.jar")
@@ -99,7 +104,9 @@ public static class PackCatalog
                 {
                     new CatalogItem("Semos Animations Lib", "CatalogResourcePacks", "resourcepack", "SY2QNRYK", "resourcepacks/Semos Animations Lib 2.0.4.zip"),
                     new CatalogItem("F.M.R.P", "CatalogResourcePacks", "resourcepack", "u4nhiAdP", "resourcepacks/Freshly Modded 3.0.5.zip"),
-                    new CatalogItem("xali's Enhanced Vanilla (MinePack 26.2 port)", "CatalogResourcePacks", "resourcepack", "", "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip")
+                    new CatalogItem("xali's Enhanced Vanilla (MinePack 26.2 port)", "CatalogResourcePacks", "resourcepack", "", "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip"),
+                    new CatalogItem("Remodeled Doors 3D", "CatalogResourcePacks", "resourcepack", "emO4C1kf", "resourcepacks/§aRemodeled-Doors§8_§62.2.1.zip"),
+                    new CatalogItem("Remodeled Doors / xali compatibility", "CatalogResourcePacks", "resourcepack", "", "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip")
                 }).ToArray() }
             : group)
         .Append(Group("CatalogBuilding", "mod",

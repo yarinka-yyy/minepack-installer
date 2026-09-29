@@ -12,7 +12,7 @@
   <data name="UiPackVersion" xml:space="preserve"><value>整合包版本 {0}</value></data>
   <data name="UiInstallerVersion" xml:space="preserve"><value>安装程序版本 {0}</value></data>
   <data name="UiPackCountsVanillaPlus" xml:space="preserve"><value>37 个模组 · 8 个资源包 · 1 个光影包</value></data>
-  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>63 个模组 · 11 个资源包 · 1 个光影包</value></data>
+  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>65 个模组 · 13 个资源包 · 1 个光影包</value></data>
   <data name="UiChoosePack" xml:space="preserve"><value>选择要安装的整合包</value></data>
   <data name="UiCatalogTitle" xml:space="preserve"><value>整合包内容</value></data>
   <data name="UiOpenOnModrinth" xml:space="preserve"><value>在 Modrinth 上查看</value></data>
