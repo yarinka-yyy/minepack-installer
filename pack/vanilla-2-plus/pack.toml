@@ -1,12 +1,12 @@
 name = "MinePack Vanilla 2 Plus"
 author = "yarinka-yyy"
-version = "0.19.5"
+version = "0.19.6"
 pack-format = "packwiz:1.1.0"
 
 [index]
 file = "index.toml"
 hash-format = "sha256"
-hash = "171ddcaf4b0ad30be6796d360fea9b8ec81ab10a59604ec7e0fd8533d8e858c9"
+hash = "3c7593fb1eaeccd4f06cef59e50a1911342f0e649d3feb3a26d1d0ce837d5c13"
 
 [versions]
 fabric = "0.19.5"

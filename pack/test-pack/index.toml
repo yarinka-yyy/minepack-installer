@@ -220,11 +220,6 @@ hash = "b4a3e94b129bbc54964096526debb947baf7d4155c07529264517c1138a1a5ce"
 metafile = true
 
 [[files]]
-file = "resourcepacks/low-on-fire.pw.toml"
-hash = "f5bafd1fbb787341af6c231f2a735ff3c44b3b1db076e297ecc5e323703cd7fb"
-metafile = true
-
-[[files]]
 file = "resourcepacks/os-colorful-grasses.pw.toml"
 hash = "8b6f2f74f6d74f0dffd4fe89672a696e518bc8d5024fb62c2ca90480954d35d4"
 metafile = true

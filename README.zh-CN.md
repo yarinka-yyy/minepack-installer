@@ -8,15 +8,15 @@ MinePack 适用于 Windows，安装的是 Minecraft: Java Edition 26.2 整合包
 
 ## 选择整合包
 
-**Vanilla Plus** 包含 37 个模组、8 个资源包和 1 个光影包。生物和村民的动作更加生动；光影和视觉内容改变了光照、水面、植物与粒子的效果。Voxy 能让你在通常的视距之外看到已经探索过的地形，性能模组则帮助游戏保持流畅。世界地图、物品栏整理、物品提示和更有层次的声音让日常游玩更方便。
+**Vanilla Plus** 包含 37 个模组、7 个资源包和 1 个光影包。生物和村民的动作更加生动；光影和视觉内容改变了光照、水面、植物与粒子的效果。Voxy 能让你在通常的视距之外看到已经探索过的地形，性能模组则帮助游戏保持流畅。世界地图、物品栏整理、物品提示和更有层次的声音让日常游玩更方便。
 
-**Frontier** 在当前源码中包含 Vanilla Plus 的全部内容，总计 65 个模组、13 个资源包和 1 个光影包。五个建筑模组带来窗户、栅栏与围墙、桥梁、门和更多楼梯样式。在尚未探索的区域，你还能发现改进的村庄、遗迹、高塔、下界建筑、掠夺者营地，以及由 YUNG's 模组重新设计的地牢、神庙、矿井、要塞和下界堡垒；仅 MVS 就宣称拥有[超过 130 种建筑结构](https://modrinth.com/mod/moogs-voyager-structures)。村庄里会出现持剑或弩的守卫。蜘蛛可以攀爬墙壁和天花板，世界选择界面也会显示每个世界的游玩时长。MinePack 非官方移植的 xali's Enhanced Vanilla 默认启用，并配有 Continuity 和 CIT Resewn Continuation；ZIP 内注明作者 xalixilax 和 CC BY-NC 4.0 许可。Tree Harvester 及其依赖 Collective 已锁定版本；Remodeled Doors 3D 和内置的门模型兼容资源包按高于 xali's 的优先级启用。
+**Frontier** 包含 Vanilla Plus 的全部内容，总计 65 个模组、12 个资源包和 1 个光影包。五个建筑模组带来窗户、栅栏与围墙、桥梁、门和更多楼梯样式。在尚未探索的区域，你还能发现改进的村庄、遗迹、高塔、下界建筑、掠夺者营地，以及由 YUNG's 模组重新设计的地牢、神庙、矿井、要塞和下界堡垒；仅 MVS 就宣称拥有[超过 130 种建筑结构](https://modrinth.com/mod/moogs-voyager-structures)。村庄里会出现持剑或弩的守卫。蜘蛛可以攀爬墙壁和天花板，世界选择界面也会显示每个世界的游玩时长。MinePack 非官方移植的 xali's Enhanced Vanilla 默认启用，并配有 Continuity 和 CIT Resewn Continuation；ZIP 内注明作者 xalixilax 和 CC BY-NC 4.0 许可。Tree Harvester 及其依赖 Collective 已锁定版本；Remodeled Doors 3D 和内置的门模型兼容资源包按高于 xali's 的优先级启用。
 
-`main` 分支包含尚未发布的 1.0.5 候选版本。下方公开下载仍为 1.0.3，其 Frontier 0.19.3 不包含这些新增内容。
+MinePack Installer 1.5.0 包含 Vanilla Plus 0.18.1 和 Frontier 0.19.6。Low On Fire 已从两种整合包中移除。
 
 ## 安装
 
-1. 下载 [MinePack-Installer-1.0.3-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.3/MinePack-Installer-1.0.3-win-x64.zip)，并将整个 ZIP 解压到一个文件夹中。请将解压后的文件放在一起。
+1. 下载 [MinePack-Installer-1.5.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.5.0/MinePack-Installer-1.5.0-win-x64.zip)，并将整个 ZIP 解压到一个文件夹中。请将解压后的文件放在一起。
 2. 运行 `MinePack.Installer.exe`，选择 **Vanilla Plus** 或 **Frontier**，然后点击**安装整合包**。MinePack 会准备所选整合包并更新它在 Launcher 中的配置。安装时，它可能会关闭正在运行的官方 Launcher；完成后会尝试重新打开。
 3. 在官方 Minecraft Launcher 中选择 **MinePack** 配置并点击**开始游戏**。首次启动时，Launcher 可能还会下载 Minecraft 的基础文件。如果 Launcher 没有自动打开，请手动打开并选择 MinePack。
 
@@ -97,11 +97,10 @@ MinePack 默认将文件保存在 `%LOCALAPPDATA%\MinePack`；你也可以在安
 </details>
 
 <details>
-<summary>资源包 (8)</summary>
+<summary>资源包 (7)</summary>
 
 - [Fresh Animations](https://modrinth.com/resourcepack/50dA9Sha)
 - [Fresh Animations: Extensions](https://modrinth.com/resourcepack/YAVTU8mK)
-- [Low On Fire](https://modrinth.com/resourcepack/RRxvWKNC)
 - [Fancy Crops](https://modrinth.com/resourcepack/UGEVQ6t9)
 - [Better Flame Particles](https://modrinth.com/resourcepack/ivUZsvzp)
 - [Os' Colorful Grasses](https://modrinth.com/resourcepack/O2zhH8n8)

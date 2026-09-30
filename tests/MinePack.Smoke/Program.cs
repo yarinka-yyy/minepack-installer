@@ -76,6 +76,14 @@ internal static class Smoke
             }
             if (args.Contains("--live-fabric", StringComparer.Ordinal))
                 await VerifyOfficialFabricDownloadAsync(tempRoot);
+            var cachedIndex = Array.IndexOf(args, "--cached-packs");
+            if (cachedIndex >= 0)
+            {
+                if (cachedIndex + 1 >= args.Length) throw new ArgumentException("--cached-packs requires a game directory.");
+                var cachedRoot = args[cachedIndex + 1];
+                True(await VerifyActualReleaseAsync(tempRoot, cachedRoot), "Vanilla Plus installs from pinned local files");
+                True(await VerifyActualVanilla2PlusAsync(tempRoot, cachedRoot), "Frontier installs from pinned local files");
+            }
             if (args.Contains("--live-profile-copy", StringComparer.Ordinal))
                 await VerifyCurrentLauncherCopyAsync(tempRoot);
             Console.WriteLine(args.Contains("--live-pack", StringComparer.Ordinal) && !liveCompleted
@@ -154,7 +162,7 @@ internal static class Smoke
             "SubtleEffects-fabric-26.2-1.14.3.jar",
             "fzzy_config-0.7.6+26.2.jar", "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar"
         };
-        True(pack.Files.Count == 46 && sharedNewMods.All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
+        True(pack.Files.Count == 45 && sharedNewMods.All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
              !pack.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
              !pack.Files.Any(file => file.Path.Contains("firstperson", StringComparison.OrdinalIgnoreCase) ||
                                           file.Path.Contains("notenoughanimations", StringComparison.OrdinalIgnoreCase)) &&
@@ -179,7 +187,7 @@ internal static class Smoke
         var priorVanillaPlusPath = Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PriorArtifactFileName);
         var priorVanillaPlus = PackArchive.Open(priorVanillaPlusPath, TestPackRelease.PriorArtifactSha512);
         True(priorVanillaPlus.VersionId == "0.10.0" && priorVanillaPlus.Files.Count == 43 &&
-             priorVanillaPlus.Files.All(oldFile => pack.Files.Any(file => file.Path == oldFile.Path &&
+             priorVanillaPlus.Files.Where(file => file.Path != "resourcepacks/LowOnFire v26.2§8.zip").All(oldFile => pack.Files.Any(file => file.Path == oldFile.Path &&
                  file.Sha512 == oldFile.Sha512 && file.Downloads.SequenceEqual(oldFile.Downloads))) &&
              pack.Files.Where(file => !priorVanillaPlus.Files.Any(oldFile => oldFile.Path == file.Path))
                  .Select(file => file.Path).ToHashSet(StringComparer.Ordinal)
@@ -189,10 +197,18 @@ internal static class Smoke
             Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.SmoothArtifactFileName),
             TestPackRelease.SmoothArtifactSha512);
         True(smoothVanillaPlus.VersionId == "0.15.0" && smoothVanillaPlus.Files.Count == 47 &&
-             smoothVanillaPlus.Files.Where(file => !file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase))
+             smoothVanillaPlus.Files.Where(file => !file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase) &&
+                 file.Path != "resourcepacks/LowOnFire v26.2§8.zip")
                  .All(oldFile => pack.Files.Any(file => file.Path == oldFile.Path && file.Sha512 == oldFile.Sha512 &&
                      file.Downloads.SequenceEqual(oldFile.Downloads))),
-            "Vanilla Plus removes only Smooth Swapping from its previous pinned release");
+            "Vanilla Plus excludes Smooth Swapping and Low On Fire");
+        var lowFireVanillaPlus = PackArchive.Open(Path.Combine(AppContext.BaseDirectory, "releases", "test-pack",
+            TestPackRelease.LowFireArtifactFileName), TestPackRelease.LowFireArtifactSha512);
+        True(lowFireVanillaPlus.VersionId == "0.18.0" && lowFireVanillaPlus.Files.Count == pack.Files.Count + 1 &&
+             lowFireVanillaPlus.Files.Where(file => file.Path != "resourcepacks/LowOnFire v26.2§8.zip")
+                 .All(oldFile => pack.Files.Any(file => file.Path == oldFile.Path && file.Sha512 == oldFile.Sha512)) &&
+             !pack.Files.Any(file => file.Path == "resourcepacks/LowOnFire v26.2§8.zip"),
+            "Vanilla Plus removes only Low On Fire and preserves the previous immutable archive");
         var originalVanilla2PlusPath = Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.OriginalArtifactFileName);
         var originalVanilla2Plus = PackArchive.Open(originalVanilla2PlusPath, Vanilla2PlusRelease.OriginalArtifactSha512);
         True(originalVanilla2Plus.VersionId == "0.11.0" && originalVanilla2Plus.Files.Count == 48 &&
@@ -249,12 +265,20 @@ internal static class Smoke
         var vanilla2PlusPath = Path.Combine(AppContext.BaseDirectory,
             Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var vanilla2Plus = PackArchive.Open(vanilla2PlusPath, Vanilla2PlusRelease.ArtifactSha512);
+        var doorsVanilla2Plus = PackArchive.Open(Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus",
+            Vanilla2PlusRelease.DoorsArtifactFileName), Vanilla2PlusRelease.DoorsArtifactSha512);
+        True(doorsVanilla2Plus.VersionId == "0.19.5" && doorsVanilla2Plus.Files.Count == vanilla2Plus.Files.Count + 1 &&
+             doorsVanilla2Plus.Files.Where(file => file.Path != "resourcepacks/LowOnFire v26.2§8.zip")
+                 .All(oldFile => vanilla2Plus.Files.Any(file => file.Path == oldFile.Path && file.Sha512 == oldFile.Sha512)) &&
+             !vanilla2Plus.Files.Any(file => file.Path == "resourcepacks/LowOnFire v26.2§8.zip"),
+            "Frontier removes only Low On Fire and preserves the previous immutable archive");
         Equal(Vanilla2PlusRelease.PackVersion, vanilla2Plus.VersionId, "Vanilla 2 Plus release version");
         Equal("MinePack Vanilla 2 Plus", vanilla2Plus.Name, "Vanilla 2 Plus archive name");
         Equal(TestPackRelease.MinecraftVersion, vanilla2Plus.MinecraftVersion, "Vanilla 2 Plus Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, vanilla2Plus.FabricLoaderVersion, "Vanilla 2 Plus Fabric Loader version");
-        True(vanilla2Plus.Files.Count == 68 &&
-             worldgenVanilla2Plus.Files.Where(file => !file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase))
+        True(vanilla2Plus.Files.Count == 67 &&
+             worldgenVanilla2Plus.Files.Where(file => !file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase) &&
+                 file.Path != "resourcepacks/LowOnFire v26.2§8.zip")
                  .All(baseFile => vanilla2Plus.Files.Any(file => file.Path == baseFile.Path &&
                  file.Sha512 == baseFile.Sha512 && file.Downloads.SequenceEqual(baseFile.Downloads))) &&
              !vanilla2Plus.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
@@ -299,11 +323,11 @@ internal static class Smoke
 
         var catalog = PackCatalog.VanillaPlusGroups.SelectMany(group => group.Items).ToArray();
         var vanilla2PlusCatalog = PackCatalog.Items;
-        True(catalog.Length == 46 && catalog.Count(item => item.Kind == "mod") == 37 &&
-             catalog.Count(item => item.Kind == "resourcepack") == 8 && catalog.Count(item => item.Kind == "shader") == 1 &&
+        True(catalog.Length == 45 && catalog.Count(item => item.Kind == "mod") == 37 &&
+             catalog.Count(item => item.Kind == "resourcepack") == 7 && catalog.Count(item => item.Kind == "shader") == 1 &&
              catalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal).SetEquals(pack.Files.Select(file => file.Path)) &&
-             vanilla2PlusCatalog.Count == 79 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 65 &&
-             vanilla2PlusCatalog.Count(item => item.Kind == "resourcepack") == 13 &&
+             vanilla2PlusCatalog.Count == 78 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 65 &&
+             vanilla2PlusCatalog.Count(item => item.Kind == "resourcepack") == 12 &&
              vanilla2PlusCatalog.Count(item => item.Kind == "datapack") == 1 &&
              vanilla2PlusCatalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal)
                  .SetEquals(vanilla2Plus.Files.Select(file => file.Path).Concat(YungsJarNames.Concat(NewForkJarNames).Select(name => "mods/" + name)).Append("resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip").Append("resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip")) &&
@@ -318,13 +342,14 @@ internal static class Smoke
             "fov:0.25", "fullscreen:true", "exclusiveFullscreen:true", "guiScale:4"
         }.All(initialOptions.Contains) && !initialOptions.Any(line => line.StartsWith("fullscreenResolution:", StringComparison.Ordinal)),
             "new profile defaults include requested controls, FOV, fullscreen and GUI scale without a fixed monitor mode");
-        True(Vanilla2PlusRelease.InitialResourcePacks.Length == 13 &&
-             Vanilla2PlusRelease.InitialResourcePacks.Take(8).SequenceEqual(TestPackRelease.InitialResourcePacks) &&
+        True(Vanilla2PlusRelease.InitialResourcePacks.Length == 12 &&
+             Vanilla2PlusRelease.InitialResourcePacks.Take(7).SequenceEqual(TestPackRelease.InitialResourcePacks) &&
              Vanilla2PlusRelease.InitialOptions.Contains("file/Semos Animations Lib 2.0.4.zip", StringComparison.Ordinal) &&
              Vanilla2PlusRelease.InitialOptions.Contains("file/Freshly Modded 3.0.5.zip", StringComparison.Ordinal) &&
              Vanilla2PlusRelease.InitialOptions.Contains("file/xalis-enhanced-vanilla-26.2-minepack.1.zip", StringComparison.Ordinal) &&
              Vanilla2PlusRelease.InitialResourcePacks[^2] == "§aRemodeled-Doors§8_§62.2.1.zip" &&
              Vanilla2PlusRelease.InitialResourcePacks[^1] == "Remodeled-Doors-26.2-xalis-blockstates.1.zip" &&
+             !Vanilla2PlusRelease.InitialOptions.Contains("LowOnFire", StringComparison.Ordinal) &&
              !TestPackRelease.InitialOptions.Contains("Freshly Modded", StringComparison.Ordinal),
             "guard animation packs are enabled only for new Vanilla 2 Plus installations");
         Pass("pinned .mrpack opens and matches its SHA-512");
@@ -367,12 +392,12 @@ internal static class Smoke
             Equal("Building Blocks — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "English Vanilla 2 Plus building category");
             Equal("World & Structures — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "English Vanilla 2 Plus worldgen category");
             Equal("Technical Foundation — 14", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Vanilla 2 Plus dependencies");
-            Equal("Resource Packs — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Vanilla 2 Plus resource packs");
-            Equal("Pack version 0.19.5", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
+            Equal("Resource Packs — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Vanilla 2 Plus resource packs");
+            Equal("Pack version 0.19.6", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
             Equal("Installer version 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "English installer version");
-            Equal("65 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
-            Equal("37 mods · 8 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
-            Equal("Performance & Render Distance — 8|Graphics & Animations — 9|Tools & Quality of Life — 9|Sound — 2|Technical Foundation — 9|Resource Packs — 8|Shader — 1",
+            Equal("65 mods · 12 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
+            Equal("37 mods · 7 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
+            Equal("Performance & Render Distance — 8|Graphics & Animations — 9|Tools & Quality of Life — 9|Sound — 2|Technical Foundation — 9|Resource Packs — 7|Shader — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "English catalog headings and counts");
             Equal("Copied worlds: 2. Skipped existing names: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "English formatted text");
 
@@ -383,14 +408,14 @@ internal static class Smoke
             Equal("整合包文件已安装。", LocalizedText.Get("PackFilesInstalled"), "Chinese success text");
             Equal("未找到整合包文件。", LocalizedText.Get("PackFileMissing"), "Chinese error text");
             Equal("性能与区块渲染距离", LocalizedText.Get("CatalogPerformance"), "Chinese catalog text");
-            Equal("整合包版本 0.19.5", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
+            Equal("整合包版本 0.19.6", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
             Equal("安装程序版本 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Chinese installer version");
-            Equal("65 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
-            Equal("37 个模组 · 8 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
+            Equal("65 个模组 · 12 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
+            Equal("37 个模组 · 7 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
             Equal("已复制存档：2。因名称已存在而跳过：1。", LocalizedText.Get("WorldImportSummary", 2, 1), "Chinese formatted text");
             Equal("建筑方块 — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Chinese Vanilla 2 Plus building category");
             Equal("世界与结构 — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Chinese Vanilla 2 Plus worldgen category");
-            Equal("资源包 — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading,
+            Equal("资源包 — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading,
                 "Chinese Vanilla 2 Plus resource pack category");
 
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("ru");
@@ -402,12 +427,12 @@ internal static class Smoke
             Equal("Строительные блоки — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Russian Vanilla 2 Plus building category");
             Equal("Мир и структуры — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Russian Vanilla 2 Plus worldgen category");
             Equal("Техническая основа — 14", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Vanilla 2 Plus dependencies");
-            Equal("Ресурспаки — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Vanilla 2 Plus resource packs");
-            Equal("Версия сборки 0.19.5", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
+            Equal("Ресурспаки — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Vanilla 2 Plus resource packs");
+            Equal("Версия сборки 0.19.6", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
             Equal("Версия установщика 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Russian installer version");
-            Equal("65 модов · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
-            Equal("37 модов · 8 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
-            Equal("Производительность и дальность — 8|Графика и анимации — 9|Инструменты и удобство — 9|Звук — 2|Техническая основа — 9|Ресурспаки — 8|Шейдер — 1",
+            Equal("65 модов · 12 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
+            Equal("37 модов · 7 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
+            Equal("Производительность и дальность — 8|Графика и анимации — 9|Инструменты и удобство — 9|Звук — 2|Техническая основа — 9|Ресурспаки — 7|Шейдер — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "Russian catalog headings and counts");
             Equal("Скопировано миров: 2. Пропущено совпадений имён: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "Russian formatted text");
 
@@ -688,7 +713,24 @@ internal static class Smoke
         Pass("archive is rehashed before overrides are extracted");
     }
 
-    private static async Task<bool> VerifyActualReleaseAsync(string tempRoot)
+    private static InstallService CachedInstaller(string packPath, string hash, string? cachedRoot)
+    {
+        if (cachedRoot is null) return new InstallService();
+        var sourceFiles = PackArchive.Open(packPath, hash).Files
+            .SelectMany(file => file.Downloads.Select(url => (Url: url.AbsoluteUri, file.Path)))
+            .ToDictionary(item => item.Url, item => item.Path, StringComparer.Ordinal);
+        return new InstallService(new DownloadEngine(new DelegateHandler(request =>
+        {
+            if (request.RequestUri is null || !sourceFiles.TryGetValue(request.RequestUri.AbsoluteUri, out var relative))
+                throw new InvalidOperationException("Unexpected pinned download URL.");
+            var path = Path.Combine(cachedRoot, relative.Replace('/', Path.DirectorySeparatorChar));
+            var content = new StreamContent(File.OpenRead(path));
+            content.Headers.ContentLength = new FileInfo(path).Length;
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+        })));
+    }
+
+    private static async Task<bool> VerifyActualReleaseAsync(string tempRoot, string? cachedRoot = null)
     {
         var packPath = Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var installRoot = Path.Combine(tempRoot, "live-pack-install");
@@ -696,7 +738,7 @@ internal static class Smoke
         var vanillaBefore = CaptureVanillaData(vanilla);
         if (vanillaBefore is null)
             Console.WriteLine("NOT RUN: vanilla mods/config/saves could not be read for a before/after comparison.");
-        using var installer = new InstallService();
+        using var installer = CachedInstaller(packPath, TestPackRelease.ArtifactSha512, cachedRoot);
         var install = await installer.InstallAsync(packPath, TestPackRelease.ArtifactSha512, installRoot);
         if (!install.Success)
         {
@@ -706,7 +748,7 @@ internal static class Smoke
 
         var instance = install.GameDirectory ?? throw new InvalidOperationException("Actual release install did not return an instance directory.");
         var manifest = InstallationManifest.Load(instance);
-        True(manifest.Files.Count == 47 && new[]
+        True(manifest.Files.Count == 46 && new[]
         {
             "SubtleEffects-fabric-26.2-1.14.3.jar",
             "fzzy_config-0.7.6+26.2.jar", "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar"
@@ -764,7 +806,7 @@ internal static class Smoke
         return true;
     }
 
-    private static async Task<bool> VerifyActualVanilla2PlusAsync(string tempRoot)
+    private static async Task<bool> VerifyActualVanilla2PlusAsync(string tempRoot, string? cachedRoot = null)
     {
         var packPath = Path.Combine(AppContext.BaseDirectory,
             Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -773,7 +815,7 @@ internal static class Smoke
         var vanillaBefore = CaptureVanillaData(vanilla);
         if (vanillaBefore is null)
             Console.WriteLine("NOT RUN: vanilla mods/config/saves could not be read for a before/after comparison.");
-        using var installer = new InstallService();
+        using var installer = CachedInstaller(packPath, Vanilla2PlusRelease.ArtifactSha512, cachedRoot);
         var install = await installer.InstallAsync(packPath, Vanilla2PlusRelease.ArtifactSha512, installRoot);
         if (!install.Success)
         {
@@ -784,9 +826,9 @@ internal static class Smoke
         var instance = install.GameDirectory ?? throw new InvalidOperationException("Vanilla 2 Plus install did not return an instance directory.");
         var manifest = InstallationManifest.Load(instance);
         Equal(Vanilla2PlusRelease.PackVersion, manifest.PackVersion, "installed Vanilla 2 Plus manifest version");
-        True(manifest.Files.Count == 80 && manifest.Files.Any(file => file.Path == "config/iris.properties") &&
+        True(manifest.Files.Count == 79 && manifest.Files.Any(file => file.Path == "config/iris.properties") &&
              YungsJarNames.Concat(NewForkJarNames).All(name => manifest.Files.Any(file => file.Path == "mods/" + name)),
-            "Frontier manifest records 68 downloads, nine embedded JARs, two embedded ZIPs, and the Iris config override");
+            "Frontier manifest records 67 downloads, nine embedded JARs, two embedded ZIPs, and the Iris config override");
         foreach (var file in manifest.Files)
         {
             var path = Path.Combine(instance, file.Path.Replace('/', Path.DirectorySeparatorChar));
@@ -809,7 +851,7 @@ internal static class Smoke
         True(newModFiles.All(name => manifest.Files.Any(file => file.Path == "mods/" + name)) &&
              !manifest.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)),
             "all Frontier additions are managed without Smooth Swapping");
-        True(Vanilla2PlusRelease.InitialResourcePacks.Skip(8).All(name =>
+        True(Vanilla2PlusRelease.InitialResourcePacks.Skip(7).All(name =>
                 manifest.Files.Any(file => file.Path == "resourcepacks/" + name)),
             "both Guard Villagers animation resource packs are installed and managed");
         var optionsPath = Path.Combine(instance, "options.txt");
@@ -817,7 +859,10 @@ internal static class Smoke
         var options = File.ReadAllLines(optionsPath);
         True(options[0] == "version:4903" &&
              File.ReadAllText(optionsPath).Contains("resourcePacks:" + JsonSerializer.Serialize(expectedPacks), StringComparison.Ordinal),
-            "Vanilla 2 Plus selects all thirteen resource packs plus Punchy on first launch");
+            "Vanilla 2 Plus selects all twelve resource packs plus Punchy on first launch");
+        True(!File.Exists(Path.Combine(instance, "resourcepacks", "LowOnFire v26.2§8.zip")) &&
+             !File.ReadAllText(optionsPath).Contains("LowOnFire", StringComparison.Ordinal),
+            "Frontier neither installs nor enables Low On Fire");
         var bbeConfigPath = Path.Combine(instance, "config", "BBEConfig.json");
         True(File.Exists(bbeConfigPath), "Vanilla 2 Plus applies the existing Better Block Entities config");
         var guardConfigPath = Path.Combine(instance, "config", "guardvillagers.json");
@@ -934,6 +979,8 @@ internal static class Smoke
         foreach (var (version, hash) in new[]
                  {
                      ("0.15.0", TestPackRelease.SmoothArtifactSha512),
+                     ("0.18.0", TestPackRelease.LowFireArtifactSha512),
+                     ("0.19.5", Vanilla2PlusRelease.DoorsArtifactSha512),
                      ("0.17.0", Vanilla2PlusRelease.WorldgenArtifactSha512),
                      ("0.19.0", Vanilla2PlusRelease.UntunedArtifactSha512),
                      ("0.19.1", Vanilla2PlusRelease.TunedArtifactSha512)

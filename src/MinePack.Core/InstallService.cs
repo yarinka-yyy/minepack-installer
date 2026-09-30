@@ -131,9 +131,11 @@ public sealed class InstallService : IDisposable
             };
             await VerifyManagedFilesAsync(stagingRoot, manifest.Files, cancellationToken);
             if (pack.ArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(TestPackRelease.LowFireArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(TestPackRelease.SmoothArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(TestPackRelease.PriorArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                pack.ArchiveSha512.Equals(Vanilla2PlusRelease.DoorsArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.XalisArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.SpidersArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.YungsArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
@@ -146,6 +148,7 @@ public sealed class InstallService : IDisposable
                 pack.ArchiveSha512.Equals(Vanilla2PlusRelease.OriginalArtifactSha512, StringComparison.OrdinalIgnoreCase))
             {
                 var guardAnimationPacks = pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+                    pack.ArchiveSha512.Equals(Vanilla2PlusRelease.DoorsArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.XalisArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.SpidersArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
                     pack.ArchiveSha512.Equals(Vanilla2PlusRelease.YungsArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
@@ -156,9 +159,12 @@ public sealed class InstallService : IDisposable
                 var resourcePacks = guardAnimationPacks
                     ? pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase)
                         ? Vanilla2PlusRelease.InitialResourcePacks
-                        : pack.ArchiveSha512.Equals(Vanilla2PlusRelease.XalisArtifactSha512, StringComparison.OrdinalIgnoreCase)
-                            ? Vanilla2PlusRelease.InitialResourcePacks[..^2] : Vanilla2PlusRelease.InitialResourcePacks[..^3]
-                    : TestPackRelease.InitialResourcePacks;
+                        : pack.ArchiveSha512.Equals(Vanilla2PlusRelease.DoorsArtifactSha512, StringComparison.OrdinalIgnoreCase)
+                            ? Vanilla2PlusRelease.PreviousResourcePacks
+                            : pack.ArchiveSha512.Equals(Vanilla2PlusRelease.XalisArtifactSha512, StringComparison.OrdinalIgnoreCase)
+                                ? Vanilla2PlusRelease.PreviousResourcePacks[..^2] : Vanilla2PlusRelease.PreviousResourcePacks[..^3]
+                    : pack.ArchiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase)
+                        ? TestPackRelease.InitialResourcePacks : TestPackRelease.PreviousResourcePacks;
                 if (resourcePacks.Any(name => !manifest.Files.Any(file =>
                     file.Path.Equals("resourcepacks/" + name, StringComparison.OrdinalIgnoreCase))))
                     throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedResourcePackMissing"));
@@ -462,6 +468,9 @@ public sealed class InstallService : IDisposable
 
     private static bool IsInitialUserConfig(PackArchive pack, string path) =>
         (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) &&
+         (path.Equals("config/guardvillagers.json", StringComparison.OrdinalIgnoreCase) ||
+          path.Equals("config/voxyworldgenv2.json", StringComparison.OrdinalIgnoreCase))) ||
+        (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.DoorsArtifactSha512, StringComparison.OrdinalIgnoreCase) &&
          (path.Equals("config/guardvillagers.json", StringComparison.OrdinalIgnoreCase) ||
           path.Equals("config/voxyworldgenv2.json", StringComparison.OrdinalIgnoreCase))) ||
         (pack.ArchiveSha512.Equals(Vanilla2PlusRelease.XalisArtifactSha512, StringComparison.OrdinalIgnoreCase) &&

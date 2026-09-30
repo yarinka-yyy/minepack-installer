@@ -64,7 +64,6 @@ public static class PackCatalog
         Group("CatalogResourcePacks", "resourcepack",
             ("Fresh Animations", "50dA9Sha", "resourcepacks/FreshAnimations_v1.10.5.zip"),
             ("Fresh Animations: Extensions", "YAVTU8mK", "resourcepacks/FA+All_Extensions-v1.9.2.zip"),
-            ("Low On Fire", "RRxvWKNC", "resourcepacks/LowOnFire v26.2§8.zip"),
             ("Fancy Crops", "UGEVQ6t9", "resourcepacks/Fancy Crops v1.3.zip"),
             ("Better Flame Particles", "ivUZsvzp", "resourcepacks/better_flame_particles-v3.1-mc1.21.9+-resourcepack.zip"),
             ("Os' Colorful Grasses", "O2zhH8n8", "resourcepacks/Os' Colorful Grasses (Mix).zip"),

@@ -1,5 +1,9 @@
 # Test pack releases
 
+## 0.18.1 — Vanilla Plus without Low On Fire
+
+Published with MinePack Installer `1.5.0` for Minecraft `26.2` and Fabric Loader `0.19.5`: 37 mods, 7 resource packs, and 1 shader. Removes only Low On Fire; all other pinned downloads, the shader, and initial player settings are unchanged. The former `0.18.0` archive remains immutable for Repair and Uninstall. Archive SHA-512: `2E259CEE78A2022CDE78012BA95E6EE5E789C3F0DA45D3C51B1D7E4FC689865E0D981FD784C850EF74492F02F8AF8497943394ADC15DBE9135718918FAFB9906`. Deterministic smoke plus direct network Install/Repair/Uninstall in a clean temporary instance passed in the normal Windows user environment.
+
 ## 0.18.0 — Vanilla Plus without Smooth Swapping
 
 Minecraft `26.2`, Fabric Loader `0.19.5`. Removes only Smooth Swapping from `0.15.0`; the other 46 pinned downloads remain unchanged: 37 mods, 8 resource packs, and 1 shader. The Iris override remains. Archive SHA-512: `C7469A3820A4B9BF75132BD016FB99F5B18F3E6FF66CDF0DCFBCE937E5BA8309AD4062C813457B8F95401F6D2F3326ABDBCDBA067B911795B6C574CD9D525776`. Packwiz export, deterministic smoke, real temporary Install/Repair/Uninstall with SHA-512 verification, Release publish, and extracted ZIP hash checks passed. The `0.15.0` archive is retained to recognize and repair existing installations. Gameplay remains for the user's check.

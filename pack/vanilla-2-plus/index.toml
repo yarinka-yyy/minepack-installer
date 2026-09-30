@@ -87,7 +87,7 @@ metafile = true
 
 [[files]]
 file = "mods/collective.pw.toml"
-hash = "568b401e76de2dffd12f42b14e063d0ab82998493c9bb4c80952028e06ff354e"
+hash = "d49aa6a6d317279e307c56e0473bac7f9bd909a5ae71c0110324b0aab28d7734"
 metafile = true
 
 [[files]]
@@ -306,7 +306,7 @@ metafile = true
 
 [[files]]
 file = "mods/tree-harvester.pw.toml"
-hash = "b725323222c04868aa68b032d8d7daece66d73a0ade3e568ab8fdab9c54aa98c"
+hash = "fd111addde7dabcaab7d402c80c96c4e8d5d8121f5954f466b37025cdf4d25d6"
 metafile = true
 
 [[files]]
@@ -368,18 +368,13 @@ hash = "b4a3e94b129bbc54964096526debb947baf7d4155c07529264517c1138a1a5ce"
 metafile = true
 
 [[files]]
-file = "resourcepacks/low-on-fire.pw.toml"
-hash = "f5bafd1fbb787341af6c231f2a735ff3c44b3b1db076e297ecc5e323703cd7fb"
-metafile = true
-
-[[files]]
 file = "resourcepacks/os-colorful-grasses.pw.toml"
 hash = "8b6f2f74f6d74f0dffd4fe89672a696e518bc8d5024fb62c2ca90480954d35d4"
 metafile = true
 
 [[files]]
 file = "resourcepacks/remodeled-doors.pw.toml"
-hash = "6ec66a6886fe0e114e956da683475e17a1e2133f9ca88a47c25517a595548915"
+hash = "f606a48db00add8897df64cb469168f5aed42a58be4a294be957f3a1f4bd4a65"
 metafile = true
 
 [[files]]

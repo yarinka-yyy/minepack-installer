@@ -8,15 +8,15 @@ MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. T
 
 ## Choose a pack
 
-**Vanilla Plus** includes 37 mods, 8 resource packs, and 1 shader. Mobs and villagers move more expressively, while the shader and visual additions change lighting, water, plants, and particles. Voxy displays terrain you have already explored far beyond the usual render distance; performance mods help keep the game smooth. A world map, inventory sorting, item hints, and richer sound make everyday play more convenient.
+**Vanilla Plus** includes 37 mods, 7 resource packs, and 1 shader. Mobs and villagers move more expressively, while the shader and visual additions change lighting, water, plants, and particles. Voxy displays terrain you have already explored far beyond the usual render distance; performance mods help keep the game smooth. A world map, inventory sorting, item hints, and richer sound make everyday play more convenient.
 
-**Frontier** in the current source includes everything in Vanilla Plus: 65 mods, 13 resource packs, and 1 shader in total. Five building mods add windows, fences and walls, bridges, doors, and more stair designs. In unexplored areas you can find improved villages, ruins, towers, Nether buildings, pillager camps, and YUNG's redesigned dungeons, temples, mineshafts, strongholds, and Nether fortresses; MVS alone advertises [over 130 structure designs](https://modrinth.com/mod/moogs-voyager-structures). Villages gain sword- and crossbow-wielding guards. Spiders can climb walls and ceilings, and the world selection screen shows how long you have played each world. The unofficial MinePack port of xali's Enhanced Vanilla is enabled by default with Continuity and CIT Resewn Continuation; its ZIP credits xalixilax and is licensed CC BY-NC 4.0. Tree Harvester and its Collective dependency are pinned; Remodeled Doors 3D is enabled above xali's with an embedded blockstate compatibility pack.
+**Frontier** includes everything in Vanilla Plus: 65 mods, 12 resource packs, and 1 shader in total. Five building mods add windows, fences and walls, bridges, doors, and more stair designs. In unexplored areas you can find improved villages, ruins, towers, Nether buildings, pillager camps, and YUNG's redesigned dungeons, temples, mineshafts, strongholds, and Nether fortresses; MVS alone advertises [over 130 structure designs](https://modrinth.com/mod/moogs-voyager-structures). Villages gain sword- and crossbow-wielding guards. Spiders can climb walls and ceilings, and the world selection screen shows how long you have played each world. The unofficial MinePack port of xali's Enhanced Vanilla is enabled by default with Continuity and CIT Resewn Continuation; its ZIP credits xalixilax and is licensed CC BY-NC 4.0. Tree Harvester and its Collective dependency are pinned; Remodeled Doors 3D is enabled above xali's with an embedded blockstate compatibility pack.
 
-The `main` branch contains an unreleased 1.0.5 candidate. The public download below is still 1.0.3 and contains Frontier 0.19.3 without these additions.
+MinePack Installer 1.5.0 includes Vanilla Plus 0.18.1 and Frontier 0.19.6. Low On Fire has been removed from both packs.
 
 ## Install
 
-1. Download [MinePack-Installer-1.0.3-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.0.3/MinePack-Installer-1.0.3-win-x64.zip) and extract the entire ZIP into a folder. Keep the extracted files together.
+1. Download [MinePack-Installer-1.5.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.5.0/MinePack-Installer-1.5.0-win-x64.zip) and extract the entire ZIP into a folder. Keep the extracted files together.
 2. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Frontier**, then click **Install pack**. MinePack prepares the selected pack and updates its Launcher profile. It may close a running official Launcher during setup, then tries to open it when installation is complete.
 3. In the official Minecraft Launcher, select the **MinePack** profile and click **Play**. On the first launch, the Launcher may download Minecraft's base files. If it did not open automatically, open it yourself and select MinePack.
 
@@ -97,11 +97,10 @@ Repair and uninstall keep your worlds and other personal files. Uninstall remove
 </details>
 
 <details>
-<summary>Resource Packs (8)</summary>
+<summary>Resource Packs (7)</summary>
 
 - [Fresh Animations](https://modrinth.com/resourcepack/50dA9Sha)
 - [Fresh Animations: Extensions](https://modrinth.com/resourcepack/YAVTU8mK)
-- [Low On Fire](https://modrinth.com/resourcepack/RRxvWKNC)
 - [Fancy Crops](https://modrinth.com/resourcepack/UGEVQ6t9)
 - [Better Flame Particles](https://modrinth.com/resourcepack/ivUZsvzp)
 - [Os' Colorful Grasses](https://modrinth.com/resourcepack/O2zhH8n8)

@@ -2,10 +2,12 @@ namespace MinePack.Core;
 
 public static class Vanilla2PlusRelease
 {
-    public const string ArtifactFileName = "vanilla-2-plus-0.19.5.mrpack";
+    public const string ArtifactFileName = "vanilla-2-plus-0.19.6.mrpack";
     public const string ArtifactRelativePath = "releases/vanilla-2-plus/" + ArtifactFileName;
-    public const string ArtifactSha512 = "36115F782120B2F98D37C5294E112FD72E995F35394FA165D5ADDC36305E1AD1B11D0A1650B868572E01B62970ED389975C01B30500653B2E7531BD1C20C6DEC";
-    public const string PackVersion = "0.19.5";
+    public const string ArtifactSha512 = "5FEC73C5E023C251D35E20A32C181C0679669972D8945642D36725FFE575969473CA2F7AB75699D4E7ED91CB78AE57628570189A7548FE3898968BD663467D2B";
+    public const string PackVersion = "0.19.6";
+    public const string DoorsArtifactFileName = "vanilla-2-plus-0.19.5.mrpack";
+    public const string DoorsArtifactSha512 = "36115F782120B2F98D37C5294E112FD72E995F35394FA165D5ADDC36305E1AD1B11D0A1650B868572E01B62970ED389975C01B30500653B2E7531BD1C20C6DEC";
     public const string XalisArtifactFileName = "vanilla-2-plus-0.19.4.mrpack";
     public const string XalisArtifactSha512 = "C456ED02D11506C04D3281D95189A0178B403071EF721F377A85053D3A69A81F7103A538A5CAE7A48F8C81A54715A1510FC20976058E1154F6D0F8F4E10C163F";
     public const string SpidersArtifactFileName = "vanilla-2-plus-0.19.3.mrpack";
@@ -28,14 +30,16 @@ public static class Vanilla2PlusRelease
     public const string LegacyArtifactSha512 = "2AC6213EF9DF36C8FFE7DFC36B90DBD4CE2CEB5EB740BCDFD95EDAD46AF0420ED6CF0959C134C99AE54D0BB972D39AD2E89C9AF4A7857C1A88D18E79F76C5A86";
     public const string OriginalArtifactFileName = "vanilla-2-plus-0.11.0.mrpack";
     public const string OriginalArtifactSha512 = "486B7B92266FA3C0ED7F88CBD99ED572BA71FB9902058889593A5FACDC08F29DBCD9DFF185A7BCCDB5001F3E2DC8165399958F721613188046591E1DCCF329F2";
-    public static string[] InitialResourcePacks =>
+    public static string[] PreviousResourcePacks =>
     [
-        ..TestPackRelease.InitialResourcePacks,
+        ..TestPackRelease.PreviousResourcePacks,
         "Semos Animations Lib 2.0.4.zip",
         "Freshly Modded 3.0.5.zip",
         "xalis-enhanced-vanilla-26.2-minepack.1.zip",
         "§aRemodeled-Doors§8_§62.2.1.zip",
         "Remodeled-Doors-26.2-xalis-blockstates.1.zip"
     ];
+    public static string[] InitialResourcePacks => PreviousResourcePacks
+        .Where(name => name != "LowOnFire v26.2§8.zip").ToArray();
     public static string InitialOptions => TestPackRelease.BuildInitialOptions(InitialResourcePacks);
 }

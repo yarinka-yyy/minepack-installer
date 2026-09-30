@@ -443,8 +443,10 @@ public partial class MainWindow : Window
     private static (string Path, string Hash) PinnedArchive(string version) => version switch
     {
         TestPackRelease.PackVersion => (Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar)), TestPackRelease.ArtifactSha512),
+        "0.18.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LowFireArtifactFileName), TestPackRelease.LowFireArtifactSha512),
         "0.15.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.SmoothArtifactFileName), TestPackRelease.SmoothArtifactSha512),
         Vanilla2PlusRelease.PackVersion => (Path.Combine(AppContext.BaseDirectory, Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar)), Vanilla2PlusRelease.ArtifactSha512),
+        "0.19.5" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.DoorsArtifactFileName), Vanilla2PlusRelease.DoorsArtifactSha512),
         "0.19.4" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.XalisArtifactFileName), Vanilla2PlusRelease.XalisArtifactSha512),
         "0.19.3" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.SpidersArtifactFileName), Vanilla2PlusRelease.SpidersArtifactSha512),
         "0.19.2" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.YungsArtifactFileName), Vanilla2PlusRelease.YungsArtifactSha512),
