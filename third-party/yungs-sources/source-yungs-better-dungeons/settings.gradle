@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'Fabric'
+                    url = uri('https://maven.fabricmc.net')
+                }
+            }
+            filter {
+                includeGroupAndSubgroups('net.fabricmc')
+            }
+        }
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'betterdungeons'
+include("Common", "Fabric", "NeoForge")
+include(":yungsapi")
+project(":yungsapi").projectDir = file("../yungsapi-local-api-marker")

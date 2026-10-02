@@ -1,5 +1,11 @@
 # Frontier releases
 
+## 0.19.7 — local resource and advancement candidate
+
+Minecraft `26.2` · Fabric Loader `0.19.5` · 65 mods, 12 resource packs, 1 shader. This local candidate replaces only the xali `.minepack.1` override with `.minepack.2` and YUNG's Better Desert Temples `5.1.1-minepack.1` with the source-built `5.1.1-minepack.2`. The remaining indexed pins and overrides match `0.19.6`; the historical archive remains available. Archive SHA-512: `11555813B812AC8469F82C10C91A2530D065BD53A71B2EF57E05718FA18F12B88175A6F2DFBDF65FF72C86BE44E83C2FB9D96DC17DC38AAC5B6EEBE5EF95AB2E`. Resource/source validators and deterministic smoke are local checks only. This candidate is not part of the published Installer 1.5.0 package; gameplay, resource rendering, and fresh advancement-log validation remain pending.
+
+The corresponding YUNG's source snapshots, licenses, and build mapping are included in this repository and the audit-candidate bundle under `third-party/yungs-sources/`; see [the source-kit notes](../../third-party/README.md). A new installer GitHub Release and final legal review remain separate.
+
 ## 0.19.6 — Frontier for MinePack Installer 1.5.0
 
 Minecraft `26.2` · Fabric Loader `0.19.5` · 65 mods, 12 resource packs, 1 shader. Removes only Low On Fire from `0.19.5`; all other files retain their exact versions and hashes. This release keeps Tree Harvester `26.2.0-9.4`, Collective `26.2.0-8.40`, Remodeled Doors 3D `2.2.1`, and the embedded `Remodeled-Doors-26.2-xalis-blockstates.1.zip`. A fresh install enables xali's Enhanced Vanilla, then Remodeled Doors, then the compatibility ZIP at higher priority. Tree Harvester's settings remain unchanged. The former `0.19.5` archive is retained for Repair and Uninstall. Archive SHA-512: `5FEC73C5E023C251D35E20A32C181C0679669972D8945642D36725FFE575969473CA2F7AB75699D4E7ED91CB78AE57628570189A7548FE3898968BD663467D2B`. Deterministic smoke, local-cache installation, and direct network Install/Repair/Uninstall in clean temporary instances passed. Gameplay acceptance was supplied by the user for the existing mod and door combination; this release only removes one resource pack.

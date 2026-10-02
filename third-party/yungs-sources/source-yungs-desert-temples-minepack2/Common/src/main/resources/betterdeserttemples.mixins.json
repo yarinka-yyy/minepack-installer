@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.yungnickyoung.minecraft.betterdeserttemples.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "DisableVanillaPyramidsMixin",
+    "ServerLevelMixin",
+    "ServerPlayerTickMixin",
+    "accessor.ChunkGeneratorStructureStateAccessor",
+    "pharaoh.EntityMixin",
+    "pharaoh.HuskMixin",
+    "pharaoh.LivingEntityMixin",
+    "pharaoh.ZombieMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

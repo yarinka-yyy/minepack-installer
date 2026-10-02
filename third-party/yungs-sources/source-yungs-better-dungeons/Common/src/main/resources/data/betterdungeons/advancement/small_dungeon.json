@@ -1,0 +1,39 @@
+{
+  "parent": "betterdungeons:root",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:spawner"
+    },
+    "title": {
+      "translate": "betterdungeons.advancements.small_dungeon.title",
+      "fallback": "Quite the Renovation"
+    },
+    "description": {
+      "translate": "betterdungeons.advancements.small_dungeon.description",
+      "fallback": "Find an upgraded Monster Room"
+    },
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "in_better_monster_room": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "location": {
+                "structures": "betterdungeons:small_dungeon"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [["in_better_monster_room"]]
+}

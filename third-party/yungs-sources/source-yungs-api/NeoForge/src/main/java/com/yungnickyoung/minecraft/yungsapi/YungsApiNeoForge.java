@@ -1,0 +1,68 @@
+package com.yungnickyoung.minecraft.yungsapi;
+
+import com.yungnickyoung.minecraft.yungsapi.autoregister.AutoRegisterField;
+import com.yungnickyoung.minecraft.yungsapi.world.structure.locate.LocateReplacerDataPackResources;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.packs.PackType;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.event.AddPackFindersEvent;
+import net.neoforged.neoforge.registries.RegisterEvent;
+import org.apache.logging.log4j.util.TriConsumer;
+import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+@Mod(YungsApiCommon.MOD_ID)
+public class YungsApiNeoForge {
+    public static IEventBus loadingContextEventBus;
+
+    public YungsApiNeoForge(IEventBus eventBus) {
+        YungsApiNeoForge.loadingContextEventBus = eventBus;
+
+        YungsApiCommon.init();
+
+        eventBus.addListener(YungsApiNeoForge::addPackSource);
+    }
+
+    private static void addPackSource(AddPackFindersEvent event) {
+        if (event.getPackType() == PackType.SERVER_DATA) {
+            event.addRepositorySource(new LocateReplacerDataPackResources.Source());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> Consumer<RegisterEvent> buildSimpleRegistrar(
+            final ResourceKey<Registry<T>> registryKey,
+            final List<AutoRegisterField> registerables
+    ) {
+        return buildAutoRegistrar(registryKey, registerables, data -> (T) data.object());
+    }
+
+    @NotNull
+    public static <T> Consumer<RegisterEvent> buildAutoRegistrar(
+            final ResourceKey<Registry<T>> registryKey,
+            final List<AutoRegisterField> registerables,
+            final Function<AutoRegisterField, T> unwrapper
+    ) {
+        return buildAutoRegistrar(registryKey, registerables, unwrapper, (data, value, helper) -> helper.register(data.name(), value));
+    }
+
+    @NotNull
+    public static <T> Consumer<RegisterEvent> buildAutoRegistrar(
+            final ResourceKey<Registry<T>> registryKey,
+            final List<AutoRegisterField> registerables,
+            final Function<AutoRegisterField, T> unwrapper,
+            final TriConsumer<AutoRegisterField, T, RegisterEvent.RegisterHelper<T>> registrationHandler
+    ) {
+        return event -> event.register(registryKey, helper -> registerables.stream()
+                .filter(data -> !data.processed())
+                .forEach(data -> {
+                    registrationHandler.accept(data, unwrapper.apply(data), helper);
+                    data.markProcessed();
+                }));
+    }
+}

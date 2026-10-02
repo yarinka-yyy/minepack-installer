@@ -1,0 +1,69 @@
+plugins {
+    id 'multiloader-common'
+    id 'net.neoforged.moddev'
+}
+
+neoForge {
+    neoFormVersion = mc_version_neo_form
+    // Automatically enable AccessTransformers if the file exists
+    def at = file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (at.exists()) {
+        accessTransformers.from(at.absolutePath)
+    }
+}
+
+dependencies {
+    compileOnly group:'org.spongepowered', name:'mixin', version:'0.8.5'
+    compileOnly group: 'org.ow2.asm', name: 'asm-tree', version: '9.4'
+    // fabric and neoforge both bundle mixinextras, so it is safe to use it in common
+    compileOnly group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.5.3'
+    annotationProcessor group: 'io.github.llamalad7', name: 'mixinextras-common', version: '0.5.3'
+}
+
+configurations {
+    commonJava {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+    commonResources {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+    commonGeneratedResources {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+}
+
+sourceSets {
+    generated {
+        resources {
+            srcDir 'src/generated/resources'
+        }
+    }
+}
+
+artifacts {
+    commonJava sourceSets.main.java.sourceDirectories.singleFile
+    commonResources sourceSets.main.resources.sourceDirectories.singleFile
+    commonGeneratedResources sourceSets.generated.resources.sourceDirectories.singleFile
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.named("$variant") {
+        attributes {
+            attribute(loaderAttribute, 'common')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant->
+        configurations.named("$variant") {
+            attributes {
+                attribute(loaderAttribute, 'common')
+            }
+        }
+    }
+}

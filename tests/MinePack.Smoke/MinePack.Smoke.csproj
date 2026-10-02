@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MinePack.Core\MinePack.Core.csproj" />
+    <Compile Include="..\..\src\MinePack.Installer\InstallerPreferences.cs" Link="InstallerPreferences.cs" />
     <Content Include="..\..\releases\test-pack\test-pack-0.1.0.mrpack" Link="releases\test-pack\test-pack-0.1.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\test-pack\test-pack-0.2.0.mrpack" Link="releases\test-pack\test-pack-0.2.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\test-pack\test-pack-0.3.0.mrpack" Link="releases\test-pack\test-pack-0.3.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
@@ -28,6 +29,7 @@
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.4.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.4.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.5.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.5.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.6.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.6.mrpack" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.7.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.7.mrpack" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <PropertyGroup>

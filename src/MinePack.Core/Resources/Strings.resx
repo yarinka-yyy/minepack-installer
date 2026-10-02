@@ -32,6 +32,7 @@
   <data name="UiDetails" xml:space="preserve"><value>Details</value></data>
   <data name="UiOpenFolder" xml:space="preserve"><value>Open folder</value></data>
   <data name="UiOpenLog" xml:space="preserve"><value>Open log</value></data>
+  <data name="UiExportDiagnostic" xml:space="preserve"><value>Export log</value></data>
   <data name="UiWorldFolderDialog" xml:space="preserve"><value>Select the profile's saves folder to copy worlds from</value></data>
   <data name="UiInstallFolderDialog" xml:space="preserve"><value>Select the MinePack data folder</value></data>
   <data name="UiUninstallConfirmMessage" xml:space="preserve"><value>Remove installed MinePack files? Worlds, screenshots, and your other files will be kept.</value></data>
@@ -56,14 +57,17 @@
   <data name="PublishedPackMissing" xml:space="preserve"><value>The pinned .mrpack release was not found in the published app folder.</value></data>
   <data name="InstallBeforeImport" xml:space="preserve"><value>Install the pack you want to copy the worlds into first.</value></data>
   <data name="WorldImportComplete" xml:space="preserve"><value>World import complete</value></data>
-  <data name="WorldImportSummary" xml:space="preserve"><value>Copied worlds: {0}. Skipped existing names: {1}.</value></data>
+  <data name="WorldImportSummary" xml:space="preserve"><value>Copied worlds: {0}. Skipped existing names: {1}; missing session.lock: {2}; locked or unverified session.lock: {3}.</value></data>
   <data name="WorldImportSafety" xml:space="preserve"><value>Source worlds were left unchanged. Before opening a world from another Minecraft version, make a backup: the game may convert its format.</value></data>
   <data name="OperationComplete" xml:space="preserve"><value>Operation complete</value></data>
+  <data name="OperationBusy" xml:space="preserve"><value>Another installer operation is already in progress. Wait for it to finish.</value></data>
+  <data name="OperationGuardUnavailable" xml:space="preserve"><value>The installer could not safely acquire its operation guard. No changes were made.</value></data>
+  <data name="GameIsRunning" xml:space="preserve"><value>Minecraft is using this instance. Close the game and try again.</value></data>
+  <data name="GameUseUnverified" xml:space="preserve"><value>MinePack could not verify whether Minecraft is using this instance. Close the game and try again.</value></data>
+  <data name="InstanceFileInUse" xml:space="preserve"><value>A managed file or world lock is in use. Close Minecraft and try again.</value></data>
   <data name="InstallBeforeLauncherRepair" xml:space="preserve"><value>Install the pack first.</value></data>
   <data name="PackNotFoundInFolder" xml:space="preserve"><value>The pack was not found in the selected folder.</value></data>
-  <data name="ProfileRemoved" xml:space="preserve"><value>Profile removed</value></data>
-  <data name="NoActivePackProfileRemoved" xml:space="preserve"><value>There is no active pack. The MinePack profile was removed from Launcher.</value></data>
-  <data name="OtherProfilesUnchanged" xml:space="preserve"><value>Other Launcher profiles were not changed.</value></data>
+  <data name="UninstallInstanceNotFound" xml:space="preserve"><value>No valid active MinePack instance was found in the selected folder.</value></data>
   <data name="PinnedArchiveUnavailable" xml:space="preserve"><value>The app does not contain the pinned archive for this installed version.</value></data>
   <data name="PackUninstalled" xml:space="preserve"><value>Pack uninstalled</value></data>
   <data name="UserFilesPreserved" xml:space="preserve"><value>Worlds, screenshots, and other personal files were kept if they were in the pack folder.</value></data>
@@ -80,7 +84,7 @@
   <data name="RetryConfigureProfile" xml:space="preserve"><value>The pack files are saved. After fixing the issue, click “Restore Launcher profile”; the mods do not need to be downloaded again.</value></data>
   <data name="FixAndRetry" xml:space="preserve"><value>Fix the issue shown and try again.</value></data>
   <data name="WorldImportStopped" xml:space="preserve"><value>World import stopped</value></data>
-  <data name="WorldCopyCancelled" xml:space="preserve"><value>Copying was canceled. Worlds already copied were kept; source worlds were not changed.</value></data>
+  <data name="WorldCopyCancelled" xml:space="preserve"><value>Copying was canceled. {0} Worlds already copied were kept; source worlds were not changed.</value></data>
   <data name="OperationCancelledStatus" xml:space="preserve"><value>Operation canceled.</value></data>
   <data name="InstalledProfilePendingStatus" xml:space="preserve"><value>The pack files are installed, but the Launcher profile is not configured. Click “Restore Launcher profile” when you are ready.</value></data>
   <data name="WorldImportFailedStatus" xml:space="preserve"><value>Could not copy the worlds. Check folder access and free disk space.</value></data>
@@ -104,9 +108,13 @@
   <data name="OpenFolderFailed" xml:space="preserve"><value>Could not open the folder ({0}).</value></data>
   <data name="LogAfterFirstOperation" xml:space="preserve"><value>The log will appear after the first operation.</value></data>
   <data name="OpenLogFailed" xml:space="preserve"><value>Could not open the log ({0}).</value></data>
+  <data name="LogUnavailable" xml:space="preserve"><value>The current operation log is unavailable.</value></data>
+  <data name="DiagnosticExported" xml:space="preserve"><value>The current operation log was exported.</value></data>
+  <data name="DiagnosticExportFailed" xml:space="preserve"><value>Could not export the current operation log.</value></data>
   <data name="OpenModrinthFailed" xml:space="preserve"><value>Could not open the Modrinth page in your browser.</value></data>
   <data name="DiagnosticCode" xml:space="preserve"><value>Code: {0}</value></data>
   <data name="DiagnosticLog" xml:space="preserve"><value>Log: {0}</value></data>
+  <data name="ProgressBytes" xml:space="preserve"><value>({0} / {1} bytes)</value></data>
   <data name="NotCreated" xml:space="preserve"><value>not created</value></data>
   <data name="CancelCurrentOperation" xml:space="preserve"><value>Canceling the current operation. Close the window after cancellation finishes.</value></data>
   <data name="PackFileMissing" xml:space="preserve"><value>The pack file was not found.</value></data>
@@ -151,6 +159,7 @@
   <data name="PackPathEscape" xml:space="preserve"><value>The path points outside the pack folder.</value></data>
   <data name="DirectoryReparseBlocked" xml:space="preserve"><value>The directory contains a link or reparse point.</value></data>
   <data name="DownloadNetworkFailed" xml:space="preserve"><value>Could not download the file from Modrinth.</value></data>
+  <data name="DownloadTimeout" xml:space="preserve"><value>The file download timed out. Check your connection and try again.</value></data>
   <data name="DownloadFailed" xml:space="preserve"><value>Could not download a pack file.</value></data>
   <data name="DownloadRedirectBlocked" xml:space="preserve"><value>The redirect points to an unapproved address.</value></data>
   <data name="DownloadRedirectInvalid" xml:space="preserve"><value>There are too many redirects or the destination address is missing.</value></data>
@@ -164,6 +173,7 @@
   <data name="ManifestEmpty" xml:space="preserve"><value>The local manifest is empty.</value></data>
   <data name="ManifestCorrupt" xml:space="preserve"><value>The local manifest is corrupted.</value></data>
   <data name="ManifestReadFailed" xml:space="preserve"><value>Could not read the local manifest.</value></data>
+  <data name="ManifestAccessDenied" xml:space="preserve"><value>Access to the local manifest was denied.</value></data>
   <data name="ManifestSchemaUnsupported" xml:space="preserve"><value>This local manifest version is not supported.</value></data>
   <data name="ManifestVersionsOrHashInvalid" xml:space="preserve"><value>The local manifest contains invalid versions or a hash.</value></data>
   <data name="ManifestDuplicateOrReservedPath" xml:space="preserve"><value>The local manifest contains a duplicate or reserved path.</value></data>
@@ -184,13 +194,19 @@
   <data name="RestoredFile" xml:space="preserve"><value>Restored {0}</value></data>
   <data name="ManifestOverridesMismatch" xml:space="preserve"><value>The local manifest does not match the release overrides.</value></data>
   <data name="RepairedHashMismatch" xml:space="preserve"><value>The restored file does not match the local manifest.</value></data>
-  <data name="RepairAllHealthy" xml:space="preserve"><value>All managed files are healthy.</value></data>
+  <data name="RepairAllHealthy" xml:space="preserve"><value>All managed files are healthy; no initial defaults were missing.</value></data>
   <data name="RepairFilesRestored" xml:space="preserve"><value>Files restored: {0}.</value></data>
+  <data name="RepairDefaultsRestored" xml:space="preserve"><value>Initial defaults restored: {0}.</value></data>
   <data name="RepairCancelled" xml:space="preserve"><value>Check or repair was canceled.</value></data>
   <data name="RepairFailed" xml:space="preserve"><value>Could not repair the installation. Open the diagnostic log.</value></data>
   <data name="UninstallFilesRemovedWithData" xml:space="preserve"><value>Managed files were removed; user data was kept.</value></data>
   <data name="UninstallFilesRemoved" xml:space="preserve"><value>Managed files were removed.</value></data>
   <data name="UninstallFailed" xml:space="preserve"><value>Could not uninstall the pack. Open the diagnostic log.</value></data>
+  <data name="TransactionRecoveryRequired" xml:space="preserve"><value>A previous file operation needs recovery. Close Minecraft and the official Launcher, then try again. Recovery data: {0}</value></data>
+  <data name="TransactionCleanupResidue" xml:space="preserve"><value>The operation completed, but cleanup data remains at: {0}</value></data>
+  <data name="TransactionSpaceUnavailable" xml:space="preserve"><value>There is not enough available disk space to safely write the transaction journal.</value></data>
+  <data name="TransactionVolumeUnsupported" xml:space="preserve"><value>The operation cannot safely continue because its staging folder is not on the same drive as the installation.</value></data>
+  <data name="TransactionTargetChanged" xml:space="preserve"><value>{0} changed during the operation. No replacement was applied.</value></data>
   <data name="VanillaPathBlocked" xml:space="preserve"><value>For safety, choose a folder outside vanilla .minecraft.</value></data>
   <data name="ActiveMarkerCorrupt" xml:space="preserve"><value>The active installation file is corrupted; the existing marker was not changed.</value></data>
   <data name="InstallFileVerificationFailed" xml:space="preserve"><value>File verification failed for {0}.</value></data>
@@ -200,6 +216,8 @@
   <data name="ManifestUnknownManagedFile" xml:space="preserve"><value>The local manifest contains an unknown managed file.</value></data>
   <data name="DriveRootUnsafe" xml:space="preserve"><value>A drive root cannot be selected as the install folder.</value></data>
   <data name="FabricNetworkFailed" xml:space="preserve"><value>Could not connect to the official Fabric server. Check your connection and try again.</value></data>
+  <data name="FabricTimeout" xml:space="preserve"><value>The official Fabric profile download timed out. Check your connection and try again.</value></data>
+  <data name="PinnedFabricProfileTooLarge" xml:space="preserve"><value>The pinned Fabric profile is larger than the allowed size.</value></data>
   <data name="PinnedFabricProfileUnavailable" xml:space="preserve"><value>Could not get the pinned Fabric profile from the official server.</value></data>
   <data name="FabricProfileHashInvalid" xml:space="preserve"><value>Fabric profile integrity verification failed.</value></data>
   <data name="FabricVersionConflict" xml:space="preserve"><value>A Fabric version with this name already exists and differs from the pinned version. Other files were not changed.</value></data>
@@ -215,6 +233,10 @@
   <data name="FabricArchiveUnexpected" xml:space="preserve"><value>The official Fabric package has an unexpected structure.</value></data>
   <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>The versions in the Fabric package do not match the pinned release.</value></data>
   <data name="LauncherProfileChanged" xml:space="preserve"><value>The Launcher profile changed during installation. Close Launcher and try again.</value></data>
+  <data name="LauncherProfileInvalid" xml:space="preserve"><value>The Launcher profile file is empty or exceeds the supported size limit.</value></data>
+  <data name="LauncherProfileRecoveryRequired" xml:space="preserve"><value>The Launcher profile could not be restored automatically. Recovery may be needed at: {0}</value></data>
+  <data name="FabricVersionMismatch" xml:space="preserve"><value>The selected Launcher service targets a different Minecraft version. Activation was stopped before profile changes.</value></data>
+  <data name="ActivationServiceRequired" xml:space="preserve"><value>A matching Launcher service is required to recover this installed release and its active marker together.</value></data>
   <data name="LauncherJsonInvalid" xml:space="preserve"><value>The Launcher profile file contains invalid JSON.</value></data>
   <data name="LauncherProfileListUnsupported" xml:space="preserve"><value>The Launcher profile list uses an unsupported format.</value></data>
   <data name="LauncherProfileIdConflict" xml:space="preserve"><value>The MinePack profile ID is already used by another profile.</value></data>
@@ -223,5 +245,51 @@
   <data name="WorldTargetVanilla" xml:space="preserve"><value>Worlds cannot be imported into the regular .minecraft folder.</value></data>
   <data name="WorldFoldersOverlap" xml:space="preserve"><value>The source folder and pack folder must not overlap.</value></data>
   <data name="WorldIsOpen" xml:space="preserve"><value>The world “{0}” is open. Close Minecraft before importing it.</value></data>
+  <data name="WorldLockUnavailable" xml:space="preserve"><value>session.lock is locked or could not be verified.</value></data>
   <data name="WorldCopied" xml:space="preserve"><value>Copied world: {0}</value></data>
+  <data name="ActiveMarkerUnsupported" xml:space="preserve"><value>The active-install marker uses a newer schema. MinePack left it unchanged.</value></data>
+  <data name="ActiveMarkerUnsafe" xml:space="preserve"><value>The active-install marker points to an unsafe or unreadable location. MinePack left it unchanged.</value></data>
+  <data name="ActiveMarkerRecoveryRequired" xml:space="preserve"><value>The active-install marker is damaged or points to a missing installation. Confirm recovery before installing or activating another version.</value></data>
+  <data name="ActiveMarkerBackupSaved" xml:space="preserve"><value>The previous active-install marker was saved to: {0}</value></data>
+  <data name="SelectedInstanceUntrusted" xml:space="preserve"><value>The selected installation does not match a trusted pinned release.</value></data>
+  <data name="SelectedPackUnavailable" xml:space="preserve"><value>The pinned archive for this installation is unavailable. It was not changed.</value></data>
+  <data name="UiInstalledInstances" xml:space="preserve"><value>Installed versions</value></data>
+  <data name="UiInstanceActive" xml:space="preserve"><value>active</value></data>
+  <data name="UiInstanceInactive" xml:space="preserve"><value>inactive</value></data>
+  <data name="UiInstanceTrusted" xml:space="preserve"><value>verified</value></data>
+  <data name="UiInstancePackageMissing" xml:space="preserve"><value>pinned package missing — read-only</value></data>
+  <data name="UiInstanceResidue" xml:space="preserve"><value>saved user data — open only</value></data>
+  <data name="UiInstanceUnknown" xml:space="preserve"><value>unknown release — read-only</value></data>
+  <data name="UiInstanceInvalid" xml:space="preserve"><value>invalid manifest — read-only</value></data>
+  <data name="UiInstanceUnsafe" xml:space="preserve"><value>unsafe path — unavailable</value></data>
+  <data name="UiNoTrustedInstances" xml:space="preserve"><value>No verified installation is selected. Saved user data remains available for opening.</value></data>
+  <data name="UiSelectedInstanceStatus" xml:space="preserve"><value>Selected: {0} ({2})&#10;{1}</value></data>
+  <data name="UiRootChangedSelectInstance" xml:space="preserve"><value>The installation folder changed. Select a version in this folder.</value></data>
+  <data name="UiRootNeedsValidation" xml:space="preserve"><value>Validate the folder before using its installations.</value></data>
+  <data name="UiRootAvailable" xml:space="preserve"><value>Available installation root: {0}</value></data>
+  <data name="UiRootReady" xml:space="preserve"><value>Ready to create this installation root: {0}</value></data>
+  <data name="UiPendingRecoveryAt" xml:space="preserve"><value>Recovery is pending for: {0}. Repair that version first.</value></data>
+  <data name="UiSavedRootUnavailable" xml:space="preserve"><value>The saved installation folder or its drive is unavailable. Choose an available folder before continuing.</value></data>
+  <data name="UiPreferencesCorrupt" xml:space="preserve"><value>Saved folder preferences are invalid. The default folder is shown; no saved path was trusted.</value></data>
+  <data name="UiPreferencesNotSaved" xml:space="preserve"><value>The installation folder is valid for this session, but its preference could not be saved.</value></data>
+  <data name="UiSelectTrustedInstance" xml:space="preserve"><value>Select a verified installed version to repair, activate, import worlds into, or uninstall.</value></data>
+  <data name="UiActivateInstanceTitle" xml:space="preserve"><value>Switch active MinePack version?</value></data>
+  <data name="UiActivateInstanceConfirm" xml:space="preserve"><value>Make {0} {1} active in the official Launcher?&#10;&#10;Installation: {2}&#10;The existing worlds and settings in other versions will remain where they are.</value></data>
+  <data name="UiMarkerWillBeBackedUp" xml:space="preserve"><value>The damaged or missing-target marker will be backed up before it is replaced.</value></data>
+  <data name="UiMarkerWillSwitch" xml:space="preserve"><value>This changes the active version; it does not move worlds or settings.</value></data>
+  <data name="UiActiveMarkerRecoveryConfirm" xml:space="preserve"><value>The active marker is {1}. If the selected install completes, MinePack will preserve the original marker and point the root to the selected release.&#10;&#10;Root: {0}</value></data>
+  <data name="UiActiveMarkerRecoveryTitle" xml:space="preserve"><value>Recover active installation marker?</value></data>
+  <data name="UiMarkerMalformed" xml:space="preserve"><value>malformed</value></data>
+  <data name="UiMarkerTargetMissing" xml:space="preserve"><value>missing its installation</value></data>
+  <data name="UiUninstallConfirmTarget" xml:space="preserve"><value>Remove managed files for {0} {1}?&#10;&#10;Installation: {2}&#10;Saved worlds and user settings will remain.</value></data>
+  <data name="UiWorldFolderDialogTarget" xml:space="preserve"><value>Select worlds to import into {0} {1}</value></data>
+  <data name="UiWorldImportSafetyTarget" xml:space="preserve"><value>Worlds were copied into {0} {1}: {2}. Original worlds stay untouched; worlds and settings are not moved between versions automatically.</value></data>
+  <data name="UiActiveMarkerStatus" xml:space="preserve"><value>Active marker status: {0}</value></data>
+  <data name="RepairCompleteInactiveHeading" xml:space="preserve"><value>Selected version repaired</value></data>
+  <data name="RepairInactiveHint" xml:space="preserve"><value>This version remains inactive. Use “Restore Launcher profile” and confirm to switch to it.</value></data>
+  <data name="UiInstalledInstance" xml:space="preserve"><value>this installation</value></data>
+  <data name="UnsafePath" xml:space="preserve"><value>The selected path or one of its parent directories is unsafe or redirected.</value></data>
+  <data name="ActiveMarkerWriteFailed" xml:space="preserve"><value>The active installation marker could not be updated. The previous Launcher profile was restored.</value></data>
+  <data name="UiEmptyRootMarkerRecoveryConfirm" xml:space="preserve"><value>No trusted installation was found in this root. The damaged marker will be backed up and cleared before a new isolated installation starts. The backup remains available if installation fails.&#10;&#10;Root: {0}</value></data>
+  <data name="LauncherProfileWriteFailed" xml:space="preserve"><value>The Launcher profile could not be updated. The previous active marker was preserved.</value></data>
 </root>

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${version}",
+  "name": "${mod_full_name}",
+  "description": "${mod_description}",
+  "authors": [
+    "YUNGNICKYOUNG",
+    "Tera"
+  ],
+  "contact": {
+    "homepage": "https://www.curseforge.com/minecraft/mc-mods/yungs-better-desert-temples-fabric",
+    "sources": "https://github.com/yungnickyoung/YUNGs-Better-Desert-Temples",
+    "issues": "https://github.com/yungnickyoung/YUNGs-Better-Desert-Temples/issues",
+    "discord": "discord.gg/rns3beq"
+  },
+  "license": "${license}",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.yungnickyoung.minecraft.betterdeserttemples.BetterDesertTemplesFabric"
+    ],
+    "modmenu": [
+      "com.yungnickyoung.minecraft.betterdeserttemples.config.gui.BDTModMenu"
+    ]
+  },
+  "mixins": [
+    "betterdeserttemples.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${fabric_loader_version}",
+    "fabric-api": ">=${fabric_version}",
+    "minecraft": "${mc_version_range_fabric}",
+    "cloth-config2": ">=${clothconfig_version_fabric}",
+    "java": ">=${java_version}",
+    "yungsapi": ">=${mc_version}-Fabric-${yungsapi_version}"
+  },
+  "custom": {
+    "catalogue": {
+      "icon": {
+        "image": "catalogue_icon.png"
+      },
+      "banner": "logo.png",
+      "background": "catalogue_background.png"
+    }
+  }
+}

@@ -1,0 +1,88 @@
+package com.yungnickyoung.minecraft.betterstrongholds.world.processor;
+
+import com.mojang.serialization.MapCodec;
+import com.yungnickyoung.minecraft.betterstrongholds.module.StructureProcessorTypeModule;
+import com.yungnickyoung.minecraft.betterstrongholds.world.ItemFrameChances;
+import com.yungnickyoung.minecraft.yungsapi.world.processor.StructureEntityProcessor;
+import net.minecraft.util.Util;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureProcessor;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import org.jspecify.annotations.Nullable;
+
+
+/**
+ * Fills item frames with a random item.
+ * The type of random item depends on the item already in the frame.
+ */
+public class ItemFrameProcessor implements StructureEntityProcessor {
+    public static final ItemFrameProcessor INSTANCE = new ItemFrameProcessor();
+    public static final MapCodec<StructureProcessor> CODEC = MapCodec.unit(() -> INSTANCE);
+
+    @Override
+    public StructureTemplate.StructureEntityInfo processEntity(ServerLevelAccessor serverLevelAccessor,
+                                                               BlockPos structurePiecePos,
+                                                               BlockPos structurePieceBottomCenterPos,
+                                                               StructureTemplate.StructureEntityInfo localEntityInfo,
+                                                               StructureTemplate.StructureEntityInfo globalEntityInfo,
+                                                               StructurePlaceSettings structurePlaceSettings) {
+        if (globalEntityInfo.nbt.getStringOr("id", "").equals("minecraft:item_frame")) {
+            RandomSource random = structurePlaceSettings.getRandom(globalEntityInfo.blockPos);
+
+            // Determine which pool we are grabbing from
+            String item = globalEntityInfo.nbt.getCompoundOrEmpty("Item").getStringOr("id", "");
+
+            // Set the item in the item frame's NBT
+            CompoundTag newNBT = globalEntityInfo.nbt.copy();
+            if (!newNBT.contains("Item")) {
+                newNBT.put("Item", new CompoundTag());
+            }
+            var newItemNbt = newNBT.getCompound("Item").orElseThrow();
+            String randomItemString = switch (item) {
+                case "minecraft:iron_sword" -> // Armory pool
+                        BuiltInRegistries.ITEM.getKey(
+                                ItemFrameChances.get().getArmouryItem(random)).toString();
+                case "minecraft:bread" ->      // Storage pool
+                        BuiltInRegistries.ITEM.getKey(
+                                ItemFrameChances.get().getStorageItem(random)).toString();
+                default -> "minecraft:air";
+            };
+
+            if (randomItemString.equals("minecraft:air")) {
+                return null;
+            }
+            newItemNbt.putString("id", randomItemString);
+
+            // Required to suppress dumb log spam
+            newNBT.store("block_pos", BlockPos.CODEC, globalEntityInfo.blockPos);
+
+            // Randomize rotation
+            int randomRotation = random.nextInt(8);
+            newNBT.putByte("ItemRotation", (byte) randomRotation);
+
+            globalEntityInfo = new StructureTemplate.StructureEntityInfo(globalEntityInfo.pos, globalEntityInfo.blockPos, newNBT);
+        }
+        return globalEntityInfo;
+    }
+
+    @Override
+    public StructureTemplate.@Nullable StructureBlockInfo processBlock(LevelReader levelReader,
+                                                                       BlockPos jigsawPiecePos,
+                                                                       BlockPos jigsawPieceBottomCenterPos,
+                                                                       BlockPos templateRelativePos,
+                                                                       StructureTemplate.StructureBlockInfo blockInfoGlobal,
+                                                                       StructurePlaceSettings structurePlacementData) {
+        return blockInfoGlobal;
+    }
+
+    @Override public MapCodec<? extends StructureProcessor> codec() {
+        return StructureProcessorTypeModule.ITEMFRAME_PROCESSOR;
+    }
+}

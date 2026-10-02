@@ -8,13 +8,27 @@ public sealed class DownloadEngine : IDisposable
 {
     private const int MaxAttempts = 3;
     private const int MaxRedirects = 5;
+    private static readonly TimeSpan DefaultBodyIdleTimeout = TimeSpan.FromSeconds(60);
+    private static readonly TimeSpan DefaultMaxRetryAfter = TimeSpan.FromSeconds(60);
     private readonly HttpClient _client;
     private readonly SemaphoreSlim _slots = new(5, 5);
+    private readonly TimeSpan _bodyIdleTimeout;
+    private readonly TimeSpan _maxRetryAfter;
 
     public DownloadEngine(HttpMessageHandler? handler = null)
+        : this(handler, DefaultBodyIdleTimeout, DefaultMaxRetryAfter)
     {
+    }
+
+    internal DownloadEngine(HttpMessageHandler? handler, TimeSpan bodyIdleTimeout, TimeSpan maxRetryAfter)
+    {
+        if (bodyIdleTimeout <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(bodyIdleTimeout));
+        if (maxRetryAfter < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(maxRetryAfter));
         handler ??= new HttpClientHandler { AllowAutoRedirect = false };
+        // HttpClient's default timeout bounds request/response headers; body reads use the idle limit below.
         _client = new HttpClient(handler, disposeHandler: true);
+        _bodyIdleTimeout = bodyIdleTimeout;
+        _maxRetryAfter = maxRetryAfter;
     }
 
     public event Action<string, object?>? Diagnostic;
@@ -105,7 +119,14 @@ public sealed class DownloadEngine : IDisposable
             if (!PackArchive.IsAllowedDownloadUri(uri))
                 throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", LocalizedText.Get("DownloadRedirectBlocked"));
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
-            using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            HttpResponseMessage response;
+            try { response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken); }
+            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new DownloadFailure("DOWNLOAD_TIMEOUT", LocalizedText.Get("DownloadTimeout"), true, null, ex);
+            }
+            using (response)
+            {
             Report("download_response", new { source = Origin(uri), statusCode = (int)response.StatusCode });
             if (IsRedirect(response.StatusCode))
             {
@@ -126,7 +147,25 @@ public sealed class DownloadEngine : IDisposable
             var expectedSize = response.Content.Headers.ContentLength;
             if (file.Size >= 0 && expectedSize.HasValue && expectedSize.Value != file.Size)
                 throw new InstallerException("DOWNLOAD_SIZE_MISMATCH", LocalizedText.Get("DownloadSizeMismatch"));
-            await using var sourceStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            Stream sourceStream;
+            using (var openTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))
+            {
+                openTimeout.CancelAfter(_bodyIdleTimeout);
+                var streamTask = response.Content.ReadAsStreamAsync(openTimeout.Token);
+                try { sourceStream = await streamTask.WaitAsync(openTimeout.Token); }
+                catch (OperationCanceledException ex)
+                {
+                    _ = streamTask.ContinueWith(task =>
+                    {
+                        if (task.Status == TaskStatus.RanToCompletion) task.Result.Dispose();
+                        else if (task.IsFaulted) _ = task.Exception;
+                    }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                    if (cancellationToken.IsCancellationRequested) throw;
+                    throw new DownloadFailure("DOWNLOAD_TIMEOUT", LocalizedText.Get("DownloadTimeout"), true, null, ex);
+                }
+            }
+            await using (sourceStream)
+            {
             await using var output = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920,
                 FileOptions.Asynchronous | FileOptions.SequentialScan);
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA512);
@@ -134,7 +173,14 @@ public sealed class DownloadEngine : IDisposable
             long total = 0;
             while (true)
             {
-                var count = await sourceStream.ReadAsync(buffer, cancellationToken);
+                using var idleTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                idleTimeout.CancelAfter(_bodyIdleTimeout);
+                int count;
+                try { count = await sourceStream.ReadAsync(buffer, idleTimeout.Token); }
+                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    throw new DownloadFailure("DOWNLOAD_TIMEOUT", LocalizedText.Get("DownloadTimeout"), true, null, ex);
+                }
                 if (count == 0) break;
                 await output.WriteAsync(buffer.AsMemory(0, count), cancellationToken);
                 hash.AppendData(buffer, 0, count);
@@ -154,6 +200,8 @@ public sealed class DownloadEngine : IDisposable
             }
             Report("download_hash_verified", new { path = file.Path, sha512 = actual, size = total });
             return;
+            }
+            }
         }
         throw new InstallerException("DOWNLOAD_REDIRECT_BLOCKED", LocalizedText.Get("DownloadRedirectLimit"));
     }
@@ -164,12 +212,19 @@ public sealed class DownloadEngine : IDisposable
     private static bool IsRetryableStatus(HttpStatusCode status) => status is HttpStatusCode.RequestTimeout or
         HttpStatusCode.TooManyRequests || (int)status >= 500;
 
-    private static TimeSpan? RetryAfter(HttpResponseMessage response)
+    private TimeSpan? RetryAfter(HttpResponseMessage response)
     {
         RetryConditionHeaderValue? retry = response.Headers.RetryAfter;
-        if (retry?.Delta is { } delta) return delta < TimeSpan.Zero ? TimeSpan.Zero : delta;
-        if (retry?.Date is { } date) return date <= DateTimeOffset.UtcNow ? TimeSpan.Zero : date - DateTimeOffset.UtcNow;
-        return null;
+        return ClampRetryAfter(retry?.Delta, retry?.Date, DateTimeOffset.UtcNow, _maxRetryAfter);
+    }
+
+    internal static TimeSpan? ClampRetryAfter(TimeSpan? delta, DateTimeOffset? date, DateTimeOffset now, TimeSpan maximum)
+    {
+        TimeSpan? delay = delta;
+        if (delay is null && date is { } retryDate) delay = retryDate - now;
+        if (delay is null) return null;
+        if (delay < TimeSpan.Zero) return TimeSpan.Zero;
+        return delay > maximum ? maximum : delay;
     }
 
     private static void TryDelete(string path)
@@ -193,8 +248,8 @@ public sealed class DownloadEngine : IDisposable
         _slots.Dispose();
     }
 
-    private sealed class DownloadFailure(string code, string message, bool retryable, TimeSpan? retryAfter)
-        : Exception(message)
+    private sealed class DownloadFailure(string code, string message, bool retryable, TimeSpan? retryAfter,
+        Exception? inner = null) : Exception(message, inner)
     {
         public string Code { get; } = code;
         public bool Retryable { get; } = retryable;

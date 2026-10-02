@@ -14,6 +14,12 @@ MinePack работает в Windows и устанавливает сборки 
 
 MinePack Installer 1.5.0 включает Vanilla Plus 0.18.1 и Frontier 0.19.6. Low On Fire исключён из обеих сборок.
 
+Отдельно собран кандидат Frontier 0.19.7 с обновлёнными ресурспаком xali и YUNG's Better Desert Temples. Его архив есть в репозитории, но он не входит в Installer 1.5.0 и новый GitHub Release не выпущен; проверка ресурсов и достижений в игре ещё не проведена.
+
+## Документы и исходники офлайн-комплекта
+
+Локальный audit-кандидат включает [лицензию установщика 0BSD](LICENSE), [историю архивов Vanilla Plus](releases/test-pack/README.md), [описание выпусков Frontier](releases/vanilla-2-plus/README.md) и [заметки об исходниках и сборке сторонних проектов](third-party/README.md). Соответствующие исходники YUNG's находятся в `third-party/yungs-sources/`: там восемь версионированных снимков семи форков, точное сопоставление с JAR, файлы сборки и лицензии. Этот же комплект исходников включён в репозиторий; ZIP установщика остаётся локальным кандидатом без нового GitHub Release.
+
 ## Установка
 
 1. Скачайте [MinePack-Installer-1.5.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.5.0/MinePack-Installer-1.5.0-win-x64.zip) и полностью распакуйте его в папку. Не перемещайте файлы отдельно друг от друга.

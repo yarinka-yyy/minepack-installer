@@ -1,0 +1,36 @@
+modLoader="javafml"
+loaderVersion="${neoforge_loader_version_range}"
+license="${license}"
+issueTrackerURL="https://github.com/yungnickyoung/YUNGs-Api/issues"
+
+[[mods]]
+    modId="${mod_id}"
+    version="${version}"
+    displayName="${mod_full_name}"
+    credits="${mod_credits}"
+    authors="YUNGNICKYOUNG"
+    description="${mod_description}"
+    logoFile="logo.png"
+    displayURL="https://www.curseforge.com/minecraft/mc-mods/yungs-api"
+
+[modproperties.${mod_id}]
+    catalogueImageIcon="catalogue_icon.png"
+    catalogueBackground="catalogue_background.png"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${mc_version_range}"
+    ordering = "NONE"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="${neoforge_version_range}"
+    ordering = "NONE"
+
+[[mixins]]
+    config = "${mod_id}.mixins.json"
+
+[[mixins]]
+    config = "${mod_id}_neoforge.mixins.json"

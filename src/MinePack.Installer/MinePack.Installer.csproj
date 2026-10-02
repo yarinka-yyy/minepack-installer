@@ -5,6 +5,16 @@
     <Resource Include="Assets\Monocraft.ttf" />
     <Resource Include="Assets\MinePackIcon.ico" />
     <Content Include="Assets\Monocraft-OFL.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\README.ru.md" Link="README.ru.md" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\README.zh-CN.md" Link="README.zh-CN.md" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\README.md" Link="releases\vanilla-2-plus\README.md" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\third-party\README.md" Link="third-party\README.md" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\third-party\yungs-sources\**\*"
+             Exclude="..\..\third-party\yungs-sources\**\.git\**;..\..\third-party\yungs-sources\**\.gradle\**;..\..\third-party\yungs-sources\**\build\**;..\..\third-party\yungs-sources\**\bin\**;..\..\third-party\yungs-sources\**\obj\**;..\..\third-party\yungs-sources\**\cache\**;..\..\third-party\yungs-sources\**\caches\**;..\..\third-party\yungs-sources\**\*.pdf"
+             Link="third-party\yungs-sources\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\test-pack-0.1.0.mrpack" Link="releases\test-pack\test-pack-0.1.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\test-pack-0.2.0.mrpack" Link="releases\test-pack\test-pack-0.2.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\test-pack-0.3.0.mrpack" Link="releases\test-pack\test-pack-0.3.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
@@ -31,6 +41,7 @@
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.4.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.4.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.5.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.5.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.6.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.6.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.7.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.7.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\README.md" Link="releases\test-pack\README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
   </ItemGroup>
 

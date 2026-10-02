@@ -32,6 +32,7 @@
   <data name="UiDetails" xml:space="preserve"><value>详细信息</value></data>
   <data name="UiOpenFolder" xml:space="preserve"><value>打开文件夹</value></data>
   <data name="UiOpenLog" xml:space="preserve"><value>打开日志</value></data>
+  <data name="UiExportDiagnostic" xml:space="preserve"><value>导出日志</value></data>
   <data name="UiWorldFolderDialog" xml:space="preserve"><value>选择要复制存档的配置对应的 saves 文件夹</value></data>
   <data name="UiInstallFolderDialog" xml:space="preserve"><value>选择 MinePack 数据文件夹</value></data>
   <data name="UiUninstallConfirmMessage" xml:space="preserve"><value>将删除 MinePack 管理的文件。存档、截图和其他个人文件会保留。</value></data>
@@ -56,14 +57,17 @@
   <data name="PublishedPackMissing" xml:space="preserve"><value>已发布的程序文件夹中未找到固定版本的 .mrpack 整合包。</value></data>
   <data name="InstallBeforeImport" xml:space="preserve"><value>请先安装要导入存档的目标整合包。</value></data>
   <data name="WorldImportComplete" xml:space="preserve"><value>存档导入完成</value></data>
-  <data name="WorldImportSummary" xml:space="preserve"><value>已复制存档：{0}。因名称已存在而跳过：{1}。</value></data>
+  <data name="WorldImportSummary" xml:space="preserve"><value>已复制存档：{0}。因名称已存在而跳过：{1}；缺少 session.lock：{2}；session.lock 已锁定或无法验证：{3}。</value></data>
   <data name="WorldImportSafety" xml:space="preserve"><value>源存档未更改。打开其他 Minecraft 版本的存档前请先备份：游戏可能会转换存档格式。</value></data>
   <data name="OperationComplete" xml:space="preserve"><value>操作完成</value></data>
+  <data name="OperationBusy" xml:space="preserve"><value>另一个安装程序操作正在进行，请等待其完成。</value></data>
+  <data name="OperationGuardUnavailable" xml:space="preserve"><value>安装程序无法安全获取操作锁，因此未进行任何更改。</value></data>
+  <data name="GameIsRunning" xml:space="preserve"><value>Minecraft 正在使用此实例。请关闭游戏后重试。</value></data>
+  <data name="GameUseUnverified" xml:space="preserve"><value>MinePack 无法确认 Minecraft 是否正在使用此实例。请关闭游戏后重试。</value></data>
+  <data name="InstanceFileInUse" xml:space="preserve"><value>某个受管理文件或世界锁正在使用。请关闭 Minecraft 后重试。</value></data>
   <data name="InstallBeforeLauncherRepair" xml:space="preserve"><value>请先安装整合包。</value></data>
   <data name="PackNotFoundInFolder" xml:space="preserve"><value>在所选文件夹中找不到整合包。</value></data>
-  <data name="ProfileRemoved" xml:space="preserve"><value>配置已删除</value></data>
-  <data name="NoActivePackProfileRemoved" xml:space="preserve"><value>当前没有活动的整合包。已从启动器中删除 MinePack 配置。</value></data>
-  <data name="OtherProfilesUnchanged" xml:space="preserve"><value>其他启动器配置未更改。</value></data>
+  <data name="UninstallInstanceNotFound" xml:space="preserve"><value>所选文件夹中没有有效的活动 MinePack 安装。</value></data>
   <data name="PinnedArchiveUnavailable" xml:space="preserve"><value>此程序不包含与当前安装版本对应的固定归档文件。</value></data>
   <data name="PackUninstalled" xml:space="preserve"><value>整合包已卸载</value></data>
   <data name="UserFilesPreserved" xml:space="preserve"><value>如果存档、截图和其他个人文件位于整合包文件夹中，这些文件也已保留。</value></data>
@@ -80,7 +84,7 @@
   <data name="RetryConfigureProfile" xml:space="preserve"><value>整合包文件已保存。修复问题后，点击“恢复启动器配置”；无需重新下载模组。</value></data>
   <data name="FixAndRetry" xml:space="preserve"><value>请先解决显示的问题，然后重试。</value></data>
   <data name="WorldImportStopped" xml:space="preserve"><value>存档导入已停止</value></data>
-  <data name="WorldCopyCancelled" xml:space="preserve"><value>复制操作已取消。已复制的存档已保留；源存档未更改。</value></data>
+  <data name="WorldCopyCancelled" xml:space="preserve"><value>复制操作已取消。{0} 已复制的存档已保留；源存档未更改。</value></data>
   <data name="OperationCancelledStatus" xml:space="preserve"><value>操作已取消。</value></data>
   <data name="InstalledProfilePendingStatus" xml:space="preserve"><value>整合包文件已安装，但尚未设置启动器配置。准备好后，请点击“恢复启动器配置”。</value></data>
   <data name="WorldImportFailedStatus" xml:space="preserve"><value>无法复制存档。请检查文件夹访问权限和可用磁盘空间。</value></data>
@@ -104,9 +108,13 @@
   <data name="OpenFolderFailed" xml:space="preserve"><value>无法打开文件夹（{0}）。</value></data>
   <data name="LogAfterFirstOperation" xml:space="preserve"><value>完成首次操作后，日志才会显示。</value></data>
   <data name="OpenLogFailed" xml:space="preserve"><value>无法打开日志（{0}）。</value></data>
+  <data name="LogUnavailable" xml:space="preserve"><value>当前操作日志不可用。</value></data>
+  <data name="DiagnosticExported" xml:space="preserve"><value>当前操作日志已导出。</value></data>
+  <data name="DiagnosticExportFailed" xml:space="preserve"><value>无法导出当前操作日志。</value></data>
   <data name="OpenModrinthFailed" xml:space="preserve"><value>无法在浏览器中打开 Modrinth 页面。</value></data>
   <data name="DiagnosticCode" xml:space="preserve"><value>代码：{0}</value></data>
   <data name="DiagnosticLog" xml:space="preserve"><value>日志：{0}</value></data>
+  <data name="ProgressBytes" xml:space="preserve"><value>（{0} / {1} 字节）</value></data>
   <data name="NotCreated" xml:space="preserve"><value>尚未创建</value></data>
   <data name="CancelCurrentOperation" xml:space="preserve"><value>正在取消当前操作。取消完成后即可关闭窗口。</value></data>
   <data name="PackFileMissing" xml:space="preserve"><value>未找到整合包文件。</value></data>
@@ -151,6 +159,7 @@
   <data name="PackPathEscape" xml:space="preserve"><value>该路径指向整合包文件夹之外。</value></data>
   <data name="DirectoryReparseBlocked" xml:space="preserve"><value>目录中包含链接或重解析点。</value></data>
   <data name="DownloadNetworkFailed" xml:space="preserve"><value>无法从 Modrinth 下载文件。</value></data>
+  <data name="DownloadTimeout" xml:space="preserve"><value>文件下载超时。请检查网络连接后重试。</value></data>
   <data name="DownloadFailed" xml:space="preserve"><value>无法下载整合包文件。</value></data>
   <data name="DownloadRedirectBlocked" xml:space="preserve"><value>重定向指向了未获批准的地址。</value></data>
   <data name="DownloadRedirectInvalid" xml:space="preserve"><value>重定向次数过多，或缺少目标地址。</value></data>
@@ -164,6 +173,7 @@
   <data name="ManifestEmpty" xml:space="preserve"><value>本地清单为空。</value></data>
   <data name="ManifestCorrupt" xml:space="preserve"><value>本地清单已损坏。</value></data>
   <data name="ManifestReadFailed" xml:space="preserve"><value>无法读取本地清单。</value></data>
+  <data name="ManifestAccessDenied" xml:space="preserve"><value>无法访问本地清单。</value></data>
   <data name="ManifestSchemaUnsupported" xml:space="preserve"><value>不支持此本地清单版本。</value></data>
   <data name="ManifestVersionsOrHashInvalid" xml:space="preserve"><value>本地清单包含无效的版本或哈希值。</value></data>
   <data name="ManifestDuplicateOrReservedPath" xml:space="preserve"><value>本地清单包含重复路径或保留路径。</value></data>
@@ -184,13 +194,19 @@
   <data name="RestoredFile" xml:space="preserve"><value>已恢复 {0}</value></data>
   <data name="ManifestOverridesMismatch" xml:space="preserve"><value>本地清单与发布版覆盖文件不符。</value></data>
   <data name="RepairedHashMismatch" xml:space="preserve"><value>恢复后的文件与本地清单不符。</value></data>
-  <data name="RepairAllHealthy" xml:space="preserve"><value>所有受管理文件均正常。</value></data>
+  <data name="RepairAllHealthy" xml:space="preserve"><value>所有受管理文件均正常，且没有缺失的初始默认配置。</value></data>
   <data name="RepairFilesRestored" xml:space="preserve"><value>已恢复文件：{0}。</value></data>
+  <data name="RepairDefaultsRestored" xml:space="preserve"><value>已恢复初始默认配置：{0}。</value></data>
   <data name="RepairCancelled" xml:space="preserve"><value>检查或修复已取消。</value></data>
   <data name="RepairFailed" xml:space="preserve"><value>无法修复安装。请打开诊断日志。</value></data>
   <data name="UninstallFilesRemovedWithData" xml:space="preserve"><value>受管理文件已删除；用户数据已保留。</value></data>
   <data name="UninstallFilesRemoved" xml:space="preserve"><value>受管理文件已删除。</value></data>
   <data name="UninstallFailed" xml:space="preserve"><value>无法卸载整合包。请打开诊断日志。</value></data>
+  <data name="TransactionRecoveryRequired" xml:space="preserve"><value>上一次文件操作需要恢复。请关闭 Minecraft 和官方启动器，然后重试。恢复数据：{0}</value></data>
+  <data name="TransactionCleanupResidue" xml:space="preserve"><value>操作已完成，但仍有清理数据留在：{0}</value></data>
+  <data name="TransactionSpaceUnavailable" xml:space="preserve"><value>可用磁盘空间不足，无法安全写入事务日志。</value></data>
+  <data name="TransactionVolumeUnsupported" xml:space="preserve"><value>无法安全继续操作：暂存目录与安装目录不在同一磁盘。</value></data>
+  <data name="TransactionTargetChanged" xml:space="preserve"><value>文件 {0} 在操作期间发生了变化。未应用替换。</value></data>
   <data name="VanillaPathBlocked" xml:space="preserve"><value>为确保安全，请选择 vanilla .minecraft 之外的文件夹。</value></data>
   <data name="ActiveMarkerCorrupt" xml:space="preserve"><value>活动安装标记文件已损坏；现有标记未更改。</value></data>
   <data name="InstallFileVerificationFailed" xml:space="preserve"><value>文件验证失败：{0}</value></data>
@@ -200,6 +216,8 @@
   <data name="ManifestUnknownManagedFile" xml:space="preserve"><value>本地清单包含未知的受管理文件。</value></data>
   <data name="DriveRootUnsafe" xml:space="preserve"><value>不能将磁盘根目录选作安装文件夹。</value></data>
   <data name="FabricNetworkFailed" xml:space="preserve"><value>无法连接官方 Fabric 服务器。请检查网络后重试。</value></data>
+  <data name="FabricTimeout" xml:space="preserve"><value>官方 Fabric 配置下载超时。请检查网络连接后重试。</value></data>
+  <data name="PinnedFabricProfileTooLarge" xml:space="preserve"><value>固定 Fabric 配置超过允许的大小。</value></data>
   <data name="PinnedFabricProfileUnavailable" xml:space="preserve"><value>无法从官方服务器获取固定版本的 Fabric 配置。</value></data>
   <data name="FabricProfileHashInvalid" xml:space="preserve"><value>Fabric 配置完整性验证失败。</value></data>
   <data name="FabricVersionConflict" xml:space="preserve"><value>同名 Fabric 版本已存在，但内容与固定版本不符。其他文件未更改。</value></data>
@@ -215,6 +233,10 @@
   <data name="FabricArchiveUnexpected" xml:space="preserve"><value>官方 Fabric 压缩包的结构异常。</value></data>
   <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>Fabric 压缩包中的版本与固定版本不符。</value></data>
   <data name="LauncherProfileChanged" xml:space="preserve"><value>安装期间启动器配置发生了变化。请关闭 Minecraft Launcher 后重试。</value></data>
+  <data name="LauncherProfileInvalid" xml:space="preserve"><value>启动器配置文件为空或超过支持的大小限制。</value></data>
+  <data name="LauncherProfileRecoveryRequired" xml:space="preserve"><value>无法自动恢复启动器配置。可能需要恢复此文件：{0}</value></data>
+  <data name="FabricVersionMismatch" xml:space="preserve"><value>所选启动器服务对应不同的 Minecraft 版本。激活已在更改配置文件前停止。</value></data>
+  <data name="ActivationServiceRequired" xml:space="preserve"><value>需要匹配的启动器服务，才能同时恢复此已安装版本和活动标记。</value></data>
   <data name="LauncherJsonInvalid" xml:space="preserve"><value>启动器配置文件包含无效的 JSON。</value></data>
   <data name="LauncherProfileListUnsupported" xml:space="preserve"><value>启动器配置列表使用了不受支持的格式。</value></data>
   <data name="LauncherProfileIdConflict" xml:space="preserve"><value>MinePack 配置 ID 已被其他配置使用。</value></data>
@@ -223,5 +245,51 @@
   <data name="WorldTargetVanilla" xml:space="preserve"><value>不能将存档导入常规的 .minecraft 文件夹。</value></data>
   <data name="WorldFoldersOverlap" xml:space="preserve"><value>源文件夹与整合包文件夹不能相互包含。</value></data>
   <data name="WorldIsOpen" xml:space="preserve"><value>存档“{0}”当前处于打开状态。导入前请先关闭 Minecraft。</value></data>
+  <data name="WorldLockUnavailable" xml:space="preserve"><value>session.lock 已锁定或无法验证。</value></data>
   <data name="WorldCopied" xml:space="preserve"><value>已复制存档：{0}</value></data>
+  <data name="ActiveMarkerUnsupported" xml:space="preserve"><value>活动安装标记使用了更新的架构。MinePack 未更改该文件。</value></data>
+  <data name="ActiveMarkerUnsafe" xml:space="preserve"><value>活动安装标记指向不安全或无法读取的位置。MinePack 未更改该文件。</value></data>
+  <data name="ActiveMarkerRecoveryRequired" xml:space="preserve"><value>活动安装标记已损坏或指向不存在的安装。安装或激活其他版本前，请先确认恢复操作。</value></data>
+  <data name="ActiveMarkerBackupSaved" xml:space="preserve"><value>旧活动安装标记已保存到：{0}</value></data>
+  <data name="SelectedInstanceUntrusted" xml:space="preserve"><value>所选安装与受信任的固定版本不匹配。</value></data>
+  <data name="SelectedPackUnavailable" xml:space="preserve"><value>此安装对应的固定压缩包不可用，安装未更改。</value></data>
+  <data name="UiInstalledInstances" xml:space="preserve"><value>已安装版本</value></data>
+  <data name="UiInstanceActive" xml:space="preserve"><value>活动</value></data>
+  <data name="UiInstanceInactive" xml:space="preserve"><value>未活动</value></data>
+  <data name="UiInstanceTrusted" xml:space="preserve"><value>已验证</value></data>
+  <data name="UiInstancePackageMissing" xml:space="preserve"><value>缺少固定压缩包 — 只读</value></data>
+  <data name="UiInstanceResidue" xml:space="preserve"><value>已保存的用户数据 — 仅可打开</value></data>
+  <data name="UiInstanceUnknown" xml:space="preserve"><value>未知版本 — 只读</value></data>
+  <data name="UiInstanceInvalid" xml:space="preserve"><value>清单无效 — 只读</value></data>
+  <data name="UiInstanceUnsafe" xml:space="preserve"><value>路径不安全 — 不可用</value></data>
+  <data name="UiNoTrustedInstances" xml:space="preserve"><value>尚未选择经过验证的安装。已保存的用户数据仍可打开。</value></data>
+  <data name="UiSelectedInstanceStatus" xml:space="preserve"><value>所选：{0}（{2}）&#10;{1}</value></data>
+  <data name="UiRootChangedSelectInstance" xml:space="preserve"><value>安装文件夹已更改。请选择该文件夹中的版本。</value></data>
+  <data name="UiRootNeedsValidation" xml:space="preserve"><value>使用此文件夹中的安装前，请先验证该文件夹。</value></data>
+  <data name="UiRootAvailable" xml:space="preserve"><value>安装根目录可用：{0}</value></data>
+  <data name="UiRootReady" xml:space="preserve"><value>可以在此处创建安装根目录：{0}</value></data>
+  <data name="UiPendingRecoveryAt" xml:space="preserve"><value>此安装需要恢复：{0}。请先修复该版本。</value></data>
+  <data name="UiSavedRootUnavailable" xml:space="preserve"><value>保存的安装文件夹或其驱动器不可用。请先选择可用文件夹。</value></data>
+  <data name="UiPreferencesCorrupt" xml:space="preserve"><value>保存的文件夹设置无效。已显示默认文件夹；未信任保存的路径。</value></data>
+  <data name="UiPreferencesNotSaved" xml:space="preserve"><value>此会话中的安装文件夹有效，但无法保存该设置。</value></data>
+  <data name="UiSelectTrustedInstance" xml:space="preserve"><value>请选择经过验证的已安装版本，再进行修复、激活、导入存档或卸载。</value></data>
+  <data name="UiActivateInstanceTitle" xml:space="preserve"><value>切换 MinePack 活动版本？</value></data>
+  <data name="UiActivateInstanceConfirm" xml:space="preserve"><value>在官方启动器中将 {0} {1} 设为活动版本？&#10;&#10;安装位置：{2}&#10;其他版本中的世界和设置会保留在原处。</value></data>
+  <data name="UiMarkerWillBeBackedUp" xml:space="preserve"><value>替换前将备份损坏的标记或指向缺失安装的标记。</value></data>
+  <data name="UiMarkerWillSwitch" xml:space="preserve"><value>这会切换活动版本，不会移动世界或设置。</value></data>
+  <data name="UiActiveMarkerRecoveryConfirm" xml:space="preserve"><value>活动安装标记{1}。如果所选安装成功，MinePack 会保留原始标记并将根目录指向所选版本。&#10;&#10;根目录：{0}</value></data>
+  <data name="UiActiveMarkerRecoveryTitle" xml:space="preserve"><value>恢复活动安装标记？</value></data>
+  <data name="UiMarkerMalformed" xml:space="preserve"><value>格式错误</value></data>
+  <data name="UiMarkerTargetMissing" xml:space="preserve"><value>目标安装缺失</value></data>
+  <data name="UiUninstallConfirmTarget" xml:space="preserve"><value>移除 {0} {1} 的受管理文件？&#10;&#10;安装位置：{2}&#10;已保存的世界和用户设置会保留。</value></data>
+  <data name="UiWorldFolderDialogTarget" xml:space="preserve"><value>选择要导入到 {0} {1} 的世界</value></data>
+  <data name="UiWorldImportSafetyTarget" xml:space="preserve"><value>世界已复制到 {0} {1}：{2}。原始世界未更改；不同版本间不会自动移动世界或设置。</value></data>
+  <data name="UiActiveMarkerStatus" xml:space="preserve"><value>活动安装标记状态：{0}</value></data>
+  <data name="RepairCompleteInactiveHeading" xml:space="preserve"><value>所选版本已修复</value></data>
+  <data name="RepairInactiveHint" xml:space="preserve"><value>此版本仍未激活。点击“恢复启动器配置文件”并确认即可切换到此版本。</value></data>
+  <data name="UiInstalledInstance" xml:space="preserve"><value>此安装</value></data>
+  <data name="UnsafePath" xml:space="preserve"><value>所选路径或其某个父文件夹不安全或已被重定向。</value></data>
+  <data name="ActiveMarkerWriteFailed" xml:space="preserve"><value>无法更新活动安装标记。原启动器配置已恢复。</value></data>
+  <data name="UiEmptyRootMarkerRecoveryConfirm" xml:space="preserve"><value>此根目录中没有已验证的安装。损坏的标记将在开始新的隔离安装前备份并清除。如果安装失败，备份仍会保留。&#10;&#10;根目录：{0}</value></data>
+  <data name="LauncherProfileWriteFailed" xml:space="preserve"><value>无法更新启动器配置。原活动安装标记已保留。</value></data>
 </root>

@@ -1,0 +1,25 @@
+{
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:mossy_stone_bricks"
+    },
+    "title": {
+      "translate": "betterdungeons.advancements.root.title",
+      "fallback": "YUNG's Better Dungeons"
+    },
+    "description": {
+      "translate": "betterdungeons.advancements.root.description",
+      "fallback": "Adventure awaits..."
+    },
+    "show_toast": false,
+    "announce_to_chat": false,
+    "hidden": true,
+    "background": "minecraft:block/stone_bricks"
+  },
+  "criteria": {
+    "always": {
+      "trigger": "minecraft:tick"
+    }
+  }
+}

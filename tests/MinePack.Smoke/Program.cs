@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
@@ -7,10 +8,20 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using MinePack.Core;
+using MinePack.Installer;
 
 try
 {
-    await Smoke.RunAsync(args);
+    if (args.Length > 0 && args[0] == "--operation-guard-child")
+        Environment.ExitCode = await Smoke.RunOperationGuardChildAsync(args);
+    else if (args.Length > 0 && args[0] == "--instance-use-child")
+        Environment.ExitCode = await Smoke.RunInstanceUseChildAsync(args);
+    else if (args.Length > 0 && args[0] == "--transaction-crash-child")
+        Environment.ExitCode = await Smoke.RunTransactionCrashChildAsync(args);
+    else if (args.Length > 0 && args[0] == "--network-gate-fixture-child")
+        Environment.ExitCode = await Smoke.RunNetworkGateFixtureChildAsync(args);
+    else
+        await Smoke.RunAsync(args);
 }
 catch (Exception ex)
 {
@@ -24,7 +35,7 @@ internal static class Smoke
     private static readonly string[] YungsJarNames =
     [
         "YungsApi-26.2-Fabric-6.1.3-minepack.1.jar",
-        "YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.1.jar",
+        "YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.2.jar",
         "YungsBetterDungeons-26.2-Fabric-6.1.1-minepack.1.jar",
         "YungsBetterJungleTemples-26.2-Fabric-4.1.1-minepack.1.jar",
         "YungsBetterMineshafts-26.2-Fabric-6.1.1-minepack.1.jar",
@@ -39,40 +50,49 @@ internal static class Smoke
 
     public static async Task RunAsync(string[] args)
     {
+        ValidateLivePackArguments(args);
+        var requireLivePack = args.Contains("--require-live-pack", StringComparer.Ordinal);
+        var livePackRequested = requireLivePack || args.Contains("--live-pack", StringComparer.Ordinal);
         var tempRoot = Path.Combine(Path.GetTempPath(), "minepack-smoke-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempRoot);
         try
         {
             VerifyTempCleanupGuard();
+            await VerifyOperationGuardAsync(tempRoot);
+            await VerifyInstanceUseGuardAsync(tempRoot);
+            await VerifyDownloadBoundariesAsync(tempRoot);
             VerifyPinnedRelease();
-            VerifyLocalization();
-            VerifyArchiveRejections(tempRoot);
-            await VerifyArchiveMutationRejectedAsync(tempRoot);
-            await VerifyInstallRepairAndUninstallAsync(tempRoot);
-            await VerifyVariantSwitchingAsync(tempRoot);
-            VerifyLauncherFixture(tempRoot);
-            await VerifyLauncherLifecycleAsync(tempRoot);
-            await VerifyAutomaticFabricProfileAsync(tempRoot);
-            var liveCompleted = false;
-            if (args.Contains("--live-pack", StringComparer.Ordinal))
+            VerifyInstalledInstanceCatalogAndPreferences(tempRoot);
+            VerifyInstallProgressProjection();
+            using (InstanceUseGuard.UseProcessInspectionForTesting(
+                       Array.Empty<(int ProcessId, string ProcessName)>(), _ => string.Empty))
             {
-                try
-                {
-                    liveCompleted = await VerifyActualReleaseAsync(tempRoot);
-                    if (liveCompleted) liveCompleted = await VerifyActualVanilla2PlusAsync(tempRoot);
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    Console.WriteLine($"NOT RUN: live release check could not read/write a required path ({ex.GetType().Name}).");
-                }
-                catch (HttpRequestException ex)
-                {
-                    Console.WriteLine($"NOT RUN: live release check could not reach the download source ({ex.GetType().Name}).");
-                }
-                catch (IOException ex)
-                {
-                    Console.WriteLine($"NOT RUN: live release check stopped on an I/O restriction ({ex.GetType().Name}).");
-                }
+                await VerifyInitialConfigurationAsync(tempRoot);
+                VerifyLocalization();
+                VerifyArchiveRejections(tempRoot);
+                await VerifyArchiveMutationRejectedAsync(tempRoot);
+                VerifyManifestValidation(tempRoot);
+                await VerifyUninstallPreflightAsync(tempRoot);
+                await VerifyInstallRepairAndUninstallAsync(tempRoot);
+                await VerifyOperationLoggingBestEffortAsync(tempRoot);
+                await VerifyOperationLogTargetRebindAsync(tempRoot);
+                await VerifyManagedFileTransactionsAsync(tempRoot);
+                await VerifyVariantSwitchingAsync(tempRoot);
+                await VerifyActivationProfileRollbackAsync(tempRoot);
+                VerifyLauncherFixture(tempRoot);
+                await VerifyLauncherLifecycleAsync(tempRoot);
+                await VerifyAutomaticFabricProfileAsync(tempRoot);
+                await VerifyOfflineFabricProfileAsync(tempRoot);
+            }
+            await VerifyNetworkGateProcessFixturesAsync();
+            var liveCompleted = false;
+            if (livePackRequested)
+            {
+                var liveResult = await RunLivePackChecksAsync(requireLivePack,
+                    () => VerifyActualReleaseAsync(tempRoot, requireVanillaSnapshot: requireLivePack),
+                    () => VerifyActualVanilla2PlusAsync(tempRoot, requireVanillaSnapshot: requireLivePack));
+                liveCompleted = liveResult.Completed;
+                Environment.ExitCode = liveResult.ExitCode;
             }
             if (args.Contains("--live-fabric", StringComparer.Ordinal))
                 await VerifyOfficialFabricDownloadAsync(tempRoot);
@@ -86,14 +106,710 @@ internal static class Smoke
             }
             if (args.Contains("--live-profile-copy", StringComparer.Ordinal))
                 await VerifyCurrentLauncherCopyAsync(tempRoot);
-            Console.WriteLine(args.Contains("--live-pack", StringComparer.Ordinal) && !liveCompleted
-                ? "Deterministic smoke scenarios passed; live release check NOT RUN."
+            Console.WriteLine(livePackRequested && !liveCompleted
+                ? "Deterministic smoke scenarios passed."
                 : "All smoke scenarios passed.");
         }
         finally
         {
             DeleteSmokeTempTree(tempRoot);
         }
+    }
+
+    public static async Task<int> RunOperationGuardChildAsync(string[] args)
+    {
+        if (args.Length >= 3 && args[1] == "try")
+        {
+            try
+            {
+                await OperationGuard.RunAsync(() =>
+                {
+                    File.WriteAllText(args[2], "acquired");
+                    return Task.CompletedTask;
+                });
+                return 0;
+            }
+            catch (InstallerException ex) when (ex.Code == "OPERATION_BUSY") { return 23; }
+        }
+        if (args.Length == 4 && args[1] == "hold")
+        {
+            await OperationGuard.RunAsync(async () =>
+            {
+                File.WriteAllText(args[2], "held");
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while (!File.Exists(args[3]) && DateTime.UtcNow < deadline) await Task.Delay(25);
+                if (!File.Exists(args[3])) throw new TimeoutException("Smoke parent did not release the held operation gate.");
+            });
+            return 0;
+        }
+        return 2;
+    }
+
+    public static async Task<int> RunNetworkGateFixtureChildAsync(string[] args)
+    {
+        if (args.Length == 2 && args[1] == "conflict")
+        {
+            try { ValidateLivePackArguments(["--live-pack", "--require-live-pack"]); }
+            catch (ArgumentException)
+            {
+                Console.WriteLine("FIXTURE: conflicting live flags rejected.");
+                return 2;
+            }
+            return 0;
+        }
+        if (args.Length != 4 || args[1] is not ("required" or "optional") ||
+            args[2] is not ("completed" or "unavailable" or "404" or "denied" or "skipped") ||
+            args[3] is not ("completed" or "unavailable" or "404" or "denied" or "skipped"))
+            return 2;
+
+        var required = args[1] == "required";
+        var plusStatus = args[2];
+        var frontierStatus = args[3];
+        var result = await RunLivePackChecksAsync(required,
+            () => FakePackResultAsync(plusStatus), () => FakePackResultAsync(frontierStatus));
+        Console.WriteLine($"FIXTURE: {args[1]} gate, Vanilla Plus={plusStatus}, Frontier={frontierStatus}. " +
+            (result.Completed ? "COMPLETE." : result.ExitCode == 0 ? "PARTIAL." : "FAILED."));
+        return result.ExitCode;
+    }
+
+    private static Task<bool> FakePackResultAsync(string status) => status switch
+    {
+        "completed" => Task.FromResult(true),
+        "unavailable" => Task.FromException<bool>(new HttpRequestException("fixture source unavailable")),
+        "404" => Task.FromException<bool>(new InstallerException("FIXTURE_HTTP_404", "fixture HTTP 404")),
+        "denied" => Task.FromException<bool>(new UnauthorizedAccessException("fixture access denied")),
+        _ => Task.FromResult(false)
+    };
+
+    private static void ValidateLivePackArguments(IReadOnlyCollection<string> args)
+    {
+        var required = args.Contains("--require-live-pack");
+        if (required && args.Contains("--live-pack"))
+            throw new ArgumentException("Use either --live-pack or --require-live-pack, not both.");
+        if (required && args.Contains("--cached-packs"))
+            throw new ArgumentException("--cached-packs cannot satisfy --require-live-pack.");
+    }
+
+    private static int LivePackGateExitCode(bool required, bool complete) => required && !complete ? 1 : 0;
+
+    private static async Task<(bool Completed, int ExitCode)> RunLivePackChecksAsync(bool required,
+        Func<Task<bool>> verifyVanillaPlus, Func<Task<bool>> verifyFrontier)
+    {
+        var vanillaPlus = await TryVerifyLivePackAsync("Vanilla Plus", verifyVanillaPlus);
+        var frontier = await TryVerifyLivePackAsync("Frontier", verifyFrontier);
+        var complete = vanillaPlus && frontier;
+        var exitCode = LivePackGateExitCode(required, complete);
+        if (!complete)
+            Console.WriteLine(required
+                ? "REQUIRED LIVE PACK GATE FAILED: both pinned packs must complete direct install, repair, and uninstall."
+                : "PARTIAL: deterministic smoke passed; one or both direct live pack checks did not complete.");
+        return (complete, exitCode);
+    }
+
+    private static async Task VerifyNetworkGateProcessFixturesAsync()
+    {
+        var unavailable = await RunSmokeChildCaptureAsync("--network-gate-fixture-child", "required", "unavailable", "unavailable");
+        Equal(1, unavailable.ExitCode, "required live gate fails when both sources are unavailable");
+        True(unavailable.Output.Contains("FIXTURE:", StringComparison.Ordinal), "strict child output is labeled as fixture output");
+
+        var errors = await RunSmokeChildCaptureAsync("--network-gate-fixture-child", "required", "404", "denied");
+        Equal(1, errors.ExitCode, "required live gate fails on HTTP and access errors");
+
+        var onePack = await RunSmokeChildCaptureAsync("--network-gate-fixture-child", "required", "completed", "skipped");
+        Equal(1, onePack.ExitCode, "required live gate fails when only one pack completed");
+
+        var bothPacks = await RunSmokeChildCaptureAsync("--network-gate-fixture-child", "required", "completed", "completed");
+        Equal(0, bothPacks.ExitCode, "required live gate passes only after both packs complete");
+
+        var optional = await RunSmokeChildCaptureAsync("--network-gate-fixture-child", "optional", "unavailable", "skipped");
+        Equal(0, optional.ExitCode, "optional live diagnostics may remain partial");
+        True(optional.Output.Contains("PARTIAL", StringComparison.Ordinal), "optional child reports PARTIAL");
+
+        var conflict = await RunSmokeChildCaptureAsync("--network-gate-fixture-child", "conflict");
+        Equal(2, conflict.ExitCode, "conflicting optional and required live flags are rejected");
+        Pass("process-level live gate fixtures distinguish strict failures from optional partial diagnostics");
+    }
+
+    private static async Task VerifyDownloadBoundariesAsync(string tempRoot)
+    {
+        var retryNow = DateTimeOffset.UtcNow;
+        Equal(TimeSpan.Zero, DownloadEngine.ClampRetryAfter(TimeSpan.FromSeconds(-1), null, retryNow, TimeSpan.FromSeconds(60)),
+            "negative Retry-After is clamped to zero");
+        Equal(TimeSpan.FromSeconds(60), DownloadEngine.ClampRetryAfter(null, retryNow.AddDays(365), retryNow, TimeSpan.FromSeconds(60)),
+            "oversized Retry-After is clamped to sixty seconds");
+        Equal(TimeSpan.Zero, FabricLauncherService.ClampRetryAfter(null, retryNow.AddSeconds(-2), retryNow, TimeSpan.FromSeconds(60)),
+            "past Fabric Retry-After dates are clamped to zero");
+        var bytes = Bytes("verified download fixture");
+        var file = new PackFile("mods/verified.bin", [TestDownload], HashBytes(bytes), bytes.Length);
+        var timeoutRequests = 0;
+        using (var engine = new DownloadEngine(new AsyncDelegateHandler((_, _) =>
+               {
+                   Interlocked.Increment(ref timeoutRequests);
+                   return Task.FromException<HttpResponseMessage>(new TaskCanceledException("fixture request timeout", new TimeoutException()));
+               }),
+                   TimeSpan.FromMilliseconds(40), TimeSpan.FromMilliseconds(20)))
+        {
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "request-timeout"), null, CancellationToken.None);
+                throw new InvalidOperationException("Expected the request timeout to fail after bounded retries.");
+            }
+            catch (InstallerException ex) when (ex.Code == "DOWNLOAD_TIMEOUT") { }
+        }
+        Equal(3, timeoutRequests, "request timeout keeps the bounded three-attempt retry policy");
+
+        var preCanceledRequests = 0;
+        using (var engine = new DownloadEngine(new DelegateHandler(_ =>
+                   {
+                       Interlocked.Increment(ref preCanceledRequests);
+                       return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
+                   }), TimeSpan.FromMilliseconds(40), TimeSpan.FromMilliseconds(10)))
+        using (var cancel = new CancellationTokenSource())
+        {
+            cancel.Cancel();
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "pre-canceled"), null, cancel.Token);
+                throw new InvalidOperationException("Expected pre-canceled download to be rejected.");
+            }
+            catch (OperationCanceledException) { }
+        }
+        Equal(0, preCanceledRequests, "caller cancellation before request prevents any network attempt");
+
+        var requestCancelCalls = 0;
+        using (var engine = new DownloadEngine(new AsyncDelegateHandler(async (_, token) =>
+               {
+                   Interlocked.Increment(ref requestCancelCalls);
+                   await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                   return new HttpResponseMessage(HttpStatusCode.OK);
+               }), TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(10)))
+        using (var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(25)))
+        {
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "request-canceled"), null, cancel.Token);
+                throw new InvalidOperationException("Expected request cancellation to propagate.");
+            }
+            catch (OperationCanceledException) { }
+        }
+        Equal(1, requestCancelCalls, "caller cancellation during request is not retried");
+
+        var stalledRequests = 0;
+        using (var engine = new DownloadEngine(new AsyncDelegateHandler((_, _) =>
+               {
+                   Interlocked.Increment(ref stalledRequests);
+                   return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                   {
+                       Content = new StreamContent(new PendingReadStream())
+                   });
+               }), TimeSpan.FromMilliseconds(35), TimeSpan.FromMilliseconds(10)))
+        {
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "body-timeout"), null, CancellationToken.None);
+                throw new InvalidOperationException("Expected a stalled response body to time out.");
+            }
+            catch (InstallerException ex) when (ex.Code == "DOWNLOAD_TIMEOUT") { }
+        }
+        Equal(3, stalledRequests, "stalled response body retries only up to the source attempt limit");
+        True(!Directory.EnumerateFiles(Path.Combine(tempRoot, "body-timeout", "mods"), "*.partial").Any(),
+            "body timeout removes partial files after retries");
+
+        var openingRequests = 0;
+        using (var engine = new DownloadEngine(new AsyncDelegateHandler((_, _) =>
+               {
+                   Interlocked.Increment(ref openingRequests);
+                   return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new PendingOpenContent() });
+               }), TimeSpan.FromMilliseconds(35), TimeSpan.FromMilliseconds(10)))
+        {
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "body-open-timeout"), null, CancellationToken.None);
+                throw new InvalidOperationException("Expected opening the response body stream to time out.");
+            }
+            catch (InstallerException ex) when (ex.Code == "DOWNLOAD_TIMEOUT") { }
+        }
+        Equal(3, openingRequests, "body stream opening timeout retries only within the source attempt limit");
+        True(!Directory.EnumerateFiles(Path.Combine(tempRoot, "body-open-timeout", "mods"), "*.partial").Any(),
+            "body stream opening timeout leaves no partial files");
+
+        var lateStreamCompletion = new TaskCompletionSource<Stream>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var lateStreamDisposed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var callerOpeningRequests = 0;
+        using (var engine = new DownloadEngine(new AsyncDelegateHandler((_, _) =>
+               {
+                   Interlocked.Increment(ref callerOpeningRequests);
+                   return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                   { Content = new LateOpenContent(lateStreamCompletion.Task) });
+               }), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(10)))
+        using (var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(35)))
+        {
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "caller-body-open-cancel"), null, cancel.Token);
+                throw new InvalidOperationException("Expected caller cancellation while opening the response body stream.");
+            }
+            catch (OperationCanceledException) { }
+            Equal(1, callerOpeningRequests, "caller cancellation while opening body is not retried");
+            lateStreamCompletion.SetResult(new TrackingDisposeStream(() => lateStreamDisposed.TrySetResult()));
+            await lateStreamDisposed.Task.WaitAsync(TimeSpan.FromSeconds(1));
+            True(lateStreamDisposed.Task.IsCompleted, "late body stream is disposed after caller cancellation");
+        }
+
+        var cancelRequests = 0;
+        using (var engine = new DownloadEngine(new AsyncDelegateHandler((_, _) =>
+               {
+                   Interlocked.Increment(ref cancelRequests);
+                   return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                   {
+                       Content = new StreamContent(new PendingReadStream())
+                   });
+               }), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(10)))
+        using (var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(35)))
+        {
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "caller-cancel"), null, cancel.Token);
+                throw new InvalidOperationException("Expected body cancellation to propagate.");
+            }
+            catch (OperationCanceledException) { }
+        }
+        Equal(1, cancelRequests, "caller cancellation during body does not retry");
+        True(!Directory.EnumerateFiles(Path.Combine(tempRoot, "caller-cancel", "mods"), "*.partial").Any(),
+            "caller cancellation removes the partial file");
+
+        var slowBytes = Bytes("slow but progressing");
+        var slowFile = new PackFile("mods/slow.bin", [TestDownload], HashBytes(slowBytes), slowBytes.Length);
+        using (var engine = new DownloadEngine(new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+                   { Content = new StreamContent(new ChunkedMemoryStream(slowBytes, 1, TimeSpan.FromMilliseconds(10))) }),
+                   TimeSpan.FromMilliseconds(40), TimeSpan.FromMilliseconds(10)))
+        {
+            var slowPath = await engine.DownloadVerifiedAsync(slowFile, Path.Combine(tempRoot, "slow-progress"), null, CancellationToken.None);
+            Equal(HashBytes(slowBytes), HashFile(slowPath), "slow body succeeds when bytes arrive within each idle window");
+        }
+
+        var retryRequests = 0;
+        using (var engine = new DownloadEngine(new DelegateHandler(_ =>
+               {
+                   Interlocked.Increment(ref retryRequests);
+                   var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                   response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(DateTimeOffset.UtcNow.AddDays(365));
+                   return response;
+               }), TimeSpan.FromMilliseconds(40), TimeSpan.FromMilliseconds(10)))
+        {
+            var watch = Stopwatch.StartNew();
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "retry-after-limit"), null, CancellationToken.None);
+                throw new InvalidOperationException("Expected retry-after fixture to exhaust its retry bound.");
+            }
+            catch (InstallerException ex) when (ex.Code == "DOWNLOAD_HTTP") { }
+            True(watch.Elapsed < TimeSpan.FromSeconds(2), "days-long Retry-After is clamped to the configured short fixture bound");
+        }
+        Equal(3, retryRequests, "Retry-After remains bounded by three source attempts");
+
+        var delayRequests = 0;
+        using (var engine = new DownloadEngine(new DelegateHandler(_ =>
+               {
+                   Interlocked.Increment(ref delayRequests);
+                   var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                   response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(DateTimeOffset.UtcNow.AddDays(365));
+                   return response;
+               }), TimeSpan.FromMilliseconds(40), TimeSpan.FromSeconds(30)))
+        using (var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(35)))
+        {
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "retry-after-cancel"), null, cancel.Token);
+                throw new InvalidOperationException("Expected cancellation during retry delay.");
+            }
+            catch (OperationCanceledException) { }
+        }
+        Equal(1, delayRequests, "caller cancellation interrupts Retry-After delay without another request");
+
+        var mismatchRequests = 0;
+        using (var engine = new DownloadEngine(new DelegateHandler(_ =>
+               {
+                   Interlocked.Increment(ref mismatchRequests);
+                   return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
+               }), TimeSpan.FromMilliseconds(40), TimeSpan.FromMilliseconds(10)))
+        {
+            var wrongHash = new PackFile("mods/wrong-hash.bin", [TestDownload], new string('0', 128), bytes.Length);
+            try
+            {
+                await engine.DownloadVerifiedAsync(wrongHash, Path.Combine(tempRoot, "hash-mismatch"), null, CancellationToken.None);
+                throw new InvalidOperationException("Expected a SHA-512 mismatch.");
+            }
+            catch (InstallerException ex) when (ex.Code == "DOWNLOAD_HASH_MISMATCH") { }
+        }
+        Equal(3, mismatchRequests, "hash mismatches retry only within the existing bounded attempt count");
+
+        var sizeRequests = 0;
+        using (var engine = new DownloadEngine(new DelegateHandler(_ =>
+               {
+                   Interlocked.Increment(ref sizeRequests);
+                   return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Bytes("too large")) };
+               }), TimeSpan.FromMilliseconds(40), TimeSpan.FromMilliseconds(10)))
+        {
+            try
+            {
+                await engine.DownloadVerifiedAsync(file, Path.Combine(tempRoot, "size-mismatch"), null, CancellationToken.None);
+                throw new InvalidOperationException("Expected declared response size mismatch.");
+            }
+            catch (InstallerException ex) when (ex.Code == "DOWNLOAD_SIZE_MISMATCH") { }
+        }
+        Equal(3, sizeRequests, "declared size mismatch remains retry bounded and is never accepted");
+
+        var concurrentActive = 0;
+        var maximumConcurrent = 0;
+        var sharedBytes = Bytes("parallel body");
+        using (var engine = new DownloadEngine(new AsyncDelegateHandler(async (_, token) =>
+               {
+                   var active = Interlocked.Increment(ref concurrentActive);
+                   while (true)
+                   {
+                       var previous = Volatile.Read(ref maximumConcurrent);
+                       if (previous >= active || Interlocked.CompareExchange(ref maximumConcurrent, active, previous) == previous) break;
+                   }
+                   await Task.Delay(25, token);
+                   Interlocked.Decrement(ref concurrentActive);
+                   return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(sharedBytes) };
+               }), TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(10)))
+        {
+            var parallelRoot = Path.Combine(tempRoot, "parallel-downloads");
+            var downloads = Enumerable.Range(0, 9).Select(index => engine.DownloadVerifiedAsync(
+                new PackFile($"mods/parallel-{index}.bin", [TestDownload], HashBytes(sharedBytes), sharedBytes.Length),
+                parallelRoot, null, CancellationToken.None));
+            await Task.WhenAll(downloads);
+            True(maximumConcurrent is > 1 and <= 5, "parallel downloads never exceed five active network slots");
+        }
+        Pass("download timeouts, cancellation, idle progress, retry bounds, hashes, and concurrency are verified");
+    }
+
+    private static async Task VerifyOperationGuardAsync(string tempRoot)
+    {
+        ExecutionContext? staleContext = null;
+        var nestedCalls = 0;
+        await OperationGuard.RunAsync(async () =>
+        {
+            staleContext = ExecutionContext.Capture();
+            await Task.Run(() => OperationGuard.Run(() => Interlocked.Increment(ref nestedCalls)));
+        });
+        Equal(1, nestedCalls, "composed same-process calls reenter their active operation lease");
+
+        var originalContext = SynchronizationContext.Current;
+        using (var context = new PumpSynchronizationContext())
+        {
+            var callerThread = Environment.CurrentManagedThreadId;
+            var callbackThread = 0;
+            var continuationThread = 0;
+            SynchronizationContext.SetSynchronizationContext(context);
+            try
+            {
+                var operation = OperationGuard.RunAsync(async () =>
+                {
+                    callbackThread = Environment.CurrentManagedThreadId;
+                    await Task.Yield();
+                    continuationThread = Environment.CurrentManagedThreadId;
+                    return true;
+                });
+                context.RunUntilComplete(operation);
+            }
+            finally { SynchronizationContext.SetSynchronizationContext(originalContext); }
+            True(callbackThread == callerThread && continuationThread == callerThread,
+                "async operation callbacks retain their caller synchronization context");
+        }
+
+        var synchronousRun = Task.Run(() =>
+        {
+            SynchronizationContext.SetSynchronizationContext(new NonPumpingSynchronizationContext());
+            var callerThread = Environment.CurrentManagedThreadId;
+            var callbackThread = 0;
+            OperationGuard.Run(() => callbackThread = Environment.CurrentManagedThreadId);
+            return (callerThread, callbackThread);
+        });
+        True(await Task.WhenAny(synchronousRun, Task.Delay(TimeSpan.FromSeconds(5))) == synchronousRun,
+            "synchronous operation entrypoint does not wait on a caller synchronization context");
+        var synchronousThreads = await synchronousRun;
+        Equal(synchronousThreads.callerThread, synchronousThreads.callbackThread,
+            "synchronous operation callback stays on its calling thread");
+
+        var firstHeld = Path.Combine(tempRoot, "operation-held-one.txt");
+        var firstRelease = Path.Combine(tempRoot, "operation-release-one.txt");
+        using (var first = StartOperationGuardChild("hold", firstHeld, firstRelease))
+        {
+            await WaitForFileAsync(firstHeld, first, "child process acquired operation gate");
+            var secondSentinel = Path.Combine(tempRoot, "operation-second-sentinel.txt");
+            using (var second = StartOperationGuardChild("try", secondSentinel))
+            {
+                True(second.WaitForExit(10000), "competing child process returns promptly");
+                Equal(23, second.ExitCode, "competing child process receives OPERATION_BUSY");
+                True(!File.Exists(secondSentinel), "busy child process writes no sentinel");
+            }
+
+            var independent = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => Task.Run(async () =>
+            {
+                try
+                {
+                    await OperationGuard.RunAsync(() => Task.CompletedTask);
+                    return false;
+                }
+                catch (InstallerException ex) when (ex.Code == "OPERATION_BUSY") { return true; }
+            })));
+            True(independent.All(busy => busy), "independent Task.Run mutation entrypoints do not inherit a foreign lease");
+
+            var staleSentinel = Path.Combine(tempRoot, "operation-stale-sentinel.txt");
+            var staleWasBusy = false;
+            try
+            {
+                ExecutionContext.Run(staleContext!, _ => OperationGuard.Run(() => File.WriteAllText(staleSentinel, "stale")), null);
+            }
+            catch (InstallerException ex) when (ex.Code == "OPERATION_BUSY") { staleWasBusy = true; }
+            True(staleWasBusy && !File.Exists(staleSentinel), "stale ExecutionContext cannot reuse a disposed lease");
+
+            File.WriteAllText(firstRelease, "release");
+            True(first.WaitForExit(10000), "normal owner process releases operation gate");
+            Equal(0, first.ExitCode, "normal owner process exits successfully");
+        }
+        await OperationGuard.RunAsync(() => Task.CompletedTask);
+
+        var crashHeld = Path.Combine(tempRoot, "operation-held-crash.txt");
+        var crashRelease = Path.Combine(tempRoot, "operation-release-crash.txt");
+        using (var owner = StartOperationGuardChild("hold", crashHeld, crashRelease))
+        {
+            await WaitForFileAsync(crashHeld, owner, "crash fixture process acquired operation gate");
+            owner.Kill(entireProcessTree: true);
+            True(owner.WaitForExit(10000), "crashed owner process exits");
+        }
+        await OperationGuard.RunAsync(() => Task.CompletedTask);
+
+        using var canceled = new CancellationTokenSource();
+        canceled.Cancel();
+        var started = false;
+        try
+        {
+            await OperationGuard.RunAsync(() =>
+            {
+                started = true;
+                return Task.CompletedTask;
+            }, canceled.Token);
+            throw new InvalidOperationException("Canceled operation unexpectedly ran.");
+        }
+        catch (OperationCanceledException) { }
+        True(!started, "canceled operation is rejected before its callback");
+        Pass("SID-isolated operation gate handles composed calls, contention, cancellation, and abandoned ownership");
+    }
+
+    public static async Task<int> RunInstanceUseChildAsync(string[] args)
+    {
+        if (args.Length != 4) return 2;
+        File.WriteAllText(args[2], "ready");
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!File.Exists(args[3]) && DateTime.UtcNow < deadline) await Task.Delay(25);
+        return File.Exists(args[3]) ? 0 : 3;
+    }
+
+    public static async Task<int> RunTransactionCrashChildAsync(string[] args)
+    {
+        if (args.Length != 4) return 2;
+        var instance = Path.TrimEndingDirectorySeparator(Path.GetFullPath(args[1]));
+        var packPath = Path.GetFullPath(args[2]);
+        var instancesRoot = Path.GetDirectoryName(instance)!;
+        var installRoot = Path.GetDirectoryName(instancesRoot)!;
+        var smokeRoot = Path.GetDirectoryName(installRoot)!;
+        var validatedSmokeRoot = ValidateSmokeTempRoot(smokeRoot);
+        var smokePrefix = Path.EndsInDirectorySeparator(validatedSmokeRoot)
+            ? validatedSmokeRoot : validatedSmokeRoot + Path.DirectorySeparatorChar;
+        if (!Path.GetFileName(instancesRoot).Equals("instances", StringComparison.OrdinalIgnoreCase) ||
+            !instance.StartsWith(Path.EndsInDirectorySeparator(instancesRoot) ? instancesRoot : instancesRoot + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase) ||
+            !packPath.StartsWith(smokePrefix, StringComparison.OrdinalIgnoreCase) ||
+            !Directory.Exists(instance) || !File.Exists(packPath) || !File.Exists(Path.Combine(instance, InstallationManifest.FileName)))
+            return 3;
+        _ = PackArchive.Open(packPath, args[3]);
+        using var processInspection = InstanceUseGuard.UseProcessInspectionForTesting(
+            Array.Empty<(int ProcessId, string ProcessName)>(), _ => string.Empty);
+        using var checkpoint = ManagedFileTransaction.UseCheckpointsForTesting(name =>
+        {
+            if (name == "after-replacement-move-0-before-journal") Environment.Exit(86);
+        });
+        using var installer = new InstallService();
+        _ = await installer.RepairAsync(instance, packPath, args[3]);
+        return 4;
+    }
+
+    private static async Task VerifyInstanceUseGuardAsync(string tempRoot)
+    {
+        var selfCommandLine = InstanceUseGuard.ReadProcessCommandLine(Environment.ProcessId);
+        True(!string.IsNullOrWhiteSpace(selfCommandLine), "native process command line can be read for the smoke process");
+
+        var target = Path.Combine(tempRoot, "native Minecraft instance");
+        var childReady = Path.Combine(tempRoot, "native-command-line-child.ready");
+        var childRelease = Path.Combine(tempRoot, "native-command-line-child.release");
+        using (var child = StartInstanceUseChild(target, childReady, childRelease))
+        {
+            await WaitForFileAsync(childReady, child, "native command-line child fixture started");
+            var childCommandLine = InstanceUseGuard.ReadProcessCommandLine(child.Id);
+            True(childCommandLine.Contains("--instance-use-child", StringComparison.Ordinal) &&
+                 childCommandLine.Contains(target, StringComparison.OrdinalIgnoreCase),
+                "native child command line contains fixture tokens without printing arguments");
+            File.WriteAllText(childRelease, "release");
+            True(child.WaitForExit(10000), "native command-line child exits after release");
+            Equal(0, child.ExitCode, "native command-line child exits successfully");
+        }
+
+        var candidate = (ProcessId: 711, ProcessName: "javaw");
+        var matchingMinecraft = $"javaw.exe net.fabricmc.loader.impl.launch.knot.KnotClient --gameDir \"{target}\"";
+        try
+        {
+            InstanceUseGuard.EnsureNoGameProcess(target, [candidate], _ => matchingMinecraft);
+            throw new InvalidOperationException("Expected the exact target Minecraft gameDir to be rejected.");
+        }
+        catch (InstallerException ex) when (ex.Code == "GAME_IN_USE") { }
+
+        var otherMinecraft = Path.Combine(tempRoot, "another Java instance");
+        InstanceUseGuard.EnsureNoGameProcess(target, [candidate], _ =>
+            $"javaw.exe net.minecraft.client.main.Main --gameDir \"{otherMinecraft}\"");
+        InstanceUseGuard.EnsureNoGameProcess(target, [candidate], _ =>
+            $"javaw.exe --gameDir \"{target}\"");
+
+        foreach (var gameDirectory in new[] { "relative/game-dir", @"\\?\C:\unverified-game-dir" })
+        {
+            try
+            {
+                InstanceUseGuard.EnsureNoGameProcess(target, [candidate], _ =>
+                    $"javaw.exe net.minecraft.client.main.Main --gameDir \"{gameDirectory}\"");
+                throw new InvalidOperationException("Expected an unsupported gameDir form to fail closed.");
+            }
+            catch (InstallerException ex) when (ex.Code == "GAME_USE_UNVERIFIED") { }
+        }
+
+        try
+        {
+            InstanceUseGuard.EnsureNoGameProcess(target, [candidate], _ => "javaw.exe org.prismlauncher.EntryPoint");
+            throw new InvalidOperationException("Expected a wrapper without an inspectable gameDir to fail closed.");
+        }
+        catch (InstallerException ex) when (ex.Code == "GAME_USE_UNVERIFIED") { }
+
+        var lockedInstance = Path.Combine(tempRoot, "managed-lock-instance");
+        Directory.CreateDirectory(Path.Combine(lockedInstance, "mods"));
+        var managedPath = Path.Combine(lockedInstance, "mods", "locked.jar");
+        File.WriteAllText(managedPath, "managed bytes");
+        using (var externalLock = new FileStream(managedPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            RefuseManagedFileUse();
+            True(externalLock.CanRead, "failed managed-file preflight does not change its open handle");
+        }
+        using (var externalReader = new FileStream(managedPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            RefuseManagedFileUse();
+            True(externalReader.CanRead, "read-only use of a managed file blocks mutation preflight");
+        }
+        using (var externalWriter = new FileStream(managedPath, FileMode.Open, FileAccess.Write, FileShare.Read))
+        {
+            RefuseManagedFileUse();
+            True(externalWriter.CanWrite, "write use of a managed file blocks mutation preflight");
+        }
+
+        var worldLock = Path.Combine(lockedInstance, "saves", "world", "session.lock");
+        Directory.CreateDirectory(Path.GetDirectoryName(worldLock)!);
+        File.WriteAllText(worldLock, "world lock fixture");
+        using (var externalLock = new FileStream(worldLock, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            try
+            {
+                using var use = InstanceUseGuard.AcquireForTesting(lockedInstance, null,
+                    Array.Empty<(int ProcessId, string ProcessName)>(), _ => string.Empty);
+                throw new InvalidOperationException("Expected the target world's held session.lock to block preflight.");
+            }
+            catch (InstallerException ex) when (ex.Code == "INSTANCE_IN_USE") { }
+            True(externalLock.CanRead, "failed world-lock preflight does not mutate session.lock");
+        }
+
+        Pass("native game-directory inspection, fail-closed wrapper handling, and held-file preflight");
+
+        void RefuseManagedFileUse()
+        {
+            try
+            {
+                using var use = InstanceUseGuard.AcquireForTesting(lockedInstance, ["mods/locked.jar"],
+                    Array.Empty<(int ProcessId, string ProcessName)>(), _ => string.Empty);
+                throw new InvalidOperationException("Expected the held managed file to block preflight.");
+            }
+            catch (InstallerException ex) when (ex.Code == "INSTANCE_IN_USE") { }
+        }
+    }
+
+    private static Process StartOperationGuardChild(params string[] arguments)
+        => StartSmokeChild("--operation-guard-child", arguments);
+
+    private static Process StartInstanceUseChild(params string[] arguments)
+        => StartSmokeChild("--instance-use-child", arguments);
+
+    private static Process StartTransactionCrashChild(params string[] arguments)
+        => StartSmokeChild("--transaction-crash-child", arguments);
+
+    private static Process StartSmokeChild(string mode, params string[] arguments)
+    {
+        return Process.Start(CreateSmokeChildStartInfo(mode, arguments))
+            ?? throw new InvalidOperationException("Could not start the smoke child process.");
+    }
+
+    private static ProcessStartInfo CreateSmokeChildStartInfo(string mode, IEnumerable<string> arguments)
+    {
+        var executable = Environment.ProcessPath ?? throw new InvalidOperationException("Smoke executable path is unavailable.");
+        var start = new ProcessStartInfo(executable) { UseShellExecute = false, CreateNoWindow = true };
+        if (Path.GetFileNameWithoutExtension(executable).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
+            start.ArgumentList.Add(typeof(Smoke).Assembly.Location);
+        start.ArgumentList.Add(mode);
+        foreach (var argument in arguments) start.ArgumentList.Add(argument);
+        return start;
+    }
+
+    private static async Task<(int ExitCode, string Output)> RunSmokeChildCaptureAsync(string mode, params string[] arguments)
+    {
+        var start = CreateSmokeChildStartInfo(mode, arguments);
+        start.RedirectStandardOutput = true;
+        start.RedirectStandardError = true;
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start the smoke fixture child.");
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
+        var stderr = process.StandardError.ReadToEndAsync(timeout.Token);
+        await process.WaitForExitAsync(timeout.Token);
+        return (process.ExitCode, await stdout + await stderr);
+    }
+
+    private static async Task<bool> TryVerifyLivePackAsync(string name, Func<Task<bool>> verify)
+    {
+        try { return await verify(); }
+        catch (InstallerException ex)
+        {
+            Console.WriteLine($"NOT RUN: {name} live check stopped ({ex.Code}). {ex.Message}");
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"NOT RUN: {name} live check could not reach its pinned source ({ex.GetType().Name}).");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Console.WriteLine($"NOT RUN: {name} live check could not access a required path ({ex.GetType().Name}).");
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($"NOT RUN: {name} live check stopped on I/O ({ex.GetType().Name}).");
+        }
+        catch (OperationCanceledException ex)
+        {
+            Console.WriteLine($"NOT RUN: {name} live check timed out ({ex.GetType().Name}).");
+        }
+        return false;
+    }
+
+    private static async Task WaitForFileAsync(string path, Process process, string scenario)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!File.Exists(path) && !process.HasExited && DateTime.UtcNow < deadline) await Task.Delay(25);
+        True(File.Exists(path), scenario + (process.HasExited ? $" (child exit {process.ExitCode})" : ""));
     }
 
     private static void VerifyTempCleanupGuard()
@@ -131,6 +847,111 @@ internal static class Smoke
             !Guid.TryParseExact(leaf[namePrefix.Length..], "N", out _))
             throw new InvalidOperationException("Refusing recursive cleanup outside the generated minepack-smoke temp directory.");
         return resolved;
+    }
+
+    private static void VerifyInstalledInstanceCatalogAndPreferences(string tempRoot)
+    {
+        Equal(27, InstalledInstanceCatalog.KnownReleases.Count, "shared catalog retains all historical releases plus the current candidate");
+        True(InstalledInstanceCatalog.TryGetRelease("0.1.0", out var legacy) && legacy.MinecraftVersion == "26.3" &&
+             InstalledInstanceCatalog.TryGetRelease("0.2.0", out var prior) && prior.MinecraftVersion == "26.3",
+            "catalog preserves the two historical Minecraft 26.3 resolver targets");
+
+        var root = Path.Combine(tempRoot, "catalog-root-a");
+        var instancesRoot = Path.Combine(root, "instances");
+        Directory.CreateDirectory(instancesRoot);
+        var plusRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == TestPackRelease.PackVersion);
+        var frontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == Vanilla2PlusRelease.PackVersion);
+        var previousFrontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == "0.19.6");
+        var plusInstance = WriteCatalogManifest(instancesRoot, plusRelease, AppContext.BaseDirectory);
+        var reinstallName = frontierRelease.InstanceDirectoryPrefix + "-reinstall-" + Guid.NewGuid().ToString("N");
+        var frontierInstance = WriteCatalogManifest(instancesRoot, frontierRelease, AppContext.BaseDirectory, reinstallName);
+        var previousFrontierInstance = WriteCatalogManifest(instancesRoot, previousFrontierRelease, AppContext.BaseDirectory);
+        True(!InstalledInstanceCatalog.IsExpectedInstanceDirectory(
+                Path.Combine(instancesRoot, frontierRelease.InstanceDirectoryPrefix + "-REINSTALL-" + Guid.NewGuid().ToString("N")),
+                frontierRelease), "uppercase reinstall marker does not broaden historical directory ownership");
+        var residue = Path.Combine(instancesRoot, "old-user-data");
+        Directory.CreateDirectory(Path.Combine(residue, "saves", "world"));
+        File.WriteAllText(Path.Combine(residue, "saves", "world", "level.dat"), "preserve orphan world");
+        Directory.CreateDirectory(Path.Combine(root, "outside-instance-list"));
+        var unknown = Path.Combine(instancesRoot, "test");
+        new InstallationManifest
+        {
+            PackVersion = "9.9.9",
+            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+            PackArchiveSha512 = new string('A', 128),
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = []
+        }.SaveAtomic(unknown);
+
+        var entries = InstalledInstanceCatalog.Enumerate(root, AppContext.BaseDirectory);
+        True(entries.Single(entry => entry.Path == plusInstance).IsTrusted,
+            "current Vanilla Plus manifest and pinned archive grant trusted instance status");
+        True(entries.Single(entry => entry.Path == frontierInstance).IsTrusted,
+            "known reinstall GUID suffix remains a trusted instance directory");
+        True(entries.Single(entry => entry.Path == previousFrontierInstance).IsTrusted &&
+             previousFrontierRelease.ArchiveSha512 == Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
+            "immutable Frontier 0.19.6 remains a trusted catalog target after the current release changes");
+        Equal(InstalledInstanceState.Residue, entries.Single(entry => entry.Path == residue).State,
+            "manifestless worlds are visible as user-data residue only");
+        Equal(InstalledInstanceState.UnknownRelease, entries.Single(entry => entry.Path == unknown).State,
+            "an unknown version named test is not trusted by its directory name");
+        True(!entries.Any(entry => Path.GetFileName(entry.Path) == "outside-instance-list"),
+            "catalog enumerates only immediate children of root/instances");
+
+        var emptyAppRoot = Path.Combine(tempRoot, "empty-app-root");
+        Directory.CreateDirectory(emptyAppRoot);
+        var missingPackage = InstalledInstanceCatalog.Enumerate(root, emptyAppRoot);
+        Equal(InstalledInstanceState.PackageMissing,
+            missingPackage.Single(entry => entry.Path == plusInstance).State,
+            "known manifest with unavailable pinned archive is read-only package-missing state");
+
+        var preferencesPath = Path.Combine(tempRoot, "preferences-fixture", "installer-settings.json");
+        var rootA = Path.Combine(tempRoot, "preferences-root-a");
+        var rootB = Path.Combine(tempRoot, "preferences-root-b");
+        Directory.CreateDirectory(rootA);
+        Directory.CreateDirectory(rootB);
+        InstallerPreferences.SaveLastValidatedRoot(preferencesPath, rootA);
+        Equal(rootA, InstallerPreferences.Load(preferencesPath).LastValidatedRoot,
+            "first installer launch reads the last validated root from the explicit fixture file");
+        InstallerPreferences.SaveLastValidatedRoot(preferencesPath, rootB);
+        Equal(rootB, InstallerPreferences.Load(preferencesPath).LastValidatedRoot,
+            "second installer launch persists a changed validated root atomically");
+        File.WriteAllText(preferencesPath, "not json");
+        var corrupt = InstallerPreferences.Load(preferencesPath);
+        True(corrupt.IsCorrupt && corrupt.LastValidatedRoot is null,
+            "corrupt preferences return a readable fallback without trusting the stored path");
+        File.WriteAllText(preferencesPath, JsonSerializer.Serialize(new
+        {
+            SchemaVersion = 1,
+            LastValidatedRoot = "C:\\" + '\0' + "bad"
+        }));
+        True(InstallerPreferences.Load(preferencesPath).IsCorrupt,
+            "fully qualified but invalid saved paths are rejected inside the preferences read boundary");
+        Pass("trusted instance inventory and fixture-only root preferences");
+    }
+
+    private static string WriteCatalogManifest(string instancesRoot, KnownPackRelease release,
+        string applicationDirectory, string? directoryName = null)
+    {
+        var archivePath = release.ArchivePath(applicationDirectory);
+        var pack = PackArchive.Open(archivePath, release.ArchiveSha512);
+        var manifest = new InstallationManifest
+        {
+            PackVersion = pack.VersionId,
+            MinecraftVersion = pack.MinecraftVersion,
+            FabricLoaderVersion = pack.FabricLoaderVersion,
+            PackArchiveSha512 = pack.ArchiveSha512,
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = pack.Files.Select(file => new ManagedFile(file.Path, file.Sha512,
+                    file.Downloads.Select(url => url.AbsoluteUri).ToArray(), false, Math.Max(0, file.Size)))
+                .Concat(pack.Overrides.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path))
+                    .Select(file => new ManagedFile(file.Path, file.Sha512, [], true, file.Size)))
+                .ToList()
+        };
+        var instance = Path.Combine(instancesRoot, directoryName ?? release.InstanceDirectoryPrefix);
+        manifest.SaveAtomic(instance);
+        return instance;
     }
 
     private static void VerifyPinnedRelease()
@@ -265,6 +1086,15 @@ internal static class Smoke
         var vanilla2PlusPath = Path.Combine(AppContext.BaseDirectory,
             Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var vanilla2Plus = PackArchive.Open(vanilla2PlusPath, Vanilla2PlusRelease.ArtifactSha512);
+        var previousCandidatePath = Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus",
+            Vanilla2PlusRelease.PreviousCandidateArtifactFileName);
+        var previousCandidate = PackArchive.Open(previousCandidatePath, Vanilla2PlusRelease.PreviousCandidateArtifactSha512);
+        True(previousCandidate.VersionId == "0.19.6" && previousCandidate.Files.Count == vanilla2Plus.Files.Count &&
+             previousCandidate.Overrides.Any(file => file.Path == "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip") &&
+             previousCandidate.Overrides.Any(file => file.Path == "mods/YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.1.jar") &&
+             !previousCandidate.Overrides.Any(file => file.Path.EndsWith("minepack.2.zip", StringComparison.Ordinal) ||
+                 file.Path.EndsWith("minepack.2.jar", StringComparison.Ordinal)),
+            "immutable Frontier 0.19.6 keeps its original resource and Desert Temples artifacts");
         var doorsVanilla2Plus = PackArchive.Open(Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus",
             Vanilla2PlusRelease.DoorsArtifactFileName), Vanilla2PlusRelease.DoorsArtifactSha512);
         True(doorsVanilla2Plus.VersionId == "0.19.5" && doorsVanilla2Plus.Files.Count == vanilla2Plus.Files.Count + 1 &&
@@ -287,7 +1117,7 @@ internal static class Smoke
              vanilla2Plus.Overrides.Select(file => file.Path).ToHashSet(StringComparer.Ordinal)
                  .SetEquals(new[] { "config/iris.properties", "config/guardvillagers.json", "config/voxyworldgenv2.json" }
                      .Concat(YungsJarNames.Concat(NewForkJarNames).Select(name => "mods/" + name))
-                     .Append("resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip")
+                     .Append("resourcepacks/xalis-enhanced-vanilla-26.2-minepack.2.zip")
                      .Append("resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip")) &&
              vanilla2Plus.Files.Any(file => file.Path == "mods/continuity-3.0.1+26.2.jar" &&
                  file.Sha512.Equals("3436b39fcdddce87f8eda0f35095067477636df2667195df3cb8eae2d002d3ff8ac44de97332668ee50e13ad91be5c532cbc6121878f1e6c904c98c1c9c67c0b", StringComparison.OrdinalIgnoreCase)) &&
@@ -330,9 +1160,9 @@ internal static class Smoke
              vanilla2PlusCatalog.Count(item => item.Kind == "resourcepack") == 12 &&
              vanilla2PlusCatalog.Count(item => item.Kind == "datapack") == 1 &&
              vanilla2PlusCatalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal)
-                 .SetEquals(vanilla2Plus.Files.Select(file => file.Path).Concat(YungsJarNames.Concat(NewForkJarNames).Select(name => "mods/" + name)).Append("resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip").Append("resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip")) &&
+                 .SetEquals(vanilla2Plus.Files.Select(file => file.Path).Concat(YungsJarNames.Concat(NewForkJarNames).Select(name => "mods/" + name)).Append("resourcepacks/xalis-enhanced-vanilla-26.2-minepack.2.zip").Append("resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip")) &&
              vanilla2PlusCatalog.All(item => item.ModrinthUrl is null
-                 ? YungsJarNames.Concat(NewForkJarNames).Contains(Path.GetFileName(item.FilePath)) || item.FilePath is "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip" or "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip"
+                 ? YungsJarNames.Concat(NewForkJarNames).Contains(Path.GetFileName(item.FilePath)) || item.FilePath is "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.2.zip" or "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip"
                  : item.ModrinthUrl.Scheme == Uri.UriSchemeHttps && item.ModrinthUrl.Host == "modrinth.com" && !string.IsNullOrWhiteSpace(item.ProjectId)),
             "Vanilla Plus and Vanilla 2 Plus catalogs exactly match their pinned releases");
         var initialOptions = TestPackRelease.InitialOptions.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
@@ -346,13 +1176,237 @@ internal static class Smoke
              Vanilla2PlusRelease.InitialResourcePacks.Take(7).SequenceEqual(TestPackRelease.InitialResourcePacks) &&
              Vanilla2PlusRelease.InitialOptions.Contains("file/Semos Animations Lib 2.0.4.zip", StringComparison.Ordinal) &&
              Vanilla2PlusRelease.InitialOptions.Contains("file/Freshly Modded 3.0.5.zip", StringComparison.Ordinal) &&
-             Vanilla2PlusRelease.InitialOptions.Contains("file/xalis-enhanced-vanilla-26.2-minepack.1.zip", StringComparison.Ordinal) &&
+             Vanilla2PlusRelease.InitialOptions.Contains("file/xalis-enhanced-vanilla-26.2-minepack.2.zip", StringComparison.Ordinal) &&
              Vanilla2PlusRelease.InitialResourcePacks[^2] == "§aRemodeled-Doors§8_§62.2.1.zip" &&
              Vanilla2PlusRelease.InitialResourcePacks[^1] == "Remodeled-Doors-26.2-xalis-blockstates.1.zip" &&
              !Vanilla2PlusRelease.InitialOptions.Contains("LowOnFire", StringComparison.Ordinal) &&
              !TestPackRelease.InitialOptions.Contains("Freshly Modded", StringComparison.Ordinal),
             "guard animation packs are enabled only for new Vanilla 2 Plus installations");
         Pass("pinned .mrpack opens and matches its SHA-512");
+    }
+
+    private static void VerifyInstallProgressProjection()
+    {
+        var projector = new InstallProgressProjector();
+        var sizes = new long[] { 3, 8, 19, 41, 100 };
+        var completed = 0;
+        foreach (var size in sizes)
+        {
+            var first = projector.Update("files", new InstallProgress("download", "file progress", completed, sizes.Length, 1, size));
+            Equal(completed, first.CompletedFiles, "byte progress does not advance file count");
+            var interleaved = projector.Update("files", new InstallProgress("override", "other file progress", completed, sizes.Length, size / 2, size));
+            Equal(completed, interleaved.CompletedFiles, "interleaved byte events keep monotonic file count");
+            var retry = projector.Update("files", new InstallProgress("download", "retry progress", completed, sizes.Length, size, size));
+            Equal(completed, retry.CompletedFiles, "retry progress does not count a file twice");
+            completed++;
+            var verified = projector.Update("files", new InstallProgress("complete", "file verified", completed, sizes.Length));
+            Equal(completed, verified.CompletedFiles, "verified file increments the shared count once");
+            Equal(sizes.Length, verified.TotalFiles, "byte size never changes the file total");
+        }
+        Equal(sizes.Length, completed, "five differently sized files reach a stable total");
+
+        var unknown = new InstallProgressProjector().Update("files", new InstallProgress("download", "unknown", 0, 0, 12));
+        True(unknown.IsIndeterminate, "unknown total uses indeterminate progress");
+        var profile = projector.Update("profile", new InstallProgress("profile", "profile setup", 0, 0));
+        True(profile.PhaseChanged && profile.IsIndeterminate, "profile setup is an explicit separate phase");
+        var nextFiles = projector.Update("files", new InstallProgress("prepare", "next file set", 0, 2));
+        True(nextFiles.PhaseChanged, "a new file phase resets the projection");
+        Equal(0, nextFiles.CompletedFiles, "phase reset does not inherit the prior completed count");
+        Pass("shared file progress stays monotonic across byte events, retries, unknown totals, and phase changes");
+    }
+
+    private static async Task VerifyInitialConfigurationAsync(string tempRoot)
+    {
+        const string irisPath = "config/iris.properties";
+        var releaseRoot = Path.Combine(AppContext.BaseDirectory, "releases");
+        var irisArchives = 0;
+        foreach (var path in Directory.EnumerateFiles(releaseRoot, "*.mrpack", SearchOption.AllDirectories))
+        {
+            var pack = PackArchive.Open(path, HashFile(path));
+            if (!pack.Overrides.Any(file => file.Path.Equals(irisPath, StringComparison.OrdinalIgnoreCase))) continue;
+            True(InitialConfiguration.IsInitialUserConfig(pack, irisPath), "every pinned archive with Iris has hash-bound initial config ownership");
+            irisArchives++;
+        }
+        Equal(26, irisArchives, "all pinned Iris archive hashes are classified");
+
+        var unknownArchivePath = Path.Combine(tempRoot, "unknown-iris.mrpack");
+        CreatePack(unknownArchivePath, "0.1.0", [], [new TestOverride(irisPath, Bytes("unknown archive"))]);
+        var unknownArchive = PackArchive.Open(unknownArchivePath, HashFile(unknownArchivePath));
+        True(!InitialConfiguration.IsInitialUserConfig(unknownArchive, irisPath), "an unknown archive does not gain Iris ownership from its path");
+
+        var previousResourcePackCases = new[]
+        {
+            ("0.19.4", Vanilla2PlusRelease.XalisArtifactFileName, Vanilla2PlusRelease.XalisArtifactSha512,
+                Vanilla2PlusRelease.PreviousResourcePacks[..^2]),
+            ("0.19.5", Vanilla2PlusRelease.DoorsArtifactFileName, Vanilla2PlusRelease.DoorsArtifactSha512,
+                Vanilla2PlusRelease.PreviousResourcePacks),
+            ("0.19.6", Vanilla2PlusRelease.PreviousCandidateArtifactFileName, Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
+                Vanilla2PlusRelease.PreviousCandidateResourcePacks)
+        };
+        foreach (var (version, fileName, archiveHash, expectedPacks) in previousResourcePackCases)
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", fileName);
+            var pack = PackArchive.Open(path, archiveHash);
+            var stage = Path.Combine(tempRoot, "initial-config-frontier-" + version + "-stage");
+            Directory.CreateDirectory(stage);
+            await pack.ExtractOverridesAsync(stage, CancellationToken.None);
+            var defaults = InitialConfiguration.Create(pack, stage);
+            Equal(TestPackRelease.BuildInitialOptions(expectedPacks),
+                System.Text.Encoding.UTF8.GetString(defaults.Single(file => file.Path == "options.txt").Contents),
+                $"Frontier {version} retains its exact pinned initial resource-pack order");
+            True(InitialConfiguration.IsInitialUserConfig(pack, irisPath) &&
+                 InitialConfiguration.IsInitialUserConfig(pack, "config/guardvillagers.json"),
+                $"Frontier {version} retains its hash-bound initial config classification");
+        }
+
+        var testPackPath = Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var frontierPackPath = Path.Combine(AppContext.BaseDirectory, Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var testPack = PackArchive.Open(testPackPath, TestPackRelease.ArtifactSha512);
+        var frontierPack = PackArchive.Open(frontierPackPath, Vanilla2PlusRelease.ArtifactSha512);
+        var testStage = Path.Combine(tempRoot, "initial-config-test-stage");
+        var frontierStage = Path.Combine(tempRoot, "initial-config-frontier-stage");
+        Directory.CreateDirectory(testStage);
+        Directory.CreateDirectory(frontierStage);
+        await testPack.ExtractOverridesAsync(testStage, CancellationToken.None);
+        await frontierPack.ExtractOverridesAsync(frontierStage, CancellationToken.None);
+        var testDefaults = InitialConfiguration.Create(testPack, testStage);
+        var frontierDefaults = InitialConfiguration.Create(frontierPack, frontierStage);
+
+        var testPaths = testDefaults.Select(file => file.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        True(testPaths.SetEquals(["options.txt", "config/BBEConfig.json", irisPath]), "Vanilla Plus creates only its applicable initial defaults");
+        Equal(TestPackRelease.InitialOptions, System.Text.Encoding.UTF8.GetString(testDefaults.Single(file => file.Path == "options.txt").Contents),
+            "Vanilla Plus preserves curated resource pack order and options");
+        using var bbe = JsonDocument.Parse(testDefaults.Single(file => file.Path == "config/BBEConfig.json").Contents);
+        True(bbe.RootElement.GetProperty("bbe.config.storage.main").EnumerateArray().All(item => !item.GetProperty("value").GetBoolean()),
+            "Better Block Entities defaults disable the existing chest and shulker optimizations");
+        Equal(HashFile(FixturePath(testStage, irisPath)), HashBytes(testDefaults.Single(file => file.Path == irisPath).Contents),
+            "Vanilla Plus initial Iris config comes byte-for-byte from its pinned archive");
+
+        var frontierPaths = frontierDefaults.Select(file => file.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        True(frontierPaths.SetEquals(["options.txt", "config/BBEConfig.json", irisPath, "config/guardvillagers.json", "config/voxyworldgenv2.json"]),
+            "Frontier creates Iris, Guard, Voxy, options, and BBE defaults for its pinned release");
+        Equal(TestPackRelease.BuildInitialOptions(Vanilla2PlusRelease.InitialResourcePacks),
+            System.Text.Encoding.UTF8.GetString(frontierDefaults.Single(file => file.Path == "options.txt").Contents),
+            "Frontier preserves resource pack order and its Low On Fire exclusion");
+        foreach (var file in frontierPack.Overrides.Where(item => InitialConfiguration.IsInitialUserConfig(frontierPack, item.Path)))
+            Equal(HashFile(FixturePath(frontierStage, file.Path)), HashBytes(frontierDefaults.Single(item => item.Path == file.Path).Contents),
+                $"Frontier initial override is copied from its pinned archive: {file.Path}");
+
+        var missingRoot = Path.Combine(tempRoot, "initial-config-missing-target");
+        var missingStage = Path.Combine(tempRoot, "initial-config-missing-stage");
+        Directory.CreateDirectory(missingRoot);
+        InitialConfiguration.WriteToRoot(missingStage, frontierDefaults);
+        var restored = InitialConfiguration.RestoreMissing(missingRoot, missingStage, frontierDefaults);
+        True(restored.ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(frontierPaths), "Repair restores every absent Frontier initial default");
+        foreach (var file in frontierDefaults)
+            Equal(HashBytes(file.Contents), HashFile(FixturePath(missingRoot, file.Path)), $"restored default matches pinned content: {file.Path}");
+
+        var existingRoot = Path.Combine(tempRoot, "initial-config-existing-target");
+        var existingStage = Path.Combine(tempRoot, "initial-config-existing-stage");
+        var existing = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["options.txt"] = [],
+            ["config/BBEConfig.json"] = Bytes("{"),
+            [irisPath] = Bytes("edited Iris settings"),
+            ["config/guardvillagers.json"] = Bytes("edited Guard settings"),
+            ["config/voxyworldgenv2.json"] = Bytes("edited Voxy settings")
+        };
+        foreach (var (path, contents) in existing)
+        {
+            var target = FixturePath(existingRoot, path);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.WriteAllBytes(target, contents);
+        }
+        InitialConfiguration.WriteToRoot(existingStage, frontierDefaults);
+        Equal(0, InitialConfiguration.RestoreMissing(existingRoot, existingStage, frontierDefaults).Count,
+            "Repair leaves every existing initial file alone, including empty and malformed content");
+        foreach (var (path, contents) in existing)
+            True(File.ReadAllBytes(FixturePath(existingRoot, path)).SequenceEqual(contents), $"existing player config bytes stay unchanged: {path}");
+
+        using var validator = new InstallService();
+        foreach (var (pack, archivePath) in new[] { (testPack, testPackPath), (frontierPack, frontierPackPath) })
+        foreach (var legacy in new[] { false, true })
+        {
+            var root = CreateReleaseFixture(tempRoot, pack, legacy, out var instance);
+            var accepted = validator.ValidateUninstallTarget(root, instance, archivePath, pack.ArchiveSha512);
+            Equal(legacy, accepted.Files.Any(file => file.Path.Equals(irisPath, StringComparison.OrdinalIgnoreCase)),
+                $"strict {(legacy ? "legacy" : "new")} manifest is accepted for {pack.Name}");
+        }
+
+        var legacyRoot = CreateReleaseFixture(tempRoot, frontierPack, legacy: true, out var legacyInstance);
+        var legacyIris = FixturePath(legacyInstance, irisPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(legacyIris)!);
+        File.WriteAllText(legacyIris, "edited legacy Iris settings");
+        var markerPath = Path.Combine(legacyRoot, ".minepack-active.json");
+        var markerHash = HashFile(markerPath);
+        var manifestPath = Path.Combine(legacyInstance, InstallationManifest.FileName);
+        var originalManifest = File.ReadAllText(manifestPath);
+        var corrupt = JsonNode.Parse(originalManifest)!.AsObject();
+        corrupt[nameof(InstallationManifest.Files)]!.AsArray()
+            .Select(node => node!.AsObject())
+            .Single(file => file[nameof(ManagedFile.Path)]!.GetValue<string>() == irisPath)[nameof(ManagedFile.Sha512)] = new string('0', 128);
+        File.WriteAllText(manifestPath, corrupt.ToJsonString());
+        RejectReleaseManifest(validator, legacyRoot, legacyInstance, frontierPackPath, frontierPack.ArchiveSha512,
+            "corrupt legacy Iris metadata is rejected before mutation");
+        Equal(markerHash, HashFile(markerPath), "corrupt legacy Iris metadata rejection preserves the active marker");
+        Equal(HashBytes(Bytes("edited legacy Iris settings")), HashFile(legacyIris), "corrupt legacy Iris metadata rejection preserves player Iris bytes");
+        File.WriteAllText(manifestPath, originalManifest);
+        var wrongSize = JsonNode.Parse(originalManifest)!.AsObject();
+        var legacyIrisRecord = wrongSize[nameof(InstallationManifest.Files)]!.AsArray()
+            .Select(node => node!.AsObject())
+            .Single(file => file[nameof(ManagedFile.Path)]!.GetValue<string>() == irisPath);
+        legacyIrisRecord[nameof(ManagedFile.Size)] = legacyIrisRecord[nameof(ManagedFile.Size)]!.GetValue<long>() + 1;
+        File.WriteAllText(manifestPath, wrongSize.ToJsonString());
+        RejectReleaseManifest(validator, legacyRoot, legacyInstance, frontierPackPath, frontierPack.ArchiveSha512,
+            "corrupt legacy Iris size is rejected before mutation");
+        Equal(markerHash, HashFile(markerPath), "corrupt legacy Iris size rejection preserves the active marker");
+        Equal(HashBytes(Bytes("edited legacy Iris settings")), HashFile(legacyIris), "corrupt legacy Iris size rejection preserves player Iris bytes");
+        File.WriteAllText(manifestPath, originalManifest);
+
+        var replacementRoot = CreateReleaseFixture(tempRoot, testPack, legacy: true, out var replacementInstance);
+        var replacementIris = FixturePath(replacementInstance, irisPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(replacementIris)!);
+        File.WriteAllText(replacementIris, "edited replacement-test Iris");
+        var replacementManifestPath = Path.Combine(replacementInstance, InstallationManifest.FileName);
+        var replacementJson = JsonNode.Parse(File.ReadAllText(replacementManifestPath))!.AsObject();
+        var replacementFiles = replacementJson[nameof(InstallationManifest.Files)]!.AsArray();
+        replacementFiles.Remove(replacementFiles.Select(node => node!.AsObject())
+            .First(file => file[nameof(ManagedFile.Path)]!.GetValue<string>()
+                .EndsWith(".jar", StringComparison.OrdinalIgnoreCase)));
+        File.WriteAllText(replacementManifestPath, replacementJson.ToJsonString());
+        RejectReleaseManifest(validator, replacementRoot, replacementInstance, testPackPath, testPack.ArchiveSha512,
+            "legacy Iris cannot replace a missing managed JAR");
+        Equal(HashBytes(Bytes("edited replacement-test Iris")), HashFile(replacementIris), "rejected missing-JAR manifest preserves player Iris bytes");
+
+        using (var failingRepair = new InstallService(new DownloadEngine(new DelegateHandler(_ =>
+                   new HttpResponseMessage(HttpStatusCode.NotFound)))))
+        {
+            var repair = await failingRepair.RepairAsync(legacyInstance, frontierPackPath, frontierPack.ArchiveSha512);
+            Equal("DOWNLOAD_HTTP", repair.Code, "legacy manifest passes strict release validation before fake download failure");
+        }
+        Equal(HashBytes(Bytes("edited legacy Iris settings")), HashFile(legacyIris), "Repair does not replace edited Iris from a legacy manifest");
+        var legacyUninstall = await validator.UninstallAsync(legacyRoot, legacyInstance, frontierPackPath, frontierPack.ArchiveSha512);
+        True(legacyUninstall.Success && File.ReadAllText(legacyIris) == "edited legacy Iris settings",
+            "Uninstall preserves edited Iris from a legacy manifest");
+
+        var currentRoot = CreateReleaseFixture(tempRoot, frontierPack, legacy: false, out var currentInstance);
+        var currentConfigs = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [irisPath] = "edited current Iris settings",
+            ["config/guardvillagers.json"] = "edited current Guard settings",
+            ["config/voxyworldgenv2.json"] = "edited current Voxy settings"
+        };
+        foreach (var (path, contents) in currentConfigs)
+        {
+            var target = FixturePath(currentInstance, path);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.WriteAllText(target, contents);
+        }
+        var currentUninstall = await validator.UninstallAsync(currentRoot, currentInstance, frontierPackPath, frontierPack.ArchiveSha512);
+        True(currentUninstall.Success && currentConfigs.All(pair => File.ReadAllText(FixturePath(currentInstance, pair.Key)) == pair.Value) &&
+             !File.Exists(FixturePath(currentInstance, "options.txt")) && !File.Exists(FixturePath(currentInstance, "config/BBEConfig.json")),
+            "Uninstall preserves existing player configs and does not create missing options or BBE defaults");
+        Pass("initial config ownership, exact legacy metadata, and missing-only defaults");
     }
 
     private static void VerifyLocalization()
@@ -393,13 +1447,14 @@ internal static class Smoke
             Equal("World & Structures — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "English Vanilla 2 Plus worldgen category");
             Equal("Technical Foundation — 14", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Vanilla 2 Plus dependencies");
             Equal("Resource Packs — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Vanilla 2 Plus resource packs");
-            Equal("Pack version 0.19.6", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
+            Equal("Pack version 0.19.7", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
             Equal("Installer version 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "English installer version");
             Equal("65 mods · 12 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
             Equal("37 mods · 7 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
             Equal("Performance & Render Distance — 8|Graphics & Animations — 9|Tools & Quality of Life — 9|Sound — 2|Technical Foundation — 9|Resource Packs — 7|Shader — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "English catalog headings and counts");
-            Equal("Copied worlds: 2. Skipped existing names: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "English formatted text");
+            Equal("Copied worlds: 2. Skipped existing names: 1; missing session.lock: 2; locked or unverified session.lock: 3.",
+                LocalizedText.Get("WorldImportSummary", 2, 1, 2, 3), "English formatted world import summary");
 
             CultureInfo.CurrentUICulture = LocalizedText.SelectUiCulture(CultureInfo.GetCultureInfo("zh-SG"));
             Equal("zh-CN", CultureInfo.CurrentUICulture.Name, "Chinese UI culture canonicalized to Simplified Chinese");
@@ -408,11 +1463,12 @@ internal static class Smoke
             Equal("整合包文件已安装。", LocalizedText.Get("PackFilesInstalled"), "Chinese success text");
             Equal("未找到整合包文件。", LocalizedText.Get("PackFileMissing"), "Chinese error text");
             Equal("性能与区块渲染距离", LocalizedText.Get("CatalogPerformance"), "Chinese catalog text");
-            Equal("整合包版本 0.19.6", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
+            Equal("整合包版本 0.19.7", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
             Equal("安装程序版本 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Chinese installer version");
             Equal("65 个模组 · 12 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
             Equal("37 个模组 · 7 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
-            Equal("已复制存档：2。因名称已存在而跳过：1。", LocalizedText.Get("WorldImportSummary", 2, 1), "Chinese formatted text");
+            Equal("已复制存档：2。因名称已存在而跳过：1；缺少 session.lock：2；session.lock 已锁定或无法验证：3。",
+                LocalizedText.Get("WorldImportSummary", 2, 1, 2, 3), "Chinese formatted world import summary");
             Equal("建筑方块 — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Chinese Vanilla 2 Plus building category");
             Equal("世界与结构 — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Chinese Vanilla 2 Plus worldgen category");
             Equal("资源包 — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading,
@@ -428,13 +1484,14 @@ internal static class Smoke
             Equal("Мир и структуры — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Russian Vanilla 2 Plus worldgen category");
             Equal("Техническая основа — 14", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Vanilla 2 Plus dependencies");
             Equal("Ресурспаки — 12", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Vanilla 2 Plus resource packs");
-            Equal("Версия сборки 0.19.6", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
+            Equal("Версия сборки 0.19.7", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
             Equal("Версия установщика 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Russian installer version");
             Equal("65 модов · 12 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
             Equal("37 модов · 7 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
             Equal("Производительность и дальность — 8|Графика и анимации — 9|Инструменты и удобство — 9|Звук — 2|Техническая основа — 9|Ресурспаки — 7|Шейдер — 1",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "Russian catalog headings and counts");
-            Equal("Скопировано миров: 2. Пропущено совпадений имён: 1.", LocalizedText.Get("WorldImportSummary", 2, 1), "Russian formatted text");
+            Equal("Скопировано миров: 2. Пропущено совпадений имён: 1; нет session.lock: 2; session.lock занят или не проверен: 3.",
+                LocalizedText.Get("WorldImportSummary", 2, 1, 2, 3), "Russian formatted world import summary");
 
             try
             {
@@ -497,6 +1554,332 @@ internal static class Smoke
         finally { File.Delete(path); }
     }
 
+    private static void VerifyManifestValidation(string tempRoot)
+    {
+        var instance = Path.Combine(tempRoot, "manifest-validation");
+        Directory.CreateDirectory(instance);
+        var manifestPath = Path.Combine(instance, InstallationManifest.FileName);
+        var manifest = new InstallationManifest
+        {
+            PackVersion = "0.1.0",
+            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+            PackArchiveSha512 = new string('A', 128),
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = [new ManagedFile("mods/test.jar", new string('B', 128), [TestDownload.AbsoluteUri], false, 1)]
+        };
+        var json = JsonSerializer.Serialize(manifest);
+
+        string Change(Action<JsonObject> change)
+        {
+            var root = JsonNode.Parse(json)!.AsObject();
+            change(root);
+            return root.ToJsonString();
+        }
+
+        void Reject(string candidate, string expectedCode, string label)
+        {
+            File.WriteAllText(manifestPath, candidate);
+            try
+            {
+                _ = InstallationManifest.Load(instance);
+                throw new InvalidOperationException($"Expected {label} to be rejected.");
+            }
+            catch (InstallerException ex) when (ex.Code == expectedCode) { }
+            Pass(label);
+        }
+
+        JsonObject ManifestFile(JsonObject root) => root[nameof(InstallationManifest.Files)]!.AsArray()[0]!.AsObject();
+
+        Reject("[]", "MANIFEST_INVALID", "manifest root must be an object");
+        Reject(Change(root => root.Remove(nameof(InstallationManifest.SchemaVersion))), "MANIFEST_INVALID", "missing schema version is rejected");
+        foreach (var malformed in new[] { "null", "\"1\"", "{}", "2147483648" })
+            Reject(Change(root => root[nameof(InstallationManifest.SchemaVersion)] = JsonNode.Parse(malformed)),
+                "MANIFEST_INVALID", "invalid schema version JSON kind is controlled");
+        Reject(Change(root => root[nameof(InstallationManifest.SchemaVersion)] = 2),
+            "MANIFEST_SCHEMA_UNSUPPORTED", "unsupported manifest schema keeps its distinct code");
+        Reject(Change(root => root.Remove(nameof(InstallationManifest.Files))), "MANIFEST_INVALID", "missing files field is rejected");
+        Reject(Change(root => root[nameof(InstallationManifest.Files)] = null), "MANIFEST_INVALID", "null files field is rejected");
+        Reject(Change(root => root[nameof(InstallationManifest.Files)]!.AsArray()[0] = null),
+            "MANIFEST_INVALID", "null managed-file entries are rejected");
+        Reject(Change(root => ManifestFile(root).Remove(nameof(ManagedFile.Size))), "MANIFEST_INVALID", "missing managed-file size is rejected");
+        foreach (var malformed in new[] { "null", "\"1\"", "{}", "9223372036854775808" })
+            Reject(Change(root => ManifestFile(root)[nameof(ManagedFile.Size)] = JsonNode.Parse(malformed)),
+                "MANIFEST_INVALID", "invalid managed-file size JSON kind is controlled");
+        Reject(Change(root => ManifestFile(root).Remove(nameof(ManagedFile.IsOverride))),
+            "MANIFEST_INVALID", "missing override type is rejected");
+        Reject(Change(root => ManifestFile(root).Remove(nameof(ManagedFile.Downloads))),
+            "MANIFEST_INVALID", "missing downloads field is rejected");
+        Reject(Change(root => ManifestFile(root)[nameof(ManagedFile.Downloads)] = null),
+            "MANIFEST_INVALID", "null downloads field is rejected");
+        Reject(Change(root => ManifestFile(root)[nameof(ManagedFile.Downloads)]!.AsArray()[0] = null),
+            "MANIFEST_INVALID", "null download entries are rejected");
+        Reject(Change(root => ManifestFile(root)[nameof(ManagedFile.Sha512)] = null),
+            "MANIFEST_INVALID", "null managed-file hashes are rejected");
+        Reject(Change(root => ManifestFile(root)[nameof(ManagedFile.Path)] = null),
+            "MANIFEST_INVALID", "null managed-file paths are rejected");
+        Reject(Change(root => root[nameof(InstallationManifest.Files)]!.AsArray().Add(
+                root[nameof(InstallationManifest.Files)]![0]!.DeepClone())),
+            "MANIFEST_INVALID", "duplicate managed-file paths are rejected");
+        Reject(Change(root => ManifestFile(root)[nameof(ManagedFile.Path)] = "saves/world/level.dat"),
+            "MANIFEST_INVALID", "reserved managed-file paths are rejected");
+
+        var overrideInstance = Path.Combine(tempRoot, "manifest-empty-override-downloads");
+        new InstallationManifest
+        {
+            PackVersion = manifest.PackVersion,
+            MinecraftVersion = manifest.MinecraftVersion,
+            FabricLoaderVersion = manifest.FabricLoaderVersion,
+            PackArchiveSha512 = manifest.PackArchiveSha512,
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = [new ManagedFile("config/test.txt", new string('C', 128), [], true, 0)]
+        }.SaveAtomic(overrideInstance);
+        Equal(0, InstallationManifest.Load(overrideInstance).Files[0].Downloads.Length,
+            "schema 1 accepts an explicit empty downloads array for overrides");
+
+        var emptyInstance = Path.Combine(tempRoot, "manifest-explicit-empty-files");
+        new InstallationManifest
+        {
+            PackVersion = manifest.PackVersion,
+            MinecraftVersion = manifest.MinecraftVersion,
+            FabricLoaderVersion = manifest.FabricLoaderVersion,
+            PackArchiveSha512 = manifest.PackArchiveSha512,
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = []
+        }.SaveAtomic(emptyInstance);
+        Equal(0, InstallationManifest.Load(emptyInstance).Files.Count,
+            "schema 1 accepts an explicit empty files array");
+    }
+
+    private static async Task VerifyUninstallPreflightAsync(string tempRoot)
+    {
+        var installRoot = Path.Combine(tempRoot, "uninstall-preflight-root");
+        var indexedBytes = Bytes("preflight indexed file");
+        var overrideBytes = Bytes("preflight override");
+        var packPath = Path.Combine(tempRoot, "uninstall-preflight.mrpack");
+        CreatePack(packPath, "0.1.0", [new TestFile("mods/test.jar", indexedBytes)],
+            [new TestOverride("config/test.txt", overrideBytes)]);
+        var packHash = HashFile(packPath);
+        var downloadRequests = 0;
+        using var installer = new InstallService(new DownloadEngine(new DelegateHandler(_ =>
+        {
+            Interlocked.Increment(ref downloadRequests);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(indexedBytes) };
+        })));
+        var installed = await installer.InstallAsync(packPath, packHash, installRoot);
+        True(installed.Success, "preflight fixture installs");
+        var instance = installed.GameDirectory!;
+        var manifestPath = Path.Combine(instance, InstallationManifest.FileName);
+        var originalManifest = File.ReadAllText(manifestPath);
+        var managedPath = Path.Combine(instance, "mods", "test.jar");
+        var overridePath = Path.Combine(instance, "config", "test.txt");
+        var worldPath = Path.Combine(instance, "saves", "world", "level.dat");
+        Directory.CreateDirectory(Path.GetDirectoryName(worldPath)!);
+        File.WriteAllText(worldPath, "preserved world");
+
+        var launcherRoot = Path.Combine(tempRoot, "uninstall-preflight-fake-launcher");
+        Directory.CreateDirectory(launcherRoot);
+        var profilePath = Path.Combine(launcherRoot, "launcher_profiles.json");
+        File.WriteAllText(profilePath, LauncherProfile.BuildFixtureCandidate("{\"profiles\":{}}",
+            instance + Path.DirectorySeparatorChar, TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion));
+        using var launcher = new FabricLauncherService(launcherRoot, ensureLauncherClosed: static () => { });
+        var activeMarkerPath = Path.Combine(installRoot, ".minepack-active.json");
+        var profileHash = HashFile(profilePath);
+        var managedHash = HashFile(managedPath);
+        var overrideHash = HashFile(overridePath);
+        var worldHash = HashFile(worldPath);
+        var activeMarkerHash = HashFile(activeMarkerPath);
+
+        using (var managedFileLock = new FileStream(managedPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            try
+            {
+                using var instanceUse = InstanceUseGuard.AcquireForTesting(instance, ["mods/test.jar"],
+                    Array.Empty<(int ProcessId, string ProcessName)>(), _ => string.Empty);
+                launcher.RemoveOwnProfile(instance);
+                throw new InvalidOperationException("Expected a locked managed file to refuse profile removal.");
+            }
+            catch (InstallerException ex) when (ex.Code == "INSTANCE_IN_USE") { }
+        }
+        AssertNoWrites("managed-file use preflight");
+        Pass("managed-file preflight blocks scoped profile removal before Launcher or instance writes");
+
+        var corruptManagedBytes = Bytes("corrupt before repair preflight");
+        File.WriteAllBytes(managedPath, corruptManagedBytes);
+        managedHash = HashFile(managedPath);
+        var requestsBeforeRepair = Volatile.Read(ref downloadRequests);
+        var logsBeforeRepair = Directory.GetFiles(Path.Combine(installRoot, "logs"), "*.jsonl").Length;
+        using (var secondManagedLock = new FileStream(overridePath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            var blockedRepair = await installer.RepairAsync(instance, packPath, packHash);
+            True(!blockedRepair.Success && blockedRepair.Code == "INSTANCE_IN_USE",
+                "repair reports a controlled refusal when a later managed file is locked");
+            Equal(requestsBeforeRepair, Volatile.Read(ref downloadRequests),
+                "locked second managed file is rejected before replacement downloads");
+            Equal(logsBeforeRepair, Directory.GetFiles(Path.Combine(installRoot, "logs"), "*.jsonl").Length,
+                "locked second managed file is rejected before a repair log is written");
+            True(secondManagedLock.CanRead, "blocked repair preserves the locked second managed file handle");
+        }
+        AssertNoWrites("locked second managed file preflight");
+        File.WriteAllBytes(managedPath, indexedBytes);
+        managedHash = HashFile(managedPath);
+        Pass("repair preflights every managed file before changing the first corrupted file");
+
+        void AssertNoWrites(string label)
+        {
+            Equal(profileHash, HashFile(profilePath), $"{label} preserves fake Launcher profile bytes");
+            Equal(managedHash, HashFile(managedPath), $"{label} preserves managed-file bytes");
+            Equal(overrideHash, HashFile(overridePath), $"{label} preserves managed override bytes");
+            Equal(worldHash, HashFile(worldPath), $"{label} preserves world bytes");
+            Equal(activeMarkerHash, HashFile(activeMarkerPath), $"{label} preserves active marker bytes");
+        }
+
+        void RejectUiFlow(string selectedRoot, string archive, string archiveHash, string expectedCode, string label)
+        {
+            try
+            {
+                var active = installer.GetActiveInstancePath(selectedRoot)
+                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("UninstallInstanceNotFound"));
+                _ = InstallationManifest.Load(active);
+                installer.ValidateUninstallTarget(selectedRoot, active, archive, archiveHash);
+                launcher.RemoveOwnProfile(active);
+                throw new InvalidOperationException($"Expected {label} to stop before profile removal.");
+            }
+            catch (InstallerException ex) when (ex.Code == expectedCode) { }
+            AssertNoWrites(label);
+            Pass(label);
+        }
+
+        void RejectManifestChange(Action<JsonObject> change, string label, string expectedCode = "MANIFEST_INVALID")
+        {
+            var root = JsonNode.Parse(originalManifest)!.AsObject();
+            change(root);
+            File.WriteAllText(manifestPath, root.ToJsonString());
+            try { RejectUiFlow(installRoot, packPath, packHash, expectedCode, label); }
+            finally { File.WriteAllText(manifestPath, originalManifest); }
+        }
+
+        JsonObject ManifestFile(JsonObject root, string path) => root[nameof(InstallationManifest.Files)]!.AsArray()
+            .Select(node => node!.AsObject())
+            .Single(file => file[nameof(ManagedFile.Path)]!.GetValue<string>() == path);
+
+        var missingRoot = Path.Combine(tempRoot, "empty-uninstall-root");
+        var missingInstance = Path.Combine(missingRoot, "instances", "missing-instance");
+        Directory.CreateDirectory(Path.Combine(missingRoot, "instances"));
+        RejectUiFlow(missingRoot, packPath, packHash, "INSTANCE_NOT_FOUND", "empty selected root refuses profile removal");
+        try
+        {
+            installer.ValidateUninstallTarget(missingRoot, instance, packPath, packHash);
+            throw new InvalidOperationException("Selected-root mismatch unexpectedly passed preflight.");
+        }
+        catch (InstallerException ex) when (ex.Code == "INSTANCE_NOT_FOUND") { }
+        AssertNoWrites("selected-root mismatch");
+        try
+        {
+            installer.ValidateUninstallTarget(missingRoot, missingInstance, packPath, packHash);
+            throw new InvalidOperationException("Missing active instance unexpectedly passed preflight.");
+        }
+        catch (InstallerException ex) when (ex.Code == "INSTANCE_NOT_FOUND") { }
+        AssertNoWrites("missing active instance");
+
+        var inactiveInstance = Path.Combine(installRoot, "instances", "inactive-target");
+        Directory.CreateDirectory(Path.Combine(inactiveInstance, "mods"));
+        Directory.CreateDirectory(Path.Combine(inactiveInstance, "config"));
+        File.Copy(manifestPath, Path.Combine(inactiveInstance, InstallationManifest.FileName));
+        File.Copy(managedPath, Path.Combine(inactiveInstance, "mods", "test.jar"));
+        File.Copy(Path.Combine(instance, "config", "test.txt"), Path.Combine(inactiveInstance, "config", "test.txt"));
+        var inactiveManagedHash = HashFile(Path.Combine(inactiveInstance, "mods", "test.jar"));
+        var inactiveManifest = installer.ValidateUninstallTarget(installRoot, inactiveInstance, packPath, packHash);
+        Equal("0.1.0", inactiveManifest.PackVersion,
+            "explicit inactive target resolves to its trusted release before user confirmation");
+        Equal(inactiveManagedHash, HashFile(Path.Combine(inactiveInstance, "mods", "test.jar")),
+            "inactive target preflight preserves its managed file");
+        AssertNoWrites("inactive target preflight");
+        Pass("valid inactive target is preflighted without mutating its files or active Launcher profile");
+
+        var missingArchive = Path.Combine(tempRoot, "missing-uninstall.mrpack");
+        RejectUiFlow(installRoot, missingArchive, packHash, "PACK_NOT_FOUND", "missing pinned archive is rejected before profile removal");
+        var corruptArchive = Path.Combine(tempRoot, "corrupt-uninstall.mrpack");
+        File.Copy(packPath, corruptArchive);
+        File.AppendAllText(corruptArchive, "changed");
+        RejectUiFlow(installRoot, corruptArchive, packHash, "PACK_HASH_MISMATCH", "corrupt pinned archive is rejected before profile removal");
+
+        File.WriteAllText(manifestPath, "{");
+        RejectUiFlow(installRoot, packPath, packHash, "MANIFEST_INVALID", "malformed manifest is rejected before profile removal");
+        File.WriteAllText(manifestPath, originalManifest);
+        RejectManifestChange(root => root[nameof(InstallationManifest.PackVersion)] = "9.9.9",
+            "release mismatch is rejected before profile removal", "RELEASE_MISMATCH");
+        RejectManifestChange(root => ManifestFile(root, "config/test.txt")[nameof(ManagedFile.Sha512)] = new string('0', 128),
+            "override hash mismatch is rejected before profile removal");
+        RejectManifestChange(root => ManifestFile(root, "config/test.txt")[nameof(ManagedFile.Size)] = 99,
+            "override size mismatch is rejected before profile removal");
+        RejectManifestChange(root => ManifestFile(root, "config/test.txt")[nameof(ManagedFile.IsOverride)] = false,
+            "override type mismatch is rejected before profile removal");
+        RejectManifestChange(root => ManifestFile(root, "config/test.txt")[nameof(ManagedFile.Downloads)]!.AsArray()
+                .Add("https://cdn.modrinth.com/data/extra/version/file.jar"),
+            "extra override URL is rejected before profile removal");
+        RejectManifestChange(root => ManifestFile(root, "mods/test.jar")[nameof(ManagedFile.Downloads)]!.AsArray()
+                .Add("https://cdn.modrinth.com/data/extra/version/file.jar"),
+            "extra indexed URL is rejected before profile removal");
+        RejectManifestChange(root => ManifestFile(root, "mods/test.jar")[nameof(ManagedFile.Size)] = 99,
+            "indexed size mismatch is rejected before profile removal");
+
+        var modsDirectory = Path.Combine(instance, "mods");
+        var savedModsDirectory = Path.Combine(instance, "mods-before-reparse-check");
+        var externalManagedDirectory = Path.Combine(tempRoot, "external-managed-target");
+        Directory.CreateDirectory(externalManagedDirectory);
+        File.Copy(managedPath, Path.Combine(externalManagedDirectory, "test.jar"));
+        Directory.Move(modsDirectory, savedModsDirectory);
+        try
+        {
+            Directory.CreateSymbolicLink(modsDirectory, externalManagedDirectory);
+            RejectUiFlow(installRoot, packPath, packHash, "PATH_REPARSE_BLOCKED",
+                "managed target reparse point is rejected before profile removal");
+        }
+        finally
+        {
+            if (Directory.Exists(modsDirectory)) Directory.Delete(modsDirectory);
+            Directory.Move(savedModsDirectory, modsDirectory);
+        }
+
+        try
+        {
+            installer.ValidateUninstallTarget(installRoot + Path.DirectorySeparatorChar,
+                instance + Path.DirectorySeparatorChar, packPath, packHash);
+            launcher.RemoveOwnProfile(instance);
+        }
+        catch (InstallerException ex)
+        {
+            throw new InvalidOperationException($"Equivalent paths with trailing separators were rejected ({ex.Code}).", ex);
+        }
+        using (var profile = JsonDocument.Parse(File.ReadAllText(profilePath)))
+            True(!profile.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
+                "valid schema 1 preflight permits scoped removal with equivalent paths");
+        profileHash = HashFile(profilePath);
+
+        File.WriteAllText(manifestPath, "{");
+        var logDirectory = Path.Combine(installRoot, "logs");
+        var logsBefore = Directory.GetFiles(logDirectory, "*.jsonl").Length;
+        var uninstall = await installer.UninstallAsync(installRoot, instance, packPath, packHash);
+        True(!uninstall.Success && uninstall.Code == "MANIFEST_INVALID", "Core Uninstall repeats manifest preflight before mutation");
+        Equal(logsBefore, Directory.GetFiles(logDirectory, "*.jsonl").Length, "failed Core preflight creates no new log side effect");
+        File.WriteAllText(manifestPath, originalManifest);
+        AssertNoWrites("failed Core preflight");
+
+        var unknownSizeRoot = Path.Combine(tempRoot, "uninstall-unknown-size-root");
+        var unknownSizeBytes = Bytes("unknown index size");
+        var unknownSizePack = Path.Combine(tempRoot, "uninstall-unknown-size.mrpack");
+        CreatePack(unknownSizePack, "0.2.0", [new TestFile("mods/unknown-size.jar", unknownSizeBytes, OmitSize: true)]);
+        var unknownSizeHash = HashFile(unknownSizePack);
+        using var unknownSizeInstaller = new InstallService(new DownloadEngine(new DelegateHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(unknownSizeBytes) })));
+        var unknownSizeInstall = await unknownSizeInstaller.InstallAsync(unknownSizePack, unknownSizeHash, unknownSizeRoot);
+        True(unknownSizeInstall.Success, "unknown indexed size fixture installs");
+        _ = unknownSizeInstaller.ValidateUninstallTarget(unknownSizeRoot, unknownSizeInstall.GameDirectory!,
+            unknownSizePack, unknownSizeHash);
+        Pass("unknown archive file size stays supported without using installed bytes as an oracle");
+    }
+
     private static async Task VerifyInstallRepairAndUninstallAsync(string tempRoot)
     {
         var installRoot = Path.Combine(tempRoot, "install-root");
@@ -504,6 +1887,8 @@ internal static class Smoke
         var packPath = Path.Combine(tempRoot, "valid-test-pack.mrpack");
         CreatePack(packPath, "0.1.0", [new TestFile("mods/test.jar", packageBytes)]);
         var packHash = HashFile(packPath);
+        var installOperationLog = new OperationLog("install", "9.9.9", installRoot, "0.1.0",
+            TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, packHash);
         var failDownloads = false;
         var currentDownloadBytes = packageBytes;
         var handler = new DelegateHandler(_ => failDownloads
@@ -511,18 +1896,70 @@ internal static class Smoke
             : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(currentDownloadBytes) });
 
         using var installer = new InstallService(new DownloadEngine(handler));
-        var install = await installer.InstallAsync(packPath, packHash, installRoot);
+        var install = await installer.InstallAsync(packPath, packHash, installRoot, operationLog: installOperationLog);
         True(install.Success, "fixture pack installs successfully");
+        var reactivated = await installer.InstallAsync(packPath, packHash, installRoot, operationLog: installOperationLog);
+        True(reactivated.Success, "reactivating the same release repairs under the supplied operation context");
+        var unexpectedInstallCancel = await installer.InstallAsync(packPath, packHash,
+            Path.Combine(tempRoot, "unexpected-install-cancel-root"), new DelegateProgress<InstallProgress>(item =>
+            {
+                if (item.Stage == "prepare") throw new OperationCanceledException("non-caller fixture cancellation");
+            }));
+        True(!unexpectedInstallCancel.Success && unexpectedInstallCancel.Code == "INSTALL_FAILED",
+            "non-caller Install cancellation is reported as failure, not user cancellation");
         var instance = install.GameDirectory ?? throw new InvalidOperationException("Install did not return its instance directory.");
         Equal(instance, installer.GetActiveInstancePath(installRoot), "successful instance becomes active");
         var managedPath = Path.Combine(instance, "mods", "test.jar");
         Equal(HashBytes(packageBytes), HashFile(managedPath), "installed managed file hash");
         True(File.Exists(Path.Combine(instance, InstallationManifest.FileName)), "install manifest is written");
-        var installLog = File.ReadAllText(install.LogPath ?? throw new InvalidOperationException("Install did not return its log path."));
+        var launcherFailureSecret = "TOKEN_SENTINEL?access_token=QUERY_SENTINEL {\"account\":\"ACCOUNT_SENTINEL\"}";
+        var fakeLauncherTarget = new MinecraftLauncherTarget(MinecraftLauncherKind.Win32,
+            Path.Combine(tempRoot, "fake-launcher.exe"));
+        var fakeLauncher = new FakeLauncherPlatform([fakeLauncherTarget])
+        {
+            FailStart = true,
+            StartFailureMessage = launcherFailureSecret
+        };
+        var launcherStart = await new MinecraftLauncherController(fakeLauncher).ConfigureAndStartAsync(
+            fakeLauncherTarget, static () => Task.CompletedTask, installOperationLog);
+        Equal(MinecraftLauncherStartStatus.Failed, launcherStart.Status,
+            "fake Launcher start failure remains a separate profile outcome");
+        installOperationLog.Complete("profile_pending", "LAUNCHER_START_FAILED");
+        var installLogPath = installOperationLog.CurrentLogPath
+            ?? throw new InvalidOperationException("Install operation log was not bound to its validated root.");
+        Equal(installLogPath, install.LogPath, "install returns its current operation log");
+        var installLog = File.ReadAllText(installLogPath);
         True(installLog.Contains("download_attempt", StringComparison.Ordinal) &&
              installLog.Contains("download_response", StringComparison.Ordinal) &&
              installLog.Contains("download_hash_verified", StringComparison.Ordinal), "download diagnostics record attempt, HTTP response, and verified hash");
         True(!installLog.Contains(TestDownload.AbsoluteUri, StringComparison.Ordinal), "download diagnostics omit the full URL path");
+        True(!installLog.Contains(launcherFailureSecret, StringComparison.Ordinal) &&
+             installLog.Contains("launcher_start_failed", StringComparison.Ordinal) &&
+             installLog.Contains("innerHResult", StringComparison.Ordinal),
+            "Launcher exceptions log safe types and HRESULTs without raw sentinel messages");
+        var records = installLog.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonDocument.Parse(line)).ToList();
+        try
+        {
+            True(records.All(record => record.RootElement.GetProperty("operationId").GetString() == installOperationLog.OperationId),
+                "install, reactivation, repair, and Launcher stages share one operation id");
+            True(records.All(record => record.RootElement.GetProperty("installerVersion").GetString() == "9.9.9"),
+                "operation log uses the supplied installer assembly version");
+            var stages = records.Select(record => record.RootElement.GetProperty("stage").GetString()).ToHashSet();
+            True(new[] { "preflight", "download", "verify", "prepare", "commit", "profile", "end" }.All(stages.Contains),
+                "correlated install records preflight through profile and end stages");
+            True(records.Any(record => record.RootElement.GetProperty("eventName").GetString() == "install_reactivated"),
+                "composed reactivation is recorded in the same operation log");
+        }
+        finally { foreach (var record in records) record.Dispose(); }
+        var exportPath = Path.Combine(tempRoot, "current-operation-export.jsonl");
+        True(installOperationLog.TryExportCurrent(exportPath), "current operation diagnostic export succeeds");
+        True(File.ReadAllBytes(installLogPath).SequenceEqual(File.ReadAllBytes(exportPath)),
+            "diagnostic export contains only the current safe JSONL");
+        True(!File.ReadAllText(exportPath).Contains("TOKEN_SENTINEL", StringComparison.Ordinal) &&
+             !File.ReadAllText(exportPath).Contains("QUERY_SENTINEL", StringComparison.Ordinal) &&
+             !File.ReadAllText(exportPath).Contains("ACCOUNT_SENTINEL", StringComparison.Ordinal),
+            "current diagnostic export excludes token, query, and account sentinels");
         Pass("verified download installs to a separate versioned instance");
 
         var worldPath = Path.Combine(instance, "saves", "world", "level.dat");
@@ -533,28 +1970,36 @@ internal static class Smoke
         File.WriteAllText(worldPath, "keep world");
         File.WriteAllText(screenshotPath, "keep screenshot");
         File.WriteAllText(unknownPath, "keep user file");
-        var sourceSaves = Path.Combine(tempRoot, "source-profile", "saves");
-        var sourceCollision = Path.Combine(sourceSaves, "world", "level.dat");
-        var sourceNewWorld = Path.Combine(sourceSaves, "new-world", "level.dat");
-        var sourceRegion = Path.Combine(sourceSaves, "new-world", "region", "r.0.0.mca");
-        Directory.CreateDirectory(Path.GetDirectoryName(sourceCollision)!);
-        Directory.CreateDirectory(Path.GetDirectoryName(sourceRegion)!);
-        File.WriteAllText(sourceCollision, "do not overwrite");
-        File.WriteAllText(sourceNewWorld, "copy world");
-        File.WriteAllText(sourceRegion, "copy region");
-        var imported = await WorldImportService.ImportAsync(sourceSaves, instance);
-        Equal(1, imported.Imported, "world import copies a new world");
-        Equal(1, imported.Skipped, "world import skips an existing world name");
-        Equal("keep world", File.ReadAllText(worldPath), "existing world is not overwritten");
-        Equal("copy region", File.ReadAllText(Path.Combine(instance, "saves", "new-world", "region", "r.0.0.mca")), "world subdirectories are copied");
-        Equal("copy world", File.ReadAllText(sourceNewWorld), "world source is unchanged");
-        True(!Directory.EnumerateDirectories(Path.Combine(instance, "saves"), ".minepack-import-*").Any(), "no import staging directories remain");
-        Pass("world import copies complete new worlds and preserves originals and name collisions");
+        await VerifyWorldImportSafetyAsync(tempRoot, instance);
         File.WriteAllText(managedPath, "corrupted");
 
-        var repair = await installer.RepairAsync(instance, packPath, packHash);
-        True(repair.Success, "repair succeeds");
+        var repairOperationLog = new OperationLog("repair", "9.9.9", installRoot, "0.1.0",
+            TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, packHash);
+        var repair = await installer.RepairAsync(instance, packPath, packHash, operationLog: repairOperationLog);
+        repairOperationLog.Complete("completed");
+        True(repair.Success, $"repair succeeds ({repair.Code}: {repair.Message})");
         Equal(HashBytes(packageBytes), HashFile(managedPath), "repair restores expected managed hash");
+        var repairLog = File.ReadAllText(repairOperationLog.CurrentLogPath
+            ?? throw new InvalidOperationException("Repair operation log was not bound to its validated root."));
+        True(repairLog.Contains("managed_file_check", StringComparison.Ordinal) &&
+             repairLog.Contains("\"stage\":\"verify\"", StringComparison.Ordinal) &&
+             repairLog.Contains("repair_complete", StringComparison.Ordinal),
+            "Repair logs the existing managed-file verification and transaction completion stages");
+        var managedBeforeUnexpectedCancel = HashFile(managedPath);
+        var manifestBeforeUnexpectedCancel = HashFile(Path.Combine(instance, InstallationManifest.FileName));
+        var markerBeforeUnexpectedCancel = HashFile(Path.Combine(installRoot, ".minepack-active.json"));
+        var unexpectedRepairCancel = await installer.RepairAsync(instance, packPath, packHash,
+            new DelegateProgress<InstallProgress>(item =>
+            {
+                if (item.Stage == "repair") throw new OperationCanceledException("non-caller fixture cancellation");
+            }));
+        True(!unexpectedRepairCancel.Success && unexpectedRepairCancel.Code == "REPAIR_FAILED",
+            "non-caller Repair cancellation is reported as failure, not user cancellation");
+        Equal(managedBeforeUnexpectedCancel, HashFile(managedPath), "non-caller Repair cancellation preserves managed bytes");
+        Equal(manifestBeforeUnexpectedCancel, HashFile(Path.Combine(instance, InstallationManifest.FileName)),
+            "non-caller Repair cancellation preserves manifest bytes");
+        Equal(markerBeforeUnexpectedCancel, HashFile(Path.Combine(installRoot, ".minepack-active.json")),
+            "non-caller Repair cancellation preserves active marker bytes");
         True(File.Exists(worldPath), "repair preserves world");
         Pass("repair restores modified managed data and preserves user data");
 
@@ -584,8 +2029,18 @@ internal static class Smoke
         True(!Directory.Exists(nextInstance), "failed download leaves no final version directory");
         Pass("failed download leaves active instance and its files unchanged");
 
-        var uninstall = await installer.UninstallAsync(instance, packPath, packHash);
+        var uninstallOperationLog = new OperationLog("uninstall", "9.9.9", installRoot, "0.1.0",
+            TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, packHash);
+        var uninstall = await installer.UninstallAsync(installRoot, instance, packPath, packHash,
+            operationLog: uninstallOperationLog);
+        uninstallOperationLog.Complete("completed");
         True(uninstall.Success, "uninstall succeeds");
+        var uninstallLog = File.ReadAllText(uninstallOperationLog.CurrentLogPath
+            ?? throw new InvalidOperationException("Uninstall operation log was not bound to its validated root."));
+        True(uninstallLog.Contains("release_metadata_verified", StringComparison.Ordinal) &&
+             uninstallLog.Contains("\"stage\":\"verify\"", StringComparison.Ordinal) &&
+             uninstallLog.Contains("uninstall_complete", StringComparison.Ordinal),
+            "Uninstall logs its existing pinned-release preflight and completed transaction");
         True(!File.Exists(managedPath), "uninstall removes managed file");
         True(File.Exists(worldPath) && File.Exists(Path.Combine(instance, "saves", "new-world", "level.dat")) &&
              File.Exists(screenshotPath) && File.Exists(unknownPath), "uninstall preserves worlds, screenshots, and unknown files");
@@ -604,6 +2059,8 @@ internal static class Smoke
             "reinstall writes a new local manifest");
         Equal(reinstalledInstance, installer.GetActiveInstancePath(installRoot), "reinstalled instance becomes active");
         Pass("reinstall after uninstall uses a fresh instance without losing user data");
+        await VerifyUnvalidatedWorldLogBindingAsync(tempRoot,
+            Path.Combine(reinstalledInstance, InstallationManifest.FileName));
 
         var markerRoot = Path.Combine(tempRoot, "marker-install-root");
         Directory.CreateDirectory(markerRoot);
@@ -616,7 +2073,7 @@ internal static class Smoke
         CreatePack(markerPack, "0.3.0", [new TestFile("mods/test.jar", markerBytes)]);
         failDownloads = false;
         var markerInstall = await installer.InstallAsync(markerPack, HashFile(markerPack), markerRoot);
-        True(!markerInstall.Success && markerInstall.Code == "ACTIVE_MARKER_CONFLICT",
+        True(!markerInstall.Success && markerInstall.Code == "ACTIVE_MARKER_RECOVERY_REQUIRED",
             $"unowned active marker prevents activation (success={markerInstall.Success}, code={markerInstall.Code}, message={markerInstall.Message})");
         Equal(unrelatedMarker, File.ReadAllText(activeMarker), "unowned marker remains unchanged");
         var markerInstance = InstancePath(markerRoot, "0.3.0", HashFile(markerPack));
@@ -631,8 +2088,416 @@ internal static class Smoke
         True(retry.Success, "same release can be retried after marker failure; post-commit progress is best-effort");
         Equal(markerInstance, installer.GetActiveInstancePath(markerRoot), "successful retry atomically activates the new version");
         Pass("failed marker commit leaves no orphan and retry succeeds");
-        var markerUninstall = await installer.UninstallAsync(markerInstance, markerPack, HashFile(markerPack));
+        var markerUninstall = await installer.UninstallAsync(markerRoot, markerInstance, markerPack, HashFile(markerPack));
         True(markerUninstall.Success, "marker fixture cleanup succeeds");
+    }
+
+    private static async Task VerifyOperationLoggingBestEffortAsync(string tempRoot)
+    {
+        var installRoot = Path.Combine(tempRoot, "operation-log-denied-root");
+        var payload = Bytes("logging sink fixture");
+        var packPath = Path.Combine(tempRoot, "operation-log-denied.mrpack");
+        CreatePack(packPath, "0.4.0", [new TestFile("mods/logging.jar", payload)]);
+        var packHash = HashFile(packPath);
+        using var installer = new InstallService(new DownloadEngine(new DelegateHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) })));
+        var install = await installer.InstallAsync(packPath, packHash, installRoot);
+        True(install.Success, "log-sink fixture installs before denying diagnostics");
+
+        var logsDirectory = Path.Combine(installRoot, "logs");
+        Directory.Move(logsDirectory, Path.Combine(installRoot, "logs-preserved"));
+        File.WriteAllText(logsDirectory, "synthetic denied log sink");
+        var instance = install.GameDirectory!;
+        File.WriteAllText(Path.Combine(instance, "mods", "logging.jar"), "corrupt");
+        var repair = await installer.RepairAsync(instance, packPath, packHash);
+        True(repair.Success && repair.LogPath is null,
+            "healthy Repair remains successful when the operation log cannot be created");
+
+        var manifestPath = Path.Combine(instance, InstallationManifest.FileName);
+        var manifestBytes = File.ReadAllBytes(manifestPath);
+        File.WriteAllText(manifestPath, "{");
+        var failedRepair = await installer.RepairAsync(instance, packPath, packHash);
+        True(!failedRepair.Success && failedRepair.Code == "MANIFEST_INVALID" && failedRepair.LogPath is null,
+            "a denied log sink does not mask the original Repair failure code");
+        File.WriteAllBytes(manifestPath, manifestBytes);
+
+        var uninstall = await installer.UninstallAsync(installRoot, instance, packPath, packHash);
+        True(uninstall.Success && uninstall.LogPath is null,
+            "Uninstall remains successful when the operation log cannot be created");
+        Pass("operation logging is best-effort for successful Repair/Uninstall and preserves failure codes");
+    }
+
+    private static async Task VerifyOperationLogTargetRebindAsync(string tempRoot)
+    {
+        var installRoot = Path.Combine(tempRoot, "operation-log-rebind-root");
+        var firstBytes = Bytes("first release remains intact");
+        var secondBytes = Bytes("second release target");
+        var firstPackPath = Path.Combine(tempRoot, "operation-log-rebind-first.mrpack");
+        var secondPackPath = Path.Combine(tempRoot, "operation-log-rebind-second.mrpack");
+        CreatePack(firstPackPath, "0.5.0", [new TestFile("mods/rebind.jar", firstBytes)]);
+        CreatePack(secondPackPath, "0.6.0", [new TestFile("mods/rebind.jar", secondBytes)]);
+        var firstPackHash = HashFile(firstPackPath);
+        var secondPackHash = HashFile(secondPackPath);
+        var currentDownload = firstBytes;
+        using var installer = new InstallService(new DownloadEngine(new DelegateHandler(_ =>
+            new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(currentDownload) })));
+        var operationLog = new OperationLog("install", "9.9.9", installRoot, "0.5.0",
+            TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, firstPackHash);
+
+        var first = await installer.InstallAsync(firstPackPath, firstPackHash, installRoot, operationLog: operationLog);
+        True(first.Success, "first synthetic release installs with the shared operation context");
+        currentDownload = secondBytes;
+        var second = await installer.InstallAsync(secondPackPath, secondPackHash, installRoot, operationLog: operationLog);
+        True(second.Success, "second synthetic release installs with the same context in the same root");
+        var reactivatedFirst = await installer.InstallAsync(firstPackPath, firstPackHash, installRoot,
+            operationLog: operationLog);
+        True(reactivatedFirst.Success, "reactivating the first release rebinds before its metadata event");
+        operationLog.Complete("completed");
+
+        var firstManaged = Path.Combine(first.GameDirectory!, "mods", "rebind.jar");
+        var secondManaged = Path.Combine(second.GameDirectory!, "mods", "rebind.jar");
+        Equal(HashBytes(firstBytes), HashFile(firstManaged), "second install preserves the first target's managed bytes");
+        Equal(HashBytes(secondBytes), HashFile(secondManaged), "second target contains its own pinned managed bytes");
+
+        var logPath = operationLog.CurrentLogPath
+            ?? throw new InvalidOperationException("Rebound operation log was not available.");
+        var records = File.ReadAllLines(logPath).Select(line => JsonDocument.Parse(line)).ToList();
+        try
+        {
+            True(records.All(record => record.RootElement.GetProperty("operationId").GetString() == operationLog.OperationId),
+                "both release installs remain in one operation log");
+            var firstTarget = Path.TrimEndingDirectorySeparator(Path.GetFullPath(first.GameDirectory!));
+            var secondTarget = Path.TrimEndingDirectorySeparator(Path.GetFullPath(second.GameDirectory!));
+            var finalRecord = records.Last().RootElement;
+            Equal(firstTarget, finalRecord.GetProperty("targetPath").GetString(),
+                "final operation entry follows reactivation to the first canonical target");
+            Equal("0.5.0", finalRecord.GetProperty("packVersion").GetString(),
+                "final operation entry uses the reactivated first pack identity");
+            Equal(firstPackHash, finalRecord.GetProperty("packArchiveSha512").GetString(),
+                "final operation entry uses the reactivated first archive hash");
+            var reactivationVerification = records.Last(record =>
+                record.RootElement.GetProperty("eventName").GetString() == "release_metadata_verified").RootElement;
+            Equal(firstTarget, reactivationVerification.GetProperty("targetPath").GetString(),
+                "release verification is attributed to the first target before Repair starts");
+            Equal("0.5.0", reactivationVerification.GetProperty("packVersion").GetString(),
+                "release verification is attributed to the first release before Repair starts");
+            Equal(firstPackHash, reactivationVerification.GetProperty("packArchiveSha512").GetString(),
+                "release verification carries the first release hash");
+            True(records.Any(record => record.RootElement.GetProperty("eventName").GetString() == "install_started" &&
+                                       record.RootElement.GetProperty("targetPath").GetString() == secondTarget),
+                "second install events rebind target without creating a new log file");
+        }
+        finally { foreach (var record in records) record.Dispose(); }
+        Equal(1, Directory.GetFiles(Path.Combine(installRoot, "logs"), "*.jsonl").Length,
+            "successive same-root targets keep one current operation log file");
+
+        var otherRoot = Path.Combine(tempRoot, "operation-log-rebind-other-root");
+        var thirdBytes = Bytes("other root synthetic release");
+        var thirdPackPath = Path.Combine(tempRoot, "operation-log-rebind-third.mrpack");
+        CreatePack(thirdPackPath, "0.7.0", [new TestFile("mods/rebind.jar", thirdBytes)]);
+        currentDownload = thirdBytes;
+        var otherRootResult = await installer.InstallAsync(thirdPackPath, HashFile(thirdPackPath), otherRoot,
+            operationLog: operationLog);
+        True(otherRootResult.Success && otherRootResult.LogPath is null && operationLog.CurrentLogPath is null,
+            "a context bound to another root becomes unavailable instead of exposing its old log");
+        True(!Directory.Exists(Path.Combine(otherRoot, "logs")),
+            "a cross-root context does not create a log under the unbound root");
+        Pass("one operation log safely rebinds its canonical target for successive releases in the same root");
+    }
+
+    private static async Task VerifyUnvalidatedWorldLogBindingAsync(string tempRoot, string sourceManifestPath)
+    {
+        var safeTempRoot = ValidateSmokeTempRoot(tempRoot);
+        var targetRoot = Path.Combine(safeTempRoot, "world-log-unvalidated-target");
+        var instance = Path.Combine(targetRoot, "game");
+        Directory.CreateDirectory(instance);
+        File.Copy(sourceManifestPath, Path.Combine(instance, InstallationManifest.FileName));
+        var source = Path.Combine(safeTempRoot, "world-log-unvalidated-source");
+        var world = Path.Combine(source, "world");
+        Directory.CreateDirectory(world);
+        File.WriteAllText(Path.Combine(world, "level.dat"), "synthetic world");
+        File.WriteAllBytes(Path.Combine(world, "session.lock"), Bytes("synthetic lock"));
+
+        var operationLog = new OperationLog("import", "9.9.9", instance);
+        var result = await WorldImportService.ImportAsync(source, instance, operationLog: operationLog);
+        Equal(1, result.Imported, "world import can proceed for a validated manifest outside the normal root layout");
+        True(!operationLog.IsAvailable && operationLog.CurrentLogPath is null,
+            "nonstandard target layout leaves the current diagnostic explicitly unavailable");
+        True(!Directory.Exists(Path.Combine(targetRoot, "logs")) && !Directory.Exists(Path.Combine(safeTempRoot, "logs")),
+            "nonstandard target layout does not create logs in an unvalidated parent");
+        Pass("operation log binding refuses unvalidated world-import parents without changing import behavior");
+    }
+
+    private static async Task VerifyWorldImportSafetyAsync(string tempRoot, string instance)
+    {
+        var safeTempRoot = ValidateSmokeTempRoot(tempRoot);
+        var sourceSaves = Path.Combine(safeTempRoot, "source-profile", "saves");
+        var targetSaves = Path.Combine(instance, "saves");
+        var collision = Path.Combine(sourceSaves, "world");
+        var copied = Path.Combine(sourceSaves, "new-world");
+        var missingLockWorld = Path.Combine(sourceSaves, "missing-lock-world");
+        var blockedLockWorld = Path.Combine(sourceSaves, "blocked-lock-world");
+        Directory.CreateDirectory(Path.Combine(collision));
+        Directory.CreateDirectory(Path.Combine(copied, "region"));
+        Directory.CreateDirectory(missingLockWorld);
+        Directory.CreateDirectory(blockedLockWorld);
+        File.WriteAllText(Path.Combine(collision, "level.dat"), "do not overwrite");
+        File.WriteAllText(Path.Combine(copied, "level.dat"), "copy world");
+        File.WriteAllText(Path.Combine(copied, "region", "r.0.0.mca"), "copy region");
+        File.WriteAllBytes(Path.Combine(copied, "session.lock"), Bytes("source session lock bytes"));
+        File.WriteAllText(Path.Combine(missingLockWorld, "level.dat"), "missing lock world");
+        File.WriteAllText(Path.Combine(blockedLockWorld, "level.dat"), "locked world");
+        var blockedLockPath = Path.Combine(blockedLockWorld, "session.lock");
+        File.WriteAllBytes(blockedLockPath, Bytes("blocked source lock"));
+        var missingLockPath = Path.Combine(missingLockWorld, "session.lock");
+        var sourceBefore = SnapshotWorldFiles(sourceSaves);
+        var javaProbe = CompileMinecraftSessionLockProbe();
+        var copyReached = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var continueCopy = new ManualResetEventSlim();
+        var manifest = InstallationManifest.Load(instance);
+        var operationLog = new OperationLog("import", "9.9.9", instance, manifest.PackVersion,
+            manifest.MinecraftVersion, manifest.FabricLoaderVersion, manifest.PackArchiveSha512);
+        WorldImportResult imported;
+        using (var blockedSourceLock = new FileStream(blockedLockPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        using (WorldImportService.UseCheckpointForTesting(checkpoint =>
+               {
+                   if (checkpoint != "after-world-file-copy:new-world") return;
+                   copyReached.TrySetResult();
+                   if (!continueCopy.Wait(TimeSpan.FromSeconds(30)))
+                       throw new TimeoutException("Smoke did not release the world copy checkpoint.");
+               }))
+        {
+            var importTask = WorldImportService.ImportAsync(sourceSaves, instance, operationLog: operationLog);
+            try
+            {
+                await copyReached.Task.WaitAsync(TimeSpan.FromSeconds(15));
+                Equal(2, RunMinecraftSessionLockProbe(safeTempRoot, javaProbe, Path.Combine(copied, "session.lock")),
+                    "Minecraft WRITE+tryLock probe cannot acquire source lock while import is copying");
+            }
+            catch
+            {
+                continueCopy.Set();
+                try { await importTask; } catch { }
+                throw;
+            }
+            finally { continueCopy.Set(); }
+            imported = await importTask;
+        }
+        operationLog.Complete("completed");
+
+        Equal(0, RunMinecraftSessionLockProbe(safeTempRoot, javaProbe, Path.Combine(copied, "session.lock")),
+            "Minecraft WRITE+tryLock probe acquires source lock after import releases it");
+        Equal(1, imported.Imported, "world import copies a world with a protected source lock");
+        Equal(1, imported.SkippedExisting, "world import counts an existing target name");
+        Equal(1, imported.SkippedMissingLock, "world import counts a missing session.lock");
+        Equal(1, imported.SkippedLockedOrUnverified, "world import counts a locked or unverifiable session.lock");
+        Equal(3, imported.Skipped, "world import total includes each reported skip reason");
+        Equal("keep world", File.ReadAllText(Path.Combine(targetSaves, "world", "level.dat")),
+            "existing world is not overwritten");
+        Equal("copy region", File.ReadAllText(Path.Combine(targetSaves, "new-world", "region", "r.0.0.mca")),
+            "world subdirectories are copied");
+        var sourceLockHash = HashFile(Path.Combine(copied, "session.lock"));
+        Equal(sourceLockHash, HashFile(Path.Combine(targetSaves, "new-world", "session.lock")),
+            "existing source session.lock bytes are copied from the held stream");
+        True(!File.Exists(missingLockPath) && !Directory.Exists(Path.Combine(targetSaves, "missing-lock-world")),
+            "missing session.lock is not created and the unverified world is skipped");
+        True(!Directory.Exists(Path.Combine(targetSaves, "blocked-lock-world")),
+            "a world with a locked source session.lock is skipped");
+        using (new FileStream(blockedLockPath, FileMode.Open, FileAccess.Read, FileShare.None)) { }
+        True(sourceBefore.SequenceEqual(SnapshotWorldFiles(sourceSaves)),
+            "world import leaves every source file byte-identical");
+        var importLogPath = operationLog.CurrentLogPath
+            ?? throw new InvalidOperationException("World import operation log was not bound to its validated root.");
+        using (var importRecord = JsonDocument.Parse(File.ReadLines(importLogPath).First()))
+            Equal(operationLog.OperationId, importRecord.RootElement.GetProperty("operationId").GetString(),
+                "world import stages use their explicit operation id");
+        True(File.ReadAllText(importLogPath).Contains("world_import_summary", StringComparison.Ordinal) &&
+             File.ReadAllText(importLogPath).Contains("\"installerVersion\":\"9.9.9\"", StringComparison.Ordinal),
+            "world import logs its partial summary with the supplied installer version");
+        True(!Directory.EnumerateDirectories(targetSaves, ".minepack-import-*").Any(),
+            "no import staging directories remain after successful copy");
+        Pass("world import holds Minecraft-compatible source protection and reports duplicate, missing-lock, and locked skips");
+
+        var cancelSaves = Path.Combine(safeTempRoot, "cancel-source", "saves");
+        var firstWorld = Path.Combine(cancelSaves, "a-before-cancel");
+        var canceledWorld = Path.Combine(cancelSaves, "b-cancel");
+        Directory.CreateDirectory(firstWorld);
+        Directory.CreateDirectory(Path.Combine(canceledWorld, "region"));
+        File.WriteAllText(Path.Combine(firstWorld, "level.dat"), "previously copied");
+        File.WriteAllBytes(Path.Combine(firstWorld, "session.lock"), Bytes("cancel first lock"));
+        File.WriteAllText(Path.Combine(canceledWorld, "level.dat"), "cancel target");
+        File.WriteAllText(Path.Combine(canceledWorld, "region", "r.0.0.mca"), "cancel region");
+        File.WriteAllBytes(Path.Combine(canceledWorld, "session.lock"), Bytes("cancel second lock"));
+        var cancelSnapshot = SnapshotWorldFiles(cancelSaves);
+        using var cancellation = new CancellationTokenSource();
+        WorldImportCancelledException? cancellationResult = null;
+        using (WorldImportService.UseCheckpointForTesting(checkpoint =>
+               {
+                   if (checkpoint == "after-world-file-copy:b-cancel") cancellation.Cancel();
+               }))
+        {
+            try { await WorldImportService.ImportAsync(cancelSaves, instance, cancellationToken: cancellation.Token); }
+            catch (WorldImportCancelledException ex) { cancellationResult = ex; }
+        }
+        True(cancellationResult is not null, "mid-copy cancellation returns a partial import result");
+        Equal(1, cancellationResult!.PartialResult.Imported, "partial result counts the world published before cancellation");
+        True(Directory.Exists(Path.Combine(targetSaves, "a-before-cancel")) &&
+             !Directory.Exists(Path.Combine(targetSaves, "b-cancel")),
+            "mid-copy cancellation keeps completed worlds and does not publish the current staging world");
+        True(!Directory.EnumerateDirectories(targetSaves, ".minepack-import-*").Any(),
+            "mid-copy cancellation removes only the incomplete staging directory");
+        True(cancelSnapshot.SequenceEqual(SnapshotWorldFiles(cancelSaves)),
+            "mid-copy cancellation leaves source worlds byte-identical");
+        Pass("mid-copy cancellation retains prior imports and reports accurate partial counts");
+
+        var ioSaves = Path.Combine(safeTempRoot, "io-source", "saves");
+        var ioFirst = Path.Combine(ioSaves, "a-before-io");
+        var ioFailureWorld = Path.Combine(ioSaves, "b-io-failure");
+        Directory.CreateDirectory(ioFirst);
+        Directory.CreateDirectory(ioFailureWorld);
+        File.WriteAllText(Path.Combine(ioFirst, "level.dat"), "before io failure");
+        File.WriteAllBytes(Path.Combine(ioFirst, "session.lock"), Bytes("io first lock"));
+        File.WriteAllText(Path.Combine(ioFailureWorld, "level.dat"), "copy will fail");
+        File.WriteAllBytes(Path.Combine(ioFailureWorld, "session.lock"), Bytes("io second lock"));
+        var lockedWorldFile = Path.Combine(ioFailureWorld, "locked.dat");
+        File.WriteAllText(lockedWorldFile, "held by another writer");
+        var ioSnapshot = SnapshotWorldFiles(ioSaves);
+        WorldImportFailureException? ioFailure = null;
+        using (new FileStream(lockedWorldFile, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            try { await WorldImportService.ImportAsync(ioSaves, instance); }
+            catch (WorldImportFailureException ex) { ioFailure = ex; }
+        }
+        True(ioFailure is not null, "copy I/O failure reports a partial result");
+        Equal(1, ioFailure!.PartialResult.Imported, "I/O failure summary counts the world copied before failure");
+        True(Directory.Exists(Path.Combine(targetSaves, "a-before-io")) &&
+             !Directory.Exists(Path.Combine(targetSaves, "b-io-failure")),
+            "I/O failure retains earlier worlds and leaves the current world unpublished");
+        True(!Directory.EnumerateDirectories(targetSaves, ".minepack-import-*").Any(),
+            "I/O failure removes the incomplete staging directory");
+        True(ioSnapshot.SequenceEqual(SnapshotWorldFiles(ioSaves)), "I/O failure leaves source worlds byte-identical");
+        Pass("world import I/O failure preserves completed worlds and carries truthful counters");
+
+        var pendingFolder = instance + ".minepack-transaction";
+        Directory.CreateDirectory(pendingFolder);
+        File.WriteAllText(Path.Combine(pendingFolder, "journal.json"), "{}");
+        try
+        {
+            await WorldImportService.ImportAsync(cancelSaves, instance);
+            throw new InvalidOperationException("World import unexpectedly bypassed pending transaction recovery.");
+        }
+        catch (InstallerException ex) when (ex.Code == "TRANSACTION_RECOVERY_REQUIRED")
+        {
+            True(!Directory.Exists(Path.Combine(targetSaves, "b-cancel")),
+                "pending transaction refuses world import before copying a target world");
+        }
+        finally { Directory.Delete(pendingFolder, recursive: true); }
+        Pass("world import refuses a target with pending transaction recovery");
+
+        var reparseSaves = Path.Combine(safeTempRoot, "reparse-source", "saves");
+        var outsideWorld = Path.Combine(safeTempRoot, "reparse-world-target");
+        Directory.CreateDirectory(reparseSaves);
+        Directory.CreateDirectory(outsideWorld);
+        File.WriteAllText(Path.Combine(outsideWorld, "level.dat"), "outside source root");
+        var reparseWorld = Path.Combine(reparseSaves, "linked-world");
+        Directory.CreateSymbolicLink(reparseWorld, outsideWorld);
+        try
+        {
+            await WorldImportService.ImportAsync(reparseSaves, instance);
+            throw new InvalidOperationException("World import unexpectedly followed a source reparse point.");
+        }
+        catch (WorldImportFailureException ex) when (ex.Code == "PATH_REPARSE_BLOCKED")
+        {
+            True(!Directory.Exists(Path.Combine(targetSaves, "linked-world")),
+                "source reparse rejection happens before publishing a world");
+        }
+        Pass("world import refuses reparse-point source worlds");
+    }
+
+    private static string[] SnapshotWorldFiles(string root) => Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+        .Select(path => new KeyValuePair<string, string>(Path.GetRelativePath(root, path), HashFile(path)))
+        .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+        .Select(item => item.Key + "=" + item.Value)
+        .ToArray();
+
+    private static (string JavaPath, string ClassDirectory) CompileMinecraftSessionLockProbe()
+    {
+        var current = new DirectoryInfo(Environment.CurrentDirectory);
+        string? jdkBin = null;
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "mods", "_work", "_tools", "jdk-25.0.4.1+1", "bin");
+            if (File.Exists(Path.Combine(candidate, "java.exe")) && File.Exists(Path.Combine(candidate, "javac.exe")))
+            {
+                jdkBin = candidate;
+                break;
+            }
+            current = current.Parent;
+        }
+        if (jdkBin is null) throw new InvalidOperationException("The pinned Java 25 smoke fixture tools were not found.");
+
+        var classDirectory = Path.Combine(AppContext.BaseDirectory, "world-session-lock-probe");
+        Directory.CreateDirectory(classDirectory);
+        var source = Path.Combine(classDirectory, "MinecraftSessionLockProbe.java");
+        File.WriteAllText(source, """
+            import java.io.IOException;
+            import java.nio.channels.FileChannel;
+            import java.nio.channels.FileLock;
+            import java.nio.channels.OverlappingFileLockException;
+            import java.nio.file.Path;
+            import java.nio.file.StandardOpenOption;
+
+            public final class MinecraftSessionLockProbe {
+                public static void main(String[] args) {
+                    try (FileChannel channel = FileChannel.open(Path.of(args[0]), StandardOpenOption.WRITE)) {
+                        FileLock lock = channel.tryLock();
+                        if (lock == null) { System.exit(2); return; }
+                        lock.release();
+                    } catch (IOException | OverlappingFileLockException ex) {
+                        System.exit(2);
+                    }
+                }
+            }
+            """);
+        var start = new ProcessStartInfo(Path.Combine(jdkBin, "javac.exe"))
+        {
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        start.ArgumentList.Add("-d");
+        start.ArgumentList.Add(classDirectory);
+        start.ArgumentList.Add(source);
+        using var compiler = Process.Start(start) ?? throw new InvalidOperationException("Could not start javac for the session.lock fixture.");
+        if (!compiler.WaitForExit(30000))
+        {
+            compiler.Kill(entireProcessTree: true);
+            throw new TimeoutException("javac did not finish compiling the session.lock fixture.");
+        }
+        Equal(0, compiler.ExitCode, "Java 25 session.lock probe compiles");
+        return (Path.Combine(jdkBin, "java.exe"), classDirectory);
+    }
+
+    private static int RunMinecraftSessionLockProbe(string tempRoot, (string JavaPath, string ClassDirectory) probe,
+        string lockPath)
+    {
+        var safeRoot = ValidateSmokeTempRoot(tempRoot);
+        var fullLockPath = Path.GetFullPath(lockPath);
+        var rootPrefix = Path.EndsInDirectorySeparator(safeRoot) ? safeRoot : safeRoot + Path.DirectorySeparatorChar;
+        if (!fullLockPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("The Java session.lock probe accepts only paths under its generated smoke temp root.");
+        SafePath.EnsureNoReparsePoints(safeRoot, fullLockPath);
+        var start = new ProcessStartInfo(probe.JavaPath) { UseShellExecute = false, CreateNoWindow = true };
+        start.ArgumentList.Add("-cp");
+        start.ArgumentList.Add(probe.ClassDirectory);
+        start.ArgumentList.Add("MinecraftSessionLockProbe");
+        start.ArgumentList.Add(fullLockPath);
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start the Java session.lock probe.");
+        if (!process.WaitForExit(15000))
+        {
+            process.Kill(entireProcessTree: true);
+            throw new TimeoutException("The Java session.lock probe did not finish.");
+        }
+        return process.ExitCode;
     }
 
     private static async Task VerifyVariantSwitchingAsync(string tempRoot)
@@ -641,9 +2506,11 @@ internal static class Smoke
         var plusBytes = Bytes("vanilla plus managed file");
         var twoPlusBytes = Bytes("vanilla 2 plus managed file");
         var currentDownloadBytes = plusBytes;
-        var handler = new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        var downloadRequests = 0;
+        var handler = new DelegateHandler(_ =>
         {
-            Content = new ByteArrayContent(currentDownloadBytes)
+            downloadRequests++;
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(currentDownloadBytes) };
         });
         var plusPackPath = Path.Combine(tempRoot, "variant-plus.mrpack");
         var twoPlusPackPath = Path.Combine(tempRoot, "variant-two-plus.mrpack");
@@ -669,31 +2536,815 @@ internal static class Smoke
         File.WriteAllText(twoPlusWorld, "keep Vanilla 2 Plus world");
         True(!plusInstance.Equals(twoPlusInstance, StringComparison.OrdinalIgnoreCase) && File.Exists(plusWorld),
             "switching variants keeps the previous isolated instance and its world");
+        var activeMarkerPath = Path.Combine(installRoot, ".minepack-active.json");
 
-        File.WriteAllText(Path.Combine(plusInstance, "mods", "test.jar"), "corrupted inactive Vanilla Plus file");
+        var corruptMarkerBytes = Bytes("{\"SchemaVersion\":1,\"broken\":true}");
+        File.WriteAllBytes(activeMarkerPath, corruptMarkerBytes);
+        downloadRequests = 0;
+        var refusedRecovery = await installer.InstallAsync(plusPackPath, plusHash, installRoot);
+        True(!refusedRecovery.Success && refusedRecovery.Code == "ACTIVE_MARKER_RECOVERY_REQUIRED",
+            "corrupt schema-1 marker requires explicit recovery confirmation before Install");
+        Equal(0, downloadRequests, "corrupt marker refusal happens before download requests");
+        Equal(HashBytes(corruptMarkerBytes), HashFile(activeMarkerPath), "marker refusal preserves corrupt marker bytes");
+
+        var missingServiceRecovery = await installer.InstallAsync(plusPackPath, plusHash, installRoot,
+            allowActiveMarkerRecovery: true);
+        True(!missingServiceRecovery.Success && missingServiceRecovery.Code == "LAUNCHER_CONFIGURATION_REQUIRED",
+            "existing-target marker recovery requires the composed Launcher/profile operation");
+        Equal(HashBytes(corruptMarkerBytes), HashFile(activeMarkerPath),
+            "missing activation service leaves the original corrupt marker unchanged");
+
+        var recoveryLauncherRoot = Path.Combine(tempRoot, "variant-recovery-launcher");
+        var recoveryProfilePath = Path.Combine(recoveryLauncherRoot, "launcher_profiles.json");
+        using var recoveryLauncher = CreateSyntheticActivationLauncher(recoveryLauncherRoot, recoveryProfilePath,
+            twoPlusInstance, PackArchive.Open(plusPackPath, plusHash).MinecraftVersion, out var recoveryProfileBytes);
+        FileStream? recoveryProfileBlocker = null;
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "before-activation-profile-replace")
+                       recoveryProfileBlocker = new FileStream(recoveryProfilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+               }))
+        {
+            InstallResult blockedRecovery;
+            try
+            {
+                blockedRecovery = await installer.InstallAsync(plusPackPath, plusHash, installRoot,
+                    launcher: recoveryLauncher, allowActiveMarkerRecovery: true);
+            }
+            finally { recoveryProfileBlocker?.Dispose(); }
+            True(!blockedRecovery.Success && blockedRecovery.Code == "LAUNCHER_PROFILE_WRITE_FAILED",
+                "profile-write refusal during existing-target marker recovery remains controlled");
+        }
+        Equal(HashBytes(corruptMarkerBytes), HashFile(activeMarkerPath),
+            "existing-target recovery profile failure leaves the original corrupt marker byte-identical");
+        Equal(HashBytes(recoveryProfileBytes), HashFile(recoveryProfilePath),
+            "existing-target recovery profile failure preserves the original Launcher JSON");
+
+        var recoveredInstall = await installer.InstallAsync(plusPackPath, plusHash, installRoot, launcher: recoveryLauncher,
+            allowActiveMarkerRecovery: true);
+        True(recoveredInstall.Success, "explicit recovery reactivates a trusted existing selection");
+        Equal(plusInstance, installer.GetActiveInstancePath(installRoot), "explicit recovery writes a valid selected marker");
+        using (var profileDocument = JsonDocument.Parse(File.ReadAllBytes(recoveryProfilePath)))
+            Equal(plusInstance, profileDocument.RootElement.GetProperty("profiles")
+                    .GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString(),
+                "existing-target marker recovery updates the scoped Launcher profile before activation");
+        var markerBackups = Directory.GetFiles(Path.Combine(installRoot, "recovery"), "active-marker-*.json");
+        Equal(1, markerBackups.Length, "corrupt active marker is retained in a recovery backup");
+        Equal(HashBytes(corruptMarkerBytes), HashFile(markerBackups[0]), "marker recovery backup preserves the original bytes");
+
         currentDownloadBytes = plusBytes;
-        var returnToPlus = await installer.InstallAsync(plusPackPath, plusHash, installRoot);
-        True(returnToPlus.Success, "selecting Vanilla Plus reactivates its preserved instance");
-        Equal(plusInstance, installer.GetActiveInstancePath(installRoot), "active marker returns to Vanilla Plus");
-        Equal(HashBytes(plusBytes), HashFile(Path.Combine(plusInstance, "mods", "test.jar")),
-            "reactivating a preserved instance repairs damaged managed files first");
-        True(File.Exists(plusWorld) && File.Exists(twoPlusWorld), "reactivating Vanilla Plus preserves both versions' worlds");
-
         currentDownloadBytes = twoPlusBytes;
         var returnToTwoPlus = await installer.InstallAsync(twoPlusPackPath, twoPlusHash, installRoot);
         True(returnToTwoPlus.Success, "selecting Vanilla 2 Plus reactivates its preserved instance");
         Equal(twoPlusInstance, installer.GetActiveInstancePath(installRoot), "active marker returns to Vanilla 2 Plus");
+
+        var activeMarkerBytes = File.ReadAllBytes(activeMarkerPath);
+        var activeMarkerHash = HashBytes(activeMarkerBytes);
+        var inactivePlusManaged = Path.Combine(plusInstance, "mods", "test.jar");
+        File.WriteAllText(inactivePlusManaged, "corrupted inactive Vanilla Plus file");
+        currentDownloadBytes = plusBytes;
+        var inactiveRepair = await installer.RepairAsync(plusInstance, plusPackPath, plusHash);
+        True(inactiveRepair.Success, "selected inactive instance can be repaired without launcher activation");
+        Equal(activeMarkerHash, HashFile(activeMarkerPath), "inactive Repair leaves the other active marker unchanged");
+        Equal(HashBytes(plusBytes), HashFile(inactivePlusManaged), "inactive Repair restores its pinned managed file");
+
+        var profileRoot = Path.Combine(tempRoot, "inactive-uninstall-launcher");
+        Directory.CreateDirectory(profileRoot);
+        var profileFixture = Path.Combine(profileRoot, "launcher_profiles.json");
+        var activePackFixture = PackArchive.Open(twoPlusPackPath, twoPlusHash);
+        var profileBytes = Bytes(LauncherProfile.BuildFixtureCandidate(
+            "{\"settings\":{\"keep\":true},\"profiles\":{\"vanilla\":{\"name\":\"Vanilla\"}}}",
+            twoPlusInstance, activePackFixture.MinecraftVersion, activePackFixture.FabricLoaderVersion));
+        File.WriteAllBytes(profileFixture, profileBytes);
+        using var inactiveUninstallLauncher = new FabricLauncherService(profileRoot, ensureLauncherClosed: static () => { });
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "after-file-move-0") throw new IOException("inactive uninstall late failure");
+                   if (name == "after-rollback-file-0") throw new IOException("inactive uninstall rollback interruption");
+               }))
+        {
+            var interrupted = await installer.UninstallAsync(installRoot, plusInstance, plusPackPath, plusHash,
+                inactiveUninstallLauncher);
+            True(!interrupted.Success && interrupted.Code == "TRANSACTION_RECOVERY_REQUIRED",
+                "inactive Uninstall retains a pending journal after an injected late rollback interruption");
+        }
+        Equal(activeMarkerHash, HashFile(activeMarkerPath), "inactive Uninstall rollback preserves another version's active marker");
+        Equal(HashBytes(profileBytes), HashFile(profileFixture), "inactive Uninstall does not touch unrelated Launcher profile data");
+        True(installer.GetPendingOperation(installRoot) is not null, "inactive rollback interruption remains discoverable");
+        var recoveredInactive = await installer.RepairAsync(plusInstance, plusPackPath, plusHash,
+            launcher: inactiveUninstallLauncher);
+        True(recoveredInactive.Success, "next selected-instance Repair recovers the inactive Uninstall journal");
+        Equal(activeMarkerHash, HashFile(activeMarkerPath), "pending inactive recovery still leaves the other marker untouched");
+        Equal(HashBytes(profileBytes), HashFile(profileFixture), "pending inactive recovery leaves the profile fixture untouched");
+
+        var inactiveUninstall = await installer.UninstallAsync(installRoot, plusInstance, plusPackPath, plusHash,
+            inactiveUninstallLauncher);
+        True(inactiveUninstall.Success, "trusted inactive instance can be uninstalled explicitly");
+        Equal(activeMarkerHash, HashFile(activeMarkerPath), "inactive Uninstall preserves the active marker byte-for-byte");
+        True(File.Exists(plusWorld) && File.Exists(twoPlusWorld) && !File.Exists(Path.Combine(plusInstance, InstallationManifest.FileName)),
+            "inactive Uninstall preserves both versions' worlds and leaves the removed instance as data residue");
+
+        var currentMarker = File.ReadAllBytes(activeMarkerPath);
+        var futureMarker = Bytes("{\"SchemaVersion\":99,\"InstanceDirectory\":\"instances/test\"}");
+        File.WriteAllBytes(activeMarkerPath, futureMarker);
+        downloadRequests = 0;
+        var futureRefusal = await installer.InstallAsync(twoPlusPackPath, twoPlusHash, installRoot,
+            allowActiveMarkerRecovery: true);
+        True(!futureRefusal.Success && futureRefusal.Code == "ACTIVE_MARKER_UNSUPPORTED",
+            "future active marker schemas are never overwritten even after explicit recovery");
+        Equal(0, downloadRequests, "future marker refusal happens before download requests");
+        Equal(HashBytes(futureMarker), HashFile(activeMarkerPath), "future marker bytes remain untouched");
+        File.WriteAllBytes(activeMarkerPath, currentMarker);
+
         var twoPlusManaged = Path.Combine(twoPlusInstance, "mods", "test.jar");
         File.WriteAllText(twoPlusManaged, "damaged active Vanilla 2 Plus file");
+        currentDownloadBytes = twoPlusBytes;
         var repair = await installer.RepairAsync(twoPlusInstance, twoPlusPackPath, twoPlusHash);
-        True(repair.Success, "Repair uses the active Vanilla 2 Plus archive");
+        True(repair.Success,
+            $"Repair uses the active Vanilla 2 Plus archive (code={repair.Code}, message={repair.Message})");
         Equal(HashBytes(twoPlusBytes), HashFile(twoPlusManaged), "Vanilla 2 Plus Repair restores its pinned file");
-        var uninstall = await installer.UninstallAsync(twoPlusInstance, twoPlusPackPath, twoPlusHash);
+        var uninstall = await installer.UninstallAsync(installRoot, twoPlusInstance, twoPlusPackPath, twoPlusHash);
         True(uninstall.Success && installer.GetActiveInstancePath(installRoot) is null,
             "Uninstall uses the active Vanilla 2 Plus archive and clears its marker");
         True(File.Exists(twoPlusWorld) && File.Exists(plusWorld) && Directory.Exists(plusInstance),
-            "uninstalling active Vanilla 2 Plus preserves both worlds and the inactive Vanilla Plus instance");
-        Pass("switching Vanilla Plus and Vanilla 2 Plus reactivates pinned instances and preserves worlds");
+            "uninstalling active Vanilla 2 Plus preserves both worlds and the inactive residue directory");
+
+        var freshRecoveryRoot = Path.Combine(tempRoot, "fresh-marker-recovery-root");
+        Directory.CreateDirectory(freshRecoveryRoot);
+        var emptyMarkerPath = Path.Combine(freshRecoveryRoot, ".minepack-active.json");
+        File.WriteAllBytes(emptyMarkerPath, []);
+        currentDownloadBytes = plusBytes;
+        var freshRecovery = await installer.InstallAsync(plusPackPath, plusHash, freshRecoveryRoot,
+            allowActiveMarkerRecovery: true);
+        True(freshRecovery.Success, "explicit recovery of an empty marker permits a fresh isolated install");
+        var emptyMarkerBackup = Directory.GetFiles(Path.Combine(freshRecoveryRoot, "recovery"), "active-marker-*.json").Single();
+        Equal(HashBytes([]), HashFile(emptyMarkerBackup), "fresh-root recovery keeps the empty corrupt marker byte-for-byte");
+        Equal(Path.Combine(freshRecoveryRoot, "instances"), Path.GetDirectoryName(freshRecovery.GameDirectory!),
+            "fresh marker recovery installs only into the selected root");
+
+        var (pinnedArchive, pinnedHash) = InstalledInstanceCatalog.PinnedArchive(TestPackRelease.PackVersion, AppContext.BaseDirectory);
+        var pinnedPack = PackArchive.Open(pinnedArchive, pinnedHash);
+        var absentRoot = CreatePinnedReleaseFixture(tempRoot, pinnedPack, out var absentInstance);
+        var absentMarkerPath = Path.Combine(absentRoot, ".minepack-active.json");
+        File.Delete(absentMarkerPath);
+        var absentMarkerUninstall = await installer.UninstallAsync(absentRoot, absentInstance, pinnedArchive, pinnedHash);
+        True(absentMarkerUninstall.Success && !File.Exists(absentMarkerPath),
+            "inactive Uninstall succeeds without inventing or creating an absent active marker");
+        Pass("explicit recovery, inactive repair/uninstall, pending rollback, and variant switching preserve worlds and markers");
+    }
+
+    private static async Task VerifyActivationProfileRollbackAsync(string tempRoot)
+    {
+        var (packPath, packHash) = InstalledInstanceCatalog.PinnedArchive(TestPackRelease.PackVersion, AppContext.BaseDirectory);
+        var pack = PackArchive.Open(packPath, packHash);
+        var installRoot = CreatePinnedReleaseFixture(tempRoot, pack, out var instance);
+        var previousInstance = Path.Combine(installRoot, "instances", "previous-active");
+        Directory.CreateDirectory(previousInstance);
+        new InstallationManifest
+        {
+            PackVersion = pack.VersionId,
+            MinecraftVersion = pack.MinecraftVersion,
+            FabricLoaderVersion = pack.FabricLoaderVersion,
+            PackArchiveSha512 = pack.ArchiveSha512,
+            Files = []
+        }.SaveAtomic(previousInstance);
+        var markerPath = Path.Combine(installRoot, ".minepack-active.json");
+        var markerBytes = Bytes("{\"SchemaVersion\":1,\"InstanceDirectory\":\"instances/previous-active\"}");
+        File.WriteAllBytes(markerPath, markerBytes);
+
+        var launcherRoot = Path.Combine(tempRoot, "activation-launcher-root");
+        var profilePath = Path.Combine(launcherRoot, "launcher_profiles.json");
+        using var launcher = CreateSyntheticActivationLauncher(launcherRoot, profilePath, previousInstance,
+            pack.MinecraftVersion, out var profileBytes);
+        var profileHash = HashBytes(profileBytes);
+        var markerHash = HashBytes(markerBytes);
+        using var installer = new InstallService();
+
+        FileStream? profileBlocker = null;
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "before-activation-profile-replace")
+                       profileBlocker = new FileStream(profilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+               }))
+        {
+            try
+            {
+                _ = await installer.ActivateExistingInstanceAsync(installRoot, instance, packPath, packHash, launcher);
+                throw new InvalidOperationException("Expected profile write refusal during explicit activation.");
+            }
+            catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_WRITE_FAILED") { }
+            finally { profileBlocker?.Dispose(); }
+        }
+        Equal(profileHash, HashFile(profilePath), "profile-write failure preserves the original Launcher JSON bytes");
+        Equal(markerHash, HashFile(markerPath), "profile-write failure leaves the previous active marker untouched");
+
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "before-active-marker-replace") throw new IOException("synthetic marker write refusal");
+               }))
+        {
+            try
+            {
+                _ = await installer.ActivateExistingInstanceAsync(installRoot, instance, packPath, packHash, launcher);
+                throw new InvalidOperationException("Expected active marker write refusal during explicit activation.");
+            }
+            catch (InstallerException ex) when (ex.Code == "ACTIVE_MARKER_WRITE_FAILED") { }
+        }
+        Equal(profileHash, HashFile(profilePath), "marker-write failure after profile update restores the original Launcher JSON");
+        Equal(markerHash, HashFile(markerPath), "marker-write failure leaves the original active marker byte-identical");
+
+        using (var cancellation = new CancellationTokenSource())
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "after-activation-profile-replace") cancellation.Cancel();
+               }))
+        {
+            try
+            {
+                _ = await installer.ActivateExistingInstanceAsync(installRoot, instance, packPath, packHash, launcher,
+                    cancellationToken: cancellation.Token);
+                throw new InvalidOperationException("Expected activation cancellation before marker commit.");
+            }
+            catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+        }
+        Equal(profileHash, HashFile(profilePath), "activation cancellation after profile replacement restores the original Launcher JSON");
+        Equal(markerHash, HashFile(markerPath), "activation cancellation before marker commit preserves the original active marker");
+
+        var externalProfile = Bytes("{\"profiles\":{\"external\":{\"name\":\"preserve external edit\"}}}");
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "after-activation-profile-replace") File.WriteAllBytes(profilePath, externalProfile);
+                   if (name == "before-active-marker-replace") throw new IOException("synthetic marker write refusal");
+               }))
+        {
+            try
+            {
+                _ = await installer.ActivateExistingInstanceAsync(installRoot, instance, packPath, packHash, launcher);
+                throw new InvalidOperationException("Expected activation recovery when Launcher JSON changes externally.");
+            }
+            catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_RECOVERY_REQUIRED")
+            {
+                True(ex.Message.Contains(".profile-backup", StringComparison.Ordinal),
+                    "activation reports the retained original profile backup path");
+            }
+        }
+        Equal(HashBytes(externalProfile), HashFile(profilePath), "activation rollback preserves Launcher JSON changed externally");
+        Equal(markerHash, HashFile(markerPath), "external profile change does not switch the active marker");
+        var activationBackups = Directory.GetFiles(launcherRoot, ".minepack-activation-*.profile-backup");
+        Equal(1, activationBackups.Length, "failed safe rollback retains one bounded original Launcher profile backup");
+        Equal(profileHash, HashFile(activationBackups[0]), "retained activation backup contains the original Launcher JSON bytes");
+
+        File.WriteAllBytes(profilePath, profileBytes);
+        using var wrongVersionLauncher = new FabricLauncherService(Path.Combine(tempRoot, "wrong-version-launcher"),
+            minecraftVersion: "26.3", ensureLauncherClosed: static () => { });
+        try
+        {
+            _ = await installer.ActivateExistingInstanceAsync(installRoot, instance, packPath, packHash, wrongVersionLauncher);
+            throw new InvalidOperationException("Expected version mismatch refusal for historical activation target.");
+        }
+        catch (InstallerException ex) when (ex.Code == "FABRIC_VERSION_MISMATCH") { }
+        Equal(markerHash, HashFile(markerPath), "wrong-version Launcher service is refused before marker mutation");
+        Equal(profileHash, HashFile(profilePath), "wrong-version Launcher service is refused before profile mutation");
+
+        _ = await installer.ActivateExistingInstanceAsync(installRoot, instance, packPath, packHash, launcher);
+        Equal(Path.GetFullPath(instance), installer.GetActiveInstancePath(installRoot),
+            "successful composed activation selects the requested trusted instance");
+        using (var document = JsonDocument.Parse(File.ReadAllBytes(profilePath)))
+            Equal(Path.GetFullPath(instance), document.RootElement.GetProperty("profiles")
+                .GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString(),
+                "successful composed activation points the Launcher profile at the selected instance");
+        Equal(1, Directory.GetFiles(launcherRoot, ".minepack-activation-*.profile-backup").Length,
+            "successful activation removes its own rollback backup and leaves only the earlier recovery backup");
+        Pass("activation profile and marker update share one lease and scoped rollback");
+    }
+
+    private static FabricLauncherService CreateSyntheticActivationLauncher(string launcherRoot, string profilePath,
+        string previousGameDirectory, string minecraftVersion, out byte[] profileBytes)
+    {
+        Directory.CreateDirectory(launcherRoot);
+        var versionId = $"fabric-loader-{TestPackRelease.FabricLoaderVersion}-{minecraftVersion}";
+        var versionsDirectory = Path.Combine(launcherRoot, "versions", versionId);
+        Directory.CreateDirectory(versionsDirectory);
+        File.WriteAllText(Path.Combine(versionsDirectory, versionId + ".json"),
+            $"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"{minecraftVersion}\",\"time\":\"fixture\",\"releaseTime\":\"fixture\"}}");
+        File.WriteAllBytes(Path.Combine(versionsDirectory, versionId + ".jar"), []);
+        var stableProfile = Bytes($"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"{minecraftVersion}\"}}");
+        var expectedJarHash = HashBytes([]);
+        profileBytes = Bytes(LauncherProfile.BuildFixtureCandidate(
+            "{\"settings\":{\"preserve\":true},\"profiles\":{\"vanilla\":{\"name\":\"Vanilla\"}}}",
+            previousGameDirectory, minecraftVersion, TestPackRelease.FabricLoaderVersion));
+        File.WriteAllBytes(profilePath, profileBytes);
+        return new FabricLauncherService(launcherRoot, expectedSha512: HashBytes(stableProfile),
+            expectedClientJarSha512: expectedJarHash, expectedClientJarSize: 0, minecraftVersion: minecraftVersion,
+            ensureLauncherClosed: static () => { });
+    }
+
+    private static async Task VerifyManagedFileTransactionsAsync(string tempRoot)
+    {
+        var packPath = Path.Combine(tempRoot, "transaction-pack.mrpack");
+        var firstBytes = Bytes("transaction managed file one");
+        var secondBytes = Bytes("transaction managed file two");
+        CreatePack(packPath, "0.2.0", [], [
+            new TestOverride("mods/first.jar", firstBytes),
+            new TestOverride("mods/second.jar", secondBytes)
+        ]);
+        var packHash = HashFile(packPath);
+        using var installer = new InstallService();
+
+        var rollbackRoot = Path.Combine(tempRoot, "transaction-rollback-root");
+        var rollbackInstall = await installer.InstallAsync(packPath, packHash, rollbackRoot);
+        True(rollbackInstall.Success, "transaction rollback fixture installs from archive overrides");
+        var rollbackInstance = rollbackInstall.GameDirectory!;
+        var firstPath = Path.Combine(rollbackInstance, "mods", "first.jar");
+        var secondPath = Path.Combine(rollbackInstance, "mods", "second.jar");
+        var originalFirst = Bytes("first pre-repair bytes");
+        var originalSecond = Bytes("second pre-repair bytes");
+        File.WriteAllBytes(firstPath, originalFirst);
+        File.WriteAllBytes(secondPath, originalSecond);
+
+        var commitFailureInjected = false;
+        var rollbackFailureInjected = false;
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (!commitFailureInjected && name == "after-replacement-move-0-before-journal")
+                   {
+                       commitFailureInjected = true;
+                       throw new IOException("smoke commit interruption");
+                   }
+                   if (commitFailureInjected && !rollbackFailureInjected && name == "after-rollback-file-1")
+                   {
+                       rollbackFailureInjected = true;
+                       throw new IOException("smoke rollback interruption");
+                   }
+               }))
+        {
+            var interrupted = await installer.RepairAsync(rollbackInstance, packPath, packHash);
+            True(!interrupted.Success && interrupted.Code == "TRANSACTION_RECOVERY_REQUIRED",
+                "failed rollback returns a recoverable transaction result");
+        }
+        var rollbackTransactionFolder = rollbackInstance + ".minepack-transaction";
+        True(Directory.Exists(rollbackTransactionFolder), "failed rollback retains its journal and recovery files");
+        Equal(HashBytes(originalFirst), HashFile(firstPath), "failed rollback keeps the original first file");
+        Equal(HashBytes(originalSecond), HashFile(secondPath), "failed rollback keeps the original second file");
+        var recovered = await installer.RepairAsync(rollbackInstance, packPath, packHash);
+        True(recovered.Success, $"next operation rolls back pending transaction and repairs ({recovered.Code})");
+        Equal(HashBytes(firstBytes), HashFile(firstPath), "recovered repair has the pinned first-file hash");
+        Equal(HashBytes(secondBytes), HashFile(secondPath), "recovered repair has the pinned second-file hash");
+
+        File.WriteAllBytes(firstPath, originalFirst);
+        File.WriteAllBytes(secondPath, originalSecond);
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "after-replacement-move-1-before-journal")
+                       throw new IOException("smoke second replacement interruption");
+               }))
+        {
+            var secondMoveFailure = await installer.RepairAsync(rollbackInstance, packPath, packHash);
+            True(!secondMoveFailure.Success && secondMoveFailure.Code == "REPAIR_FAILED",
+                "failure after the second replacement move is reported after rollback");
+        }
+        Equal(HashBytes(originalFirst), HashFile(firstPath), "second-move failure restores the first original");
+        Equal(HashBytes(originalSecond), HashFile(secondPath), "second-move failure restores the second original");
+
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "after-final-verification-before-journal") throw new IOException("smoke final verification interruption");
+               }))
+        {
+            var finalVerifyFailure = await installer.RepairAsync(rollbackInstance, packPath, packHash);
+            True(!finalVerifyFailure.Success && finalVerifyFailure.Code == "REPAIR_FAILED",
+                "failure after final verification is reported after rollback");
+        }
+        Equal(HashBytes(originalFirst), HashFile(firstPath), "final-verification failure restores the first original");
+        Equal(HashBytes(originalSecond), HashFile(secondPath), "final-verification failure restores the second original");
+        True(!Directory.Exists(rollbackTransactionFolder), "successful rollback removes only its transaction data");
+
+        var crashRoot = Path.Combine(tempRoot, "transaction-crash-root");
+        var crashInstall = await installer.InstallAsync(packPath, packHash, crashRoot);
+        True(crashInstall.Success, "child-crash fixture installs");
+        var crashInstance = crashInstall.GameDirectory!;
+        var crashFirst = Path.Combine(crashInstance, "mods", "first.jar");
+        var crashOriginal = Bytes("pre-crash corrupted bytes");
+        File.WriteAllBytes(crashFirst, crashOriginal);
+        using (var child = StartTransactionCrashChild(crashInstance, packPath, packHash))
+        {
+            True(child.WaitForExit(30000), "transaction child reaches the replacement-move crash point");
+            Equal(86, child.ExitCode, "transaction child exits at the injected process-crash point");
+        }
+        var crashPack = PackArchive.Open(packPath, packHash);
+        var pending = ManagedFileTransaction.OpenPending(crashInstance)
+            ?? throw new InvalidOperationException("Crashed transaction journal was not retained.");
+        var crashManifest = pending.LoadTrustedManifest(crashPack);
+        using (var use = InstanceUseGuard.Acquire(crashInstance, crashManifest.Files.Select(file => file.Path)))
+            pending.Recover(crashRoot, crashPack, crashManifest, use, null);
+        Equal(HashBytes(crashOriginal), HashFile(crashFirst), "restart recovery restores the exact pre-crash original before a new repair");
+        var crashRepair = await installer.RepairAsync(crashInstance, packPath, packHash);
+        True(crashRepair.Success, "repair succeeds after restart recovery");
+        Equal(HashBytes(firstBytes), HashFile(crashFirst), "post-recovery repair restores the pinned file");
+
+        var forgedRoot = Path.Combine(tempRoot, "transaction-forged-completed-root");
+        var forgedInstall = await installer.InstallAsync(packPath, packHash, forgedRoot);
+        True(forgedInstall.Success, "forged-terminal fixture installs");
+        var forgedInstance = forgedInstall.GameDirectory!;
+        File.WriteAllBytes(Path.Combine(forgedInstance, "mods", "first.jar"), originalFirst);
+        File.WriteAllBytes(Path.Combine(forgedInstance, "mods", "second.jar"), originalSecond);
+        var forgedPack = PackArchive.Open(packPath, packHash);
+        var forgedManifest = InstallationManifest.Load(forgedInstance);
+        var forgedTransaction = ManagedFileTransaction.BeginRepair(forgedRoot, forgedInstance, forgedPack);
+        await forgedPack.ExtractOverridesAsync(forgedTransaction.StagingRoot, CancellationToken.None);
+        forgedTransaction.AddFile("mods/first.jar", HashBytes(originalFirst), originalFirst.Length, HashBytes(firstBytes));
+        forgedTransaction.AddFile("mods/second.jar", HashBytes(originalSecond), originalSecond.Length, HashBytes(secondBytes));
+        forgedTransaction.MarkPrepared();
+        forgedTransaction.EnsureCommitSpace();
+        using (var use = InstanceUseGuard.Acquire(forgedInstance, forgedManifest.Files.Select(file => file.Path)))
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "after-replacement-move-0-before-journal") throw new IOException("leave a partial commit");
+               }))
+        {
+            try { forgedTransaction.CommitFiles(use); }
+            catch (IOException) { }
+        }
+        var forgedJournalPath = Path.Combine(forgedTransaction.Folder, "journal.json");
+        var forgedJournal = JsonNode.Parse(File.ReadAllText(forgedJournalPath))!;
+        forgedJournal["Phase"] = "Completed";
+        File.WriteAllText(forgedJournalPath, forgedJournal.ToJsonString());
+        var forgedPending = ManagedFileTransaction.OpenPending(forgedInstance)!;
+        using (var use = InstanceUseGuard.Acquire(forgedInstance, forgedManifest.Files.Select(file => file.Path)))
+        {
+            try
+            {
+                forgedPending.Recover(forgedRoot, forgedPack, forgedManifest, use, null);
+                throw new InvalidOperationException("A forged Completed phase was accepted for a partial repair.");
+            }
+            catch (InstallerException ex) when (ex.Code == "TRANSACTION_RECOVERY_REQUIRED") { }
+        }
+        var forgedBackup = Path.Combine(forgedTransaction.Folder, "backup", "files", "0000.bin");
+        Equal(HashBytes(originalFirst), HashFile(forgedBackup), "forged Completed phase cannot delete the moved original backup");
+        Equal(HashBytes(originalSecond), HashFile(Path.Combine(forgedInstance, "mods", "second.jar")),
+            "forged Completed phase leaves the untouched second original intact");
+
+        var sentinelRoot = Path.Combine(tempRoot, "transaction-sentinel-root");
+        var sentinelInstall = await installer.InstallAsync(packPath, packHash, sentinelRoot);
+        True(sentinelInstall.Success, "finished-folder fixture installs");
+        var sentinelInstance = sentinelInstall.GameDirectory!;
+        var sentinelTarget = Path.Combine(sentinelInstance, "mods", "first.jar");
+        File.WriteAllBytes(sentinelTarget, originalFirst);
+        var sentinelPack = PackArchive.Open(packPath, packHash);
+        var sentinelManifest = InstallationManifest.Load(sentinelInstance);
+        var sentinelTransaction = ManagedFileTransaction.BeginRepair(sentinelRoot, sentinelInstance, sentinelPack);
+        await sentinelPack.ExtractOverridesAsync(sentinelTransaction.StagingRoot, CancellationToken.None);
+        sentinelTransaction.AddFile("mods/first.jar", HashBytes(originalFirst), originalFirst.Length, HashBytes(firstBytes));
+        sentinelTransaction.MarkPrepared();
+        sentinelTransaction.EnsureCommitSpace();
+        using (var use = InstanceUseGuard.Acquire(sentinelInstance, sentinelManifest.Files.Select(file => file.Path)))
+        {
+            sentinelTransaction.CommitFiles(use);
+            sentinelTransaction.MarkCompleted();
+            var sentinel = Path.Combine(sentinelTransaction.Folder, "backup", "unexpected-user-data.txt");
+            File.WriteAllText(sentinel, "preserve unrecognized transaction data");
+            try
+            {
+                sentinelTransaction.Recover(sentinelRoot, sentinelPack, sentinelManifest, use, null);
+                throw new InvalidOperationException("Transaction cleanup deleted an unrecognized sentinel.");
+            }
+            catch (InstallerException ex) when (ex.Code == "TRANSACTION_RECOVERY_REQUIRED") { }
+            True(File.Exists(sentinel), "completed transaction refuses cleanup and preserves an unknown sentinel");
+            True(File.Exists(Path.Combine(sentinelTransaction.Folder, "backup", "files", "0000.bin")),
+                "completed transaction preserves originals until its cleanup inventory is trusted");
+        }
+
+        var uninstallPackPath = Path.Combine(AppContext.BaseDirectory,
+            TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var uninstallPack = PackArchive.Open(uninstallPackPath, TestPackRelease.ArtifactSha512);
+        var uninstallRoot = CreatePinnedReleaseFixture(tempRoot, uninstallPack, out var uninstallInstance);
+        var uninstallManagedEntry = uninstallPack.Files.First();
+        var uninstallManaged = SafePath.Resolve(uninstallInstance, uninstallManagedEntry.Path);
+        Directory.CreateDirectory(Path.GetDirectoryName(uninstallManaged)!);
+        File.WriteAllBytes(uninstallManaged, Bytes("pinned managed file before uninstall rollback"));
+        var uninstallManagedBefore = HashFile(uninstallManaged);
+        var uninstallWorld = Path.Combine(uninstallInstance, "saves", "kept", "level.dat");
+        Directory.CreateDirectory(Path.GetDirectoryName(uninstallWorld)!);
+        File.WriteAllText(uninstallWorld, "preserve world through uninstall rollback");
+        var launcherRoot = Path.Combine(tempRoot, "transaction-uninstall-launcher");
+        Directory.CreateDirectory(launcherRoot);
+        var profilePath = Path.Combine(launcherRoot, "launcher_profiles.json");
+        var profile = JsonNode.Parse(LauncherProfile.BuildFixtureCandidate("{\"profiles\":{}}", uninstallInstance,
+            uninstallPack.MinecraftVersion, uninstallPack.FabricLoaderVersion))!.AsObject();
+        profile["profiles"]!.AsObject()[LauncherProfile.ProfileKey]!.AsObject().Remove("minepackInstallerId");
+        File.WriteAllText(profilePath, profile.ToJsonString());
+        var profileBefore = HashFile(profilePath);
+        var markerBefore = HashFile(Path.Combine(uninstallRoot, ".minepack-active.json"));
+        var manifestBefore = HashFile(Path.Combine(uninstallInstance, InstallationManifest.FileName));
+        FileStream? blockerStream = null;
+        using (var launcher = new FabricLauncherService(launcherRoot, ensureLauncherClosed: static () => { }))
+        using (var blocker = ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "before-manifest-remove")
+                   {
+                       var manifestPath = Path.Combine(uninstallInstance, InstallationManifest.FileName);
+                       blockerStream = new FileStream(manifestPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                   }
+               }))
+        {
+            var failedUninstall = await installer.UninstallAsync(uninstallRoot, uninstallInstance,
+                uninstallPackPath, uninstallPack.ArchiveSha512, launcher);
+            blockerStream?.Dispose();
+            True(!failedUninstall.Success && failedUninstall.Code == "UNINSTALL_FAILED",
+                $"manifest finalization failure reports uninstall failure after rollback (success={failedUninstall.Success}, code={failedUninstall.Code})");
+        }
+        Equal(uninstallManagedBefore, HashFile(uninstallManaged), "uninstall rollback restores managed file bytes");
+        Equal(manifestBefore, HashFile(Path.Combine(uninstallInstance, InstallationManifest.FileName)),
+            "uninstall rollback restores the manifest before returning");
+        Equal(markerBefore, HashFile(Path.Combine(uninstallRoot, ".minepack-active.json")),
+            "uninstall rollback restores its active marker");
+        Equal(profileBefore, HashFile(profilePath), "uninstall rollback restores the markerless Launcher profile bytes");
+        Equal("preserve world through uninstall rollback", File.ReadAllText(uninstallWorld),
+            "uninstall rollback preserves the world");
+
+        using (var launcher = new FabricLauncherService(launcherRoot, ensureLauncherClosed: static () => { }))
+        {
+            var completedMarkerlessUninstall = await installer.UninstallAsync(uninstallRoot, uninstallInstance,
+                uninstallPackPath, uninstallPack.ArchiveSha512, launcher);
+            True(completedMarkerlessUninstall.Success,
+                "markerless uninstall finalizes against the trusted manifest snapshot");
+        }
+        True(!File.Exists(Path.Combine(uninstallInstance, InstallationManifest.FileName)) &&
+             !File.Exists(Path.Combine(uninstallRoot, ".minepack-active.json")),
+            "completed markerless uninstall removes only its manifest and active marker");
+        using (var profileDocument = JsonDocument.Parse(File.ReadAllText(profilePath)))
+            True(!profileDocument.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
+                "completed markerless uninstall removes its owned Launcher profile");
+        True(File.Exists(uninstallWorld), "completed uninstall preserves worlds");
+
+        await VerifyCreateOnlyRollbackAsync(tempRoot);
+        await VerifyProfileRemovalFailureCasesAsync(tempRoot, uninstallPackPath, uninstallPack, uninstallManagedEntry, installer);
+
+        var orphanRoot = Path.Combine(tempRoot, "transaction-orphan-root");
+        var orphanFolder = Path.Combine(orphanRoot, "instances", "orphan.minepack-transaction");
+        Directory.CreateDirectory(orphanFolder);
+        try
+        {
+            ManagedFileTransaction.EnsureNoPendingUnderRoot(orphanRoot);
+            throw new InvalidOperationException("A transaction sibling without its instance directory was ignored.");
+        }
+        catch (InstallerException ex) when (ex.Code == "TRANSACTION_RECOVERY_REQUIRED") { }
+        True(Directory.Exists(orphanFolder), "root discovery refuses an orphaned transaction folder without deleting it");
+        await VerifyRepairPreparationAtomicityAsync(tempRoot);
+        Pass("repair transaction restores on late failure and process crash, and refuses unproven cleanup");
+    }
+
+    private static async Task VerifyRepairPreparationAtomicityAsync(string tempRoot)
+    {
+        var firstUrl = "https://cdn.modrinth.com/data/fixture/version/first.jar";
+        var lastUrl = "https://cdn.modrinth.com/data/fixture/version/last.jar";
+        var firstBytes = Bytes("preparation first indexed file");
+        var lastBytes = Bytes("preparation last indexed file");
+        var packPath = Path.Combine(tempRoot, "transaction-prepare-pack.mrpack");
+        CreatePack(packPath, "0.3.0", [
+            new TestFile("mods/a.jar", firstBytes, Url: firstUrl),
+            new TestFile("mods/z.jar", lastBytes, Url: lastUrl)
+        ]);
+        var packHash = HashFile(packPath);
+        var failLast = false;
+        using var installer = new InstallService(new DownloadEngine(new DelegateHandler(request =>
+        {
+            if (request.RequestUri?.AbsoluteUri == lastUrl && failLast)
+                return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+            var bytes = request.RequestUri?.AbsoluteUri == firstUrl ? firstBytes : lastBytes;
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
+        })));
+        var installRoot = Path.Combine(tempRoot, "transaction-prepare-root");
+        var installed = await installer.InstallAsync(packPath, packHash, installRoot);
+        True(installed.Success, "prepare-failure fixture installs both indexed files");
+        var instance = installed.GameDirectory!;
+        var firstPath = Path.Combine(instance, "mods", "a.jar");
+        var lastPath = Path.Combine(instance, "mods", "z.jar");
+        var firstOriginal = Bytes("corrupt first before prepare");
+        var lastOriginal = Bytes("corrupt last before prepare");
+        File.WriteAllBytes(firstPath, firstOriginal);
+        File.WriteAllBytes(lastPath, lastOriginal);
+        var manifestPath = Path.Combine(instance, InstallationManifest.FileName);
+        var markerPath = Path.Combine(installRoot, ".minepack-active.json");
+        var launcherRoot = Path.Combine(tempRoot, "transaction-prepare-launcher");
+        Directory.CreateDirectory(launcherRoot);
+        var profilePath = Path.Combine(launcherRoot, "launcher_profiles.json");
+        File.WriteAllText(profilePath, "{\"profiles\":{\"fixture\":{\"name\":\"Unrelated\"}}}");
+        using var launcher = new FabricLauncherService(launcherRoot, ensureLauncherClosed: static () => { });
+
+        var before = Snapshot();
+        using (var canceled = new CancellationTokenSource())
+        {
+            canceled.Cancel();
+            var result = await installer.RepairAsync(instance, packPath, packHash,
+                cancellationToken: canceled.Token, launcher: launcher);
+            True(!result.Success && result.Code == "CANCELLED", "cancellation during preparation is reported");
+        }
+        Equal(before, Snapshot(), "cancelled repair leaves instance, manifest, active marker, and Launcher profile byte-identical");
+
+        using (var canceledDuringPrepare = new CancellationTokenSource())
+        {
+            var firstReplacementPrepared = false;
+            var progress = new DelegateProgress<InstallProgress>(item =>
+            {
+                if (item.Stage != "prepare" || item.CompletedFiles != 1) return;
+                firstReplacementPrepared = true;
+                canceledDuringPrepare.Cancel();
+            });
+            var result = await installer.RepairAsync(instance, packPath, packHash, progress,
+                canceledDuringPrepare.Token, launcher);
+            True(firstReplacementPrepared && !result.Success && result.Code == "CANCELLED",
+                "cancellation after the first prepared replacement stops before the next one");
+        }
+        Equal(before, Snapshot(), "mid-preparation cancellation leaves instance, profile, marker, and manifest unchanged");
+        True(!Directory.Exists(instance + ".minepack-transaction"),
+            "mid-preparation cancellation removes only its empty transaction staging");
+
+        failLast = true;
+        var failed = await installer.RepairAsync(instance, packPath, packHash, launcher: launcher);
+        True(!failed.Success && failed.Code == "DOWNLOAD_HTTP", "last replacement download failure aborts preparation");
+        Equal(before, Snapshot(), "last download failure leaves instance, manifest, active marker, and Launcher profile byte-identical");
+
+        string Snapshot() => string.Join('|', new[] { firstPath, lastPath, manifestPath, markerPath, profilePath }
+            .Select(HashFile));
+    }
+
+    private static async Task VerifyCreateOnlyRollbackAsync(string tempRoot)
+    {
+        var packPath = Path.Combine(AppContext.BaseDirectory,
+            TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        var pack = PackArchive.Open(packPath, TestPackRelease.ArtifactSha512);
+        var root = CreateReleaseFixture(tempRoot, pack, legacy: false, out var instance);
+        var manifest = InstallationManifest.Load(instance);
+        var staging = Path.Combine(tempRoot, "transaction-create-only-stage");
+        Directory.CreateDirectory(staging);
+        await pack.ExtractOverridesAsync(staging, CancellationToken.None);
+        var defaults = InitialConfiguration.Create(pack, staging);
+        InitialConfiguration.WriteToRoot(staging, defaults);
+        var createdDefault = defaults.First();
+        var target = SafePath.Resolve(instance, createdDefault.Path);
+        var world = Path.Combine(instance, "saves", "untouched", "level.dat");
+        Directory.CreateDirectory(Path.GetDirectoryName(world)!);
+        File.WriteAllText(world, "preserve world while rolling back a created default");
+        var manifestHash = HashFile(Path.Combine(instance, InstallationManifest.FileName));
+        var markerHash = HashFile(Path.Combine(root, ".minepack-active.json"));
+
+        var transaction = ManagedFileTransaction.BeginRepair(root, instance, pack);
+        InitialConfiguration.WriteToRoot(transaction.StagingRoot, defaults);
+        var staged = SafePath.Resolve(transaction.StagingRoot, createdDefault.Path);
+        transaction.AddFile(createdDefault.Path, null, 0, HashFile(staged), createOnly: true);
+        transaction.MarkPrepared();
+        transaction.EnsureCommitSpace();
+        var protectedPaths = manifest.Files.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path))
+            .Select(file => file.Path).Concat(defaults.Select(file => file.Path));
+        using (var use = InstanceUseGuard.Acquire(instance, protectedPaths))
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "after-replacement-move-0-before-journal")
+                       throw new IOException("smoke create-only interruption");
+               }))
+        {
+            try { transaction.CommitFiles(use); }
+            catch (IOException) { }
+            transaction.Rollback(root, use, null, pack, manifest);
+        }
+
+        True(!File.Exists(target), "repair rollback removes only its newly created default");
+        Equal(manifestHash, HashFile(Path.Combine(instance, InstallationManifest.FileName)),
+            "create-only rollback leaves the validated manifest unchanged");
+        Equal(markerHash, HashFile(Path.Combine(root, ".minepack-active.json")),
+            "create-only rollback leaves the active marker unchanged");
+        Equal("preserve world while rolling back a created default", File.ReadAllText(world),
+            "create-only rollback preserves worlds");
+        True(!Directory.Exists(transaction.Folder), "successful create-only rollback cleans its transaction folder");
+        Pass("create-only default rollback removes only the file created by the failed repair");
+    }
+
+    private static async Task VerifyProfileRemovalFailureCasesAsync(string tempRoot, string packPath,
+        PackArchive pack, PackFile managedEntry, InstallService installer)
+    {
+        var managedBytes = Bytes("transaction profile receipt managed file");
+
+        var prepareRoot = CreatePinnedReleaseFixture(tempRoot, pack, out var prepareInstance);
+        var prepareManaged = SafePath.Resolve(prepareInstance, managedEntry.Path);
+        Directory.CreateDirectory(Path.GetDirectoryName(prepareManaged)!);
+        File.WriteAllBytes(prepareManaged, managedBytes);
+        var prepareLauncherRoot = Path.Combine(tempRoot, "transaction-profile-prepare-launcher");
+        Directory.CreateDirectory(prepareLauncherRoot);
+        var prepareProfilePath = Path.Combine(prepareLauncherRoot, "launcher_profiles.json");
+        WriteMarkerlessFixtureProfile(prepareProfilePath, prepareInstance, pack);
+        var prepareProfileHash = HashFile(prepareProfilePath);
+        var prepareManifestHash = HashFile(Path.Combine(prepareInstance, InstallationManifest.FileName));
+        var prepareMarkerHash = HashFile(Path.Combine(prepareRoot, ".minepack-active.json"));
+        using (var launcher = new FabricLauncherService(prepareLauncherRoot, ensureLauncherClosed: static () => { }))
+        using (var checkpoints = ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "before-profile-backup") throw new IOException("smoke profile backup refusal");
+               }))
+        {
+            var result = await installer.UninstallAsync(prepareRoot, prepareInstance, packPath, pack.ArchiveSha512, launcher);
+            True(!result.Success && result.Code == "UNINSTALL_FAILED",
+                "profile receipt preparation failure rolls back before managed-file commit");
+        }
+        Equal(HashBytes(managedBytes), HashFile(prepareManaged), "profile preparation failure keeps managed files unchanged");
+        Equal(prepareProfileHash, HashFile(prepareProfilePath), "profile preparation failure keeps Launcher JSON unchanged");
+        Equal(prepareManifestHash, HashFile(Path.Combine(prepareInstance, InstallationManifest.FileName)),
+            "profile preparation failure keeps the manifest unchanged");
+        Equal(prepareMarkerHash, HashFile(Path.Combine(prepareRoot, ".minepack-active.json")),
+            "profile preparation failure keeps the active marker unchanged");
+        True(!Directory.Exists(prepareInstance + ".minepack-transaction"),
+            "preparation rollback accepts its intentionally incomplete removal entry set");
+        using (var launcher = new FabricLauncherService(prepareLauncherRoot, ensureLauncherClosed: static () => { }))
+        {
+            var retry = await installer.UninstallAsync(prepareRoot, prepareInstance, packPath, pack.ArchiveSha512, launcher);
+            True(retry.Success, "uninstall can retry after profile preparation refusal is rolled back");
+        }
+
+        var writeRoot = CreatePinnedReleaseFixture(tempRoot, pack, out var writeInstance);
+        var writeManaged = SafePath.Resolve(writeInstance, managedEntry.Path);
+        Directory.CreateDirectory(Path.GetDirectoryName(writeManaged)!);
+        File.WriteAllBytes(writeManaged, managedBytes);
+        var writeLauncherRoot = Path.Combine(tempRoot, "transaction-profile-write-launcher");
+        Directory.CreateDirectory(writeLauncherRoot);
+        var writeProfilePath = Path.Combine(writeLauncherRoot, "launcher_profiles.json");
+        WriteMarkerlessFixtureProfile(writeProfilePath, writeInstance, pack);
+        var writeProfileHash = HashFile(writeProfilePath);
+        var writeManifestHash = HashFile(Path.Combine(writeInstance, InstallationManifest.FileName));
+        var writeMarkerHash = HashFile(Path.Combine(writeRoot, ".minepack-active.json"));
+        FileStream? profileBlocker = null;
+        using (var launcher = new FabricLauncherService(writeLauncherRoot, ensureLauncherClosed: static () => { }))
+        using (var checkpoints = ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "before-profile-replace")
+                       profileBlocker = new FileStream(writeProfilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+               }))
+        {
+            var result = await installer.UninstallAsync(writeRoot, writeInstance, packPath, pack.ArchiveSha512, launcher);
+            profileBlocker?.Dispose();
+            True(!result.Success && result.Code == "UNINSTALL_FAILED",
+                "profile replacement sharing denial is reported after file rollback");
+        }
+        Equal(HashBytes(managedBytes), HashFile(writeManaged), "profile-write refusal restores quarantined managed files");
+        Equal(writeProfileHash, HashFile(writeProfilePath), "profile-write refusal leaves Launcher JSON byte-identical");
+        Equal(writeManifestHash, HashFile(Path.Combine(writeInstance, InstallationManifest.FileName)),
+            "profile-write refusal preserves the manifest");
+        Equal(writeMarkerHash, HashFile(Path.Combine(writeRoot, ".minepack-active.json")),
+            "profile-write refusal preserves the active marker");
+        True(!Directory.Exists(writeInstance + ".minepack-transaction"),
+            "profile-write refusal completes its rollback without pending recovery");
+
+        var externalRoot = CreatePinnedReleaseFixture(tempRoot, pack, out var externalInstance);
+        var externalManaged = SafePath.Resolve(externalInstance, managedEntry.Path);
+        Directory.CreateDirectory(Path.GetDirectoryName(externalManaged)!);
+        File.WriteAllBytes(externalManaged, managedBytes);
+        var externalLauncherRoot = Path.Combine(tempRoot, "transaction-profile-external-launcher");
+        Directory.CreateDirectory(externalLauncherRoot);
+        var externalProfilePath = Path.Combine(externalLauncherRoot, "launcher_profiles.json");
+        WriteMarkerlessFixtureProfile(externalProfilePath, externalInstance, pack);
+        var externalManifestHash = HashFile(Path.Combine(externalInstance, InstallationManifest.FileName));
+        var externalMarkerHash = HashFile(Path.Combine(externalRoot, ".minepack-active.json"));
+        string? externalProfile = null;
+        using (var launcher = new FabricLauncherService(externalLauncherRoot, ensureLauncherClosed: static () => { }))
+        using (var checkpoints = ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name != "before-profile-read" || externalProfile is not null) return;
+                   var json = JsonNode.Parse(File.ReadAllText(externalProfilePath))!.AsObject();
+                   json["externalChange"] = "preserve this update";
+                   externalProfile = json.ToJsonString();
+                   File.WriteAllText(externalProfilePath, externalProfile);
+               }))
+        {
+            var result = await installer.UninstallAsync(externalRoot, externalInstance, packPath, pack.ArchiveSha512, launcher);
+            True(!result.Success && result.Code == "TRANSACTION_RECOVERY_REQUIRED",
+                "external Launcher JSON change is refused with a retained recovery transaction");
+        }
+        Equal(externalProfile!, File.ReadAllText(externalProfilePath),
+            "rollback never overwrites Launcher JSON changed after the receipt was prepared");
+        Equal(HashBytes(managedBytes), HashFile(externalManaged),
+            "external profile change still restores quarantined managed files");
+        Equal(externalManifestHash, HashFile(Path.Combine(externalInstance, InstallationManifest.FileName)),
+            "external profile change restores the manifest");
+        Equal(externalMarkerHash, HashFile(Path.Combine(externalRoot, ".minepack-active.json")),
+            "external profile change restores the active marker");
+        True(Directory.Exists(externalInstance + ".minepack-transaction"),
+            "external profile change retains the receipt and recovery journal");
+        using (var launcher = new FabricLauncherService(externalLauncherRoot, ensureLauncherClosed: static () => { }))
+        {
+            var refusedRetry = await installer.UninstallAsync(externalRoot, externalInstance, packPath, pack.ArchiveSha512, launcher);
+            True(!refusedRetry.Success && refusedRetry.Code == "TRANSACTION_RECOVERY_REQUIRED",
+                "a later mutation refuses to proceed over the unresolved external profile change");
+        }
+        Equal(externalProfile!, File.ReadAllText(externalProfilePath),
+            "pending recovery keeps the externally changed profile untouched on retry");
+        Pass("profile receipt rollback preserves external JSON changes and fails closed");
+
+        static void WriteMarkerlessFixtureProfile(string path, string instance, PackArchive archive)
+        {
+            var profile = JsonNode.Parse(LauncherProfile.BuildFixtureCandidate("{\"profiles\":{}}", instance,
+                archive.MinecraftVersion, archive.FabricLoaderVersion))!.AsObject();
+            profile["profiles"]!.AsObject()[LauncherProfile.ProfileKey]!.AsObject().Remove("minepackInstallerId");
+            File.WriteAllText(path, profile.ToJsonString());
+        }
     }
 
     private static async Task VerifyArchiveMutationRejectedAsync(string tempRoot)
@@ -730,14 +3381,18 @@ internal static class Smoke
         })));
     }
 
-    private static async Task<bool> VerifyActualReleaseAsync(string tempRoot, string? cachedRoot = null)
+    private static async Task<bool> VerifyActualReleaseAsync(string tempRoot, string? cachedRoot = null,
+        bool requireVanillaSnapshot = false)
     {
         var packPath = Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var installRoot = Path.Combine(tempRoot, "live-pack-install");
         var vanilla = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
         var vanillaBefore = CaptureVanillaData(vanilla);
         if (vanillaBefore is null)
+        {
             Console.WriteLine("NOT RUN: vanilla mods/config/saves could not be read for a before/after comparison.");
+            if (requireVanillaSnapshot) return false;
+        }
         using var installer = CachedInstaller(packPath, TestPackRelease.ArtifactSha512, cachedRoot);
         var install = await installer.InstallAsync(packPath, TestPackRelease.ArtifactSha512, installRoot);
         if (!install.Success)
@@ -748,7 +3403,15 @@ internal static class Smoke
 
         var instance = install.GameDirectory ?? throw new InvalidOperationException("Actual release install did not return an instance directory.");
         var manifest = InstallationManifest.Load(instance);
-        True(manifest.Files.Count == 46 && new[]
+        var pack = PackArchive.Open(packPath, TestPackRelease.ArtifactSha512);
+        var expectedManagedPaths = ExpectedManagedPackPaths(pack);
+        True(manifest.Files.Select(file => file.Path).ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(expectedManagedPaths),
+            "actual Vanilla Plus manifest follows the pinned initial-config ownership policy");
+        var irisPath = Path.Combine(instance, "config", "iris.properties");
+        var hasInitialIris = pack.Overrides.Any(file => file.Path == "config/iris.properties");
+        True(File.Exists(irisPath) == hasInitialIris && !manifest.Files.Any(file => file.Path == "config/iris.properties"),
+            "initial Iris settings exist outside the managed manifest");
+        True(new[]
         {
             "SubtleEffects-fabric-26.2-1.14.3.jar",
             "fzzy_config-0.7.6+26.2.jar", "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar"
@@ -782,10 +3445,18 @@ internal static class Smoke
         }
         File.WriteAllText(optionsPath, "resourcePacks:[\"vanilla\"]\n");
         File.WriteAllText(bbeConfigPath, "{}");
+        if (hasInitialIris) File.WriteAllText(irisPath, "player Iris settings\n");
         var repair = await installer.RepairAsync(instance, packPath, TestPackRelease.ArtifactSha512);
-        True(repair.Success && File.ReadAllText(optionsPath) == "resourcePacks:[\"vanilla\"]\n" &&
-             File.ReadAllText(bbeConfigPath) == "{}", "repair preserves player settings");
+        if (!repair.Success)
+        {
+            Console.WriteLine($"NOT RUN: actual release repair did not complete ({repair.Code}). {repair.Message}");
+            return false;
+        }
+        True(File.ReadAllText(optionsPath) == "resourcePacks:[\"vanilla\"]\n" && File.ReadAllText(bbeConfigPath) == "{}" &&
+             (!hasInitialIris || File.ReadAllText(irisPath) == "player Iris settings\n"),
+            "repair preserves player settings and the unmanaged Iris config");
         var vanillaAfter = CaptureVanillaData(vanilla);
+        var vanillaComparisonPassed = vanillaBefore is not null && vanillaAfter is not null && vanillaBefore == vanillaAfter;
         if (vanillaBefore is not null && vanillaAfter is not null)
             Equal(vanillaBefore, vanillaAfter, "vanilla mods/config/saves remain unchanged");
         else if (vanillaBefore is not null || vanillaAfter is not null)
@@ -794,19 +3465,22 @@ internal static class Smoke
             Console.WriteLine("NOT RUN: vanilla mods/config/saves before/after comparison unavailable due filesystem access restrictions.");
         Pass("actual pinned release downloads, verifies, and installs in a temporary isolated directory");
 
-        var uninstall = await installer.UninstallAsync(instance, packPath, TestPackRelease.ArtifactSha512);
+        var uninstall = await installer.UninstallAsync(installRoot, instance, packPath, TestPackRelease.ArtifactSha512);
         if (!uninstall.Success)
         {
             Console.WriteLine($"NOT RUN: actual release cleanup did not complete ({uninstall.Code}). {uninstall.Message}");
             return false;
         }
         True(File.ReadAllText(optionsPath) == "resourcePacks:[\"vanilla\"]\n" &&
-             File.ReadAllText(bbeConfigPath) == "{}", "uninstall preserves player settings");
+             File.ReadAllText(bbeConfigPath) == "{}" &&
+             (!hasInitialIris || File.ReadAllText(irisPath) == "player Iris settings\n"),
+            "uninstall preserves player settings and the unmanaged Iris config");
         Pass("actual pinned release temporary install uninstalls cleanly");
-        return true;
+        return !requireVanillaSnapshot || vanillaComparisonPassed;
     }
 
-    private static async Task<bool> VerifyActualVanilla2PlusAsync(string tempRoot, string? cachedRoot = null)
+    private static async Task<bool> VerifyActualVanilla2PlusAsync(string tempRoot, string? cachedRoot = null,
+        bool requireVanillaSnapshot = false)
     {
         var packPath = Path.Combine(AppContext.BaseDirectory,
             Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -814,7 +3488,10 @@ internal static class Smoke
         var vanilla = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
         var vanillaBefore = CaptureVanillaData(vanilla);
         if (vanillaBefore is null)
+        {
             Console.WriteLine("NOT RUN: vanilla mods/config/saves could not be read for a before/after comparison.");
+            if (requireVanillaSnapshot) return false;
+        }
         using var installer = CachedInstaller(packPath, Vanilla2PlusRelease.ArtifactSha512, cachedRoot);
         var install = await installer.InstallAsync(packPath, Vanilla2PlusRelease.ArtifactSha512, installRoot);
         if (!install.Success)
@@ -825,10 +3502,16 @@ internal static class Smoke
 
         var instance = install.GameDirectory ?? throw new InvalidOperationException("Vanilla 2 Plus install did not return an instance directory.");
         var manifest = InstallationManifest.Load(instance);
+        var pack = PackArchive.Open(packPath, Vanilla2PlusRelease.ArtifactSha512);
+        var expectedManagedPaths = ExpectedManagedPackPaths(pack);
         Equal(Vanilla2PlusRelease.PackVersion, manifest.PackVersion, "installed Vanilla 2 Plus manifest version");
-        True(manifest.Files.Count == 79 && manifest.Files.Any(file => file.Path == "config/iris.properties") &&
+        True(manifest.Files.Select(file => file.Path).ToHashSet(StringComparer.OrdinalIgnoreCase).SetEquals(expectedManagedPaths) &&
+             !manifest.Files.Any(file => file.Path == "config/iris.properties") &&
              YungsJarNames.Concat(NewForkJarNames).All(name => manifest.Files.Any(file => file.Path == "mods/" + name)),
-            "Frontier manifest records 67 downloads, nine embedded JARs, two embedded ZIPs, and the Iris config override");
+            "Frontier manifest records pinned downloads and embedded files while leaving Iris unmanaged");
+        var irisPath = Path.Combine(instance, "config", "iris.properties");
+        var hasInitialIris = pack.Overrides.Any(file => file.Path == "config/iris.properties");
+        True(File.Exists(irisPath) == hasInitialIris, "initial Frontier Iris config is present outside managed files");
         foreach (var file in manifest.Files)
         {
             var path = Path.Combine(instance, file.Path.Replace('/', Path.DirectorySeparatorChar));
@@ -882,32 +3565,50 @@ internal static class Smoke
         File.WriteAllText(worldPath, "test world stays unmanaged");
         File.WriteAllText(optionsPath, "player options\n");
         File.WriteAllText(bbeConfigPath, "player BBE settings\n");
+        if (hasInitialIris) File.WriteAllText(irisPath, "player Iris settings\n");
         File.WriteAllText(guardConfigPath, "player guard settings\n");
         File.WriteAllText(voxyConfigPath, "player Voxy WorldGen settings\n");
         var corruptMacaw = Path.Combine(instance, "mods", "mcw-stairs-1.0.2-mc26.2fabric.jar");
         File.WriteAllText(corruptMacaw, "corrupt managed mod");
         var repair = await installer.RepairAsync(instance, packPath, Vanilla2PlusRelease.ArtifactSha512);
-        True(repair.Success && File.ReadAllText(optionsPath) == "player options\n" &&
+        if (!repair.Success)
+        {
+            Console.WriteLine($"NOT RUN: Vanilla 2 Plus repair did not complete ({repair.Code}). {repair.Message}");
+            return false;
+        }
+        True(File.ReadAllText(optionsPath) == "player options\n" &&
              File.ReadAllText(bbeConfigPath) == "player BBE settings\n" &&
              File.ReadAllText(guardConfigPath) == "player guard settings\n" &&
-             File.ReadAllText(voxyConfigPath) == "player Voxy WorldGen settings\n" && File.Exists(worldPath),
+             File.ReadAllText(voxyConfigPath) == "player Voxy WorldGen settings\n" &&
+             (!hasInitialIris || File.ReadAllText(irisPath) == "player Iris settings\n") && File.Exists(worldPath),
             "Vanilla 2 Plus Repair restores its pinned mod and preserves user settings and world");
         var vanillaAfter = CaptureVanillaData(vanilla);
+        var vanillaComparisonPassed = vanillaBefore is not null && vanillaAfter is not null && vanillaBefore == vanillaAfter;
         if (vanillaBefore is not null && vanillaAfter is not null)
             Equal(vanillaBefore, vanillaAfter, "Vanilla 2 Plus leaves vanilla mods/config/saves unchanged");
         else if (vanillaBefore is not null || vanillaAfter is not null)
             Console.WriteLine("NOT RUN: vanilla mods/config/saves comparison was incomplete because access changed.");
 
-        var uninstall = await installer.UninstallAsync(instance, packPath, Vanilla2PlusRelease.ArtifactSha512);
-        True(uninstall.Success && File.Exists(worldPath) && File.ReadAllText(optionsPath) == "player options\n" &&
+        var uninstall = await installer.UninstallAsync(installRoot, instance, packPath, Vanilla2PlusRelease.ArtifactSha512);
+        if (!uninstall.Success)
+        {
+            Console.WriteLine($"NOT RUN: Vanilla 2 Plus uninstall did not complete ({uninstall.Code}). {uninstall.Message}");
+            return false;
+        }
+        True(File.Exists(worldPath) && File.ReadAllText(optionsPath) == "player options\n" &&
              File.ReadAllText(bbeConfigPath) == "player BBE settings\n" &&
              File.ReadAllText(guardConfigPath) == "player guard settings\n" &&
-             File.ReadAllText(voxyConfigPath) == "player Voxy WorldGen settings\n",
+             File.ReadAllText(voxyConfigPath) == "player Voxy WorldGen settings\n" &&
+             (!hasInitialIris || File.ReadAllText(irisPath) == "player Iris settings\n"),
             "Vanilla 2 Plus Uninstall removes managed files and preserves user data");
         True(installer.GetActiveInstancePath(installRoot) is null, "Vanilla 2 Plus Uninstall clears the active marker");
         Pass("Vanilla 2 Plus actual downloads, SHA-512 checks, install, Repair, and Uninstall");
-        return true;
+        return !requireVanillaSnapshot || vanillaComparisonPassed;
     }
+
+    private static HashSet<string> ExpectedManagedPackPaths(PackArchive pack) => pack.Files.Select(file => file.Path)
+        .Concat(pack.Overrides.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path)).Select(file => file.Path))
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
     private static string? CaptureVanillaData(string vanillaRoot)
     {
@@ -934,7 +3635,8 @@ internal static class Smoke
     private static void VerifyLauncherFixture(string tempRoot)
     {
         const string input = "{\"settings\":{\"custom\":true},\"profiles\":{\"vanilla\":{\"name\":\"Existing\",\"customField\":17}}}";
-        var candidate = LauncherProfile.BuildFixtureCandidate(input, Path.Combine(Path.GetTempPath(), "minepack-game"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
+        var candidateGameDir = Path.Combine(Path.GetTempPath(), "minepack-game");
+        var candidate = LauncherProfile.BuildFixtureCandidate(input, candidateGameDir, TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
         using var added = JsonDocument.Parse(candidate);
         var root = added.RootElement;
         True(root.GetProperty("settings").GetProperty("custom").GetBoolean(), "unknown root Launcher fields are preserved");
@@ -943,7 +3645,7 @@ internal static class Smoke
         var own = root.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey);
         Equal("MinePack", own.GetProperty("name").GetString(), "new Launcher profile has MinePack display name");
         Equal(Path.GetFullPath(Path.Combine(Path.GetTempPath(), "minepack-game")), own.GetProperty("gameDir").GetString(), "fixture profile gameDir");
-        var removed = LauncherProfile.RemoveFixtureCandidate(candidate);
+        var removed = LauncherProfile.RemoveOwnedProfile(candidate, candidateGameDir);
         using var removedJson = JsonDocument.Parse(removed);
         True(!removedJson.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _), "only the owned Launcher fixture profile is removed");
         True(removedJson.RootElement.GetProperty("profiles").TryGetProperty("vanilla", out _), "other Launcher profile remains");
@@ -995,7 +3697,7 @@ internal static class Smoke
                 FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
                 PackArchiveSha512 = hash
             }.SaveAtomic(instance);
-            using var removedPrevious = JsonDocument.Parse(LauncherProfile.RemoveFixtureCandidate(ProfileWithoutMarker(instance)));
+            using var removedPrevious = JsonDocument.Parse(LauncherProfile.RemoveOwnedProfile(ProfileWithoutMarker(instance), instance));
             True(!removedPrevious.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
                 $"previous {version} profile remains recognized for uninstall");
         }
@@ -1031,7 +3733,10 @@ internal static class Smoke
             catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
             try
             {
-                _ = LauncherProfile.RemoveFixtureCandidate(profileJson);
+                using var profile = JsonDocument.Parse(profileJson);
+                var gameDirectory = profile.RootElement.GetProperty("profiles")
+                    .GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString()!;
+                _ = LauncherProfile.RemoveOwnedProfile(profileJson, gameDirectory);
                 throw new InvalidOperationException($"Expected {label} profile rejection during uninstall.");
             }
             catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_CONFLICT") { }
@@ -1053,7 +3758,7 @@ internal static class Smoke
         using (var parsed = JsonDocument.Parse(newNamed))
             Equal("MinePack", parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
                 .GetProperty("name").GetString(), "new markerless name is recognized with pinned manifest");
-        using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveFixtureCandidate(markerless)))
+        using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveOwnedProfile(markerless, oldInstance)))
             True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
                 "markerless MinePack profile can be removed while its manifest exists");
 
@@ -1084,7 +3789,7 @@ internal static class Smoke
             True(parsed.RootElement.GetProperty("settings").GetProperty("custom").GetBoolean(),
                 "reinstall profile restore preserves root settings");
         }
-        var removedReinstall = LauncherProfile.RemoveFixtureCandidate(markerlessReinstall, reinstallInstance);
+        var removedReinstall = LauncherProfile.RemoveOwnedProfile(markerlessReinstall, reinstallInstance);
         using (var parsed = JsonDocument.Parse(removedReinstall))
         {
             True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
@@ -1095,7 +3800,7 @@ internal static class Smoke
                 "reinstall profile uninstall preserves root settings");
         }
         Equal(markerlessReinstall,
-            LauncherProfile.RemoveFixtureCandidate(markerlessReinstall, Path.Combine(tempRoot, "another-instance")),
+            LauncherProfile.RemoveOwnedProfile(markerlessReinstall, Path.Combine(tempRoot, "another-instance")),
             "reinstall profile is preserved when expected gameDir differs");
 
         foreach (var (suffix, label) in new[]
@@ -1208,7 +3913,7 @@ internal static class Smoke
         }.SaveAtomic(guardVanilla2Plus16Instance);
         _ = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(guardVanilla2Plus16Instance, "MinePack"),
             Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
-        Equal(markerless, LauncherProfile.RemoveFixtureCandidate(markerless, Path.Combine(tempRoot, "new-instance")),
+        Equal(markerless, LauncherProfile.RemoveOwnedProfile(markerless, Path.Combine(tempRoot, "new-instance")),
             "uninstalling a different instance preserves the current MinePack profile");
         var vanilla2PlusInstance = Path.Combine(tempRoot, "owned-instance", "instances",
             "test-pack-" + Vanilla2PlusRelease.PackVersion + "-" + Vanilla2PlusRelease.ArtifactSha512[..12].ToLowerInvariant());
@@ -1225,7 +3930,7 @@ internal static class Smoke
             Equal(Path.GetFullPath(Path.Combine(tempRoot, "new-instance")),
                 parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString(),
                 "markerless Launcher recognizes the exact Vanilla 2 Plus manifest");
-        using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveFixtureCandidate(ProfileWithoutMarker(vanilla2PlusInstance, "MinePack"), vanilla2PlusInstance)))
+        using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveOwnedProfile(ProfileWithoutMarker(vanilla2PlusInstance, "MinePack"), vanilla2PlusInstance)))
             True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
                 "Vanilla 2 Plus profile can be removed only while its own manifest exists");
         try
@@ -1248,7 +3953,18 @@ internal static class Smoke
     private static async Task VerifyAutomaticFabricProfileAsync(string tempRoot)
     {
         var launcherRoot = Path.Combine(tempRoot, "launcher-fixture");
-        var gameDirectory = Path.Combine(tempRoot, "isolated-game");
+        var installRoot = Path.Combine(tempRoot, "fabric-log-root");
+        var gameDirectory = Path.Combine(installRoot, "instances", "fixture-instance");
+        Directory.CreateDirectory(gameDirectory);
+        new InstallationManifest
+        {
+            PackVersion = "0.1.0",
+            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+            PackArchiveSha512 = new string('A', 128),
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = []
+        }.SaveAtomic(gameDirectory);
         Directory.CreateDirectory(launcherRoot);
         var profilesPath = Path.Combine(launcherRoot, "launcher_profiles.json");
         const string input = "{\"profiles\":{\"vanilla\":{\"name\":\"Original\",\"customField\":17}},\"settings\":{\"custom\":true}}";
@@ -1262,14 +3978,24 @@ internal static class Smoke
         using var service = new FabricLauncherService(launcherRoot,
             new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(archive) }),
             profileHash, HashBytes(hydratedJar), hydratedJar.Length, ensureLauncherClosed: static () => { });
-        await service.ConfigureAsync(gameDirectory);
-        await service.ConfigureAsync(gameDirectory);
+        var operationLog = new OperationLog("fabric_configure", "9.9.9", installRoot, "0.1.0",
+            TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, new string('A', 128));
+        await service.ConfigureAsync(gameDirectory, operationLog: operationLog);
+        await service.ConfigureAsync(gameDirectory, operationLog: operationLog);
         var version = Path.Combine(launcherRoot, "versions", versionId);
         True(File.Exists(Path.Combine(version, versionId + ".json")), "Fabric version JSON installed");
         True(File.Exists(Path.Combine(version, versionId + ".jar")), "Fabric version dummy JAR installed");
         var versionJar = Path.Combine(version, versionId + ".jar");
         File.WriteAllBytes(versionJar, hydratedJar);
-        await service.ConfigureAsync(gameDirectory);
+        await service.ConfigureAsync(gameDirectory, operationLog: operationLog);
+        operationLog.Complete("completed");
+        var profileLogPath = operationLog.CurrentLogPath
+            ?? throw new InvalidOperationException("Fabric operation log was not bound to its validated install root.");
+        var profileLog = File.ReadAllText(profileLogPath);
+        True(profileLog.Contains("fabric_profile_preflight_passed", StringComparison.Ordinal) &&
+             profileLog.Contains("fabric_profile_configured", StringComparison.Ordinal) &&
+             profileLog.Contains("\"installerVersion\":\"9.9.9\"", StringComparison.Ordinal),
+            "Fabric profile operations share a validated-root log with the supplied installer version");
         Equal(HashBytes(hydratedJar), HashFile(versionJar), "Launcher-filled official client JAR remains unchanged");
         var retimedArchive = CreateFabricProfileArchive(versionId,
             $"{{\"time\":\"2026-09-26\",\"releaseTime\":\"2026-09-26\",\"inheritsFrom\":\"26.2\",\"id\":\"{versionId}\"}}");
@@ -1280,15 +4006,21 @@ internal static class Smoke
         Equal(HashBytes(hydratedJar), HashFile(versionJar), "changed Fabric timestamps leave the official client JAR intact");
         var alteredArchive = CreateFabricProfileArchive(versionId,
             $"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"26.2\",\"releaseTime\":\"2026-09-26\",\"time\":\"2026-09-26\",\"libraries\":[{{\"name\":\"foreign:library:1\"}}]}}");
-        var profileBeforeAlteredArchive = File.ReadAllText(profilesPath);
-        using (var alteredService = new FabricLauncherService(launcherRoot,
+        var alteredRoot = Path.Combine(tempRoot, "launcher-altered-archive");
+        Directory.CreateDirectory(alteredRoot);
+        var alteredGameDirectory = Path.Combine(tempRoot, "altered-archive-game");
+        Directory.CreateDirectory(alteredGameDirectory);
+        var alteredProfilesPath = Path.Combine(alteredRoot, "launcher_profiles.json");
+        File.WriteAllText(alteredProfilesPath, input);
+        var profileBeforeAlteredArchive = File.ReadAllText(alteredProfilesPath);
+        using (var alteredService = new FabricLauncherService(alteredRoot,
                    new DelegateHandler(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(alteredArchive) }),
                    profileHash, HashBytes(hydratedJar), hydratedJar.Length, ensureLauncherClosed: static () => { }))
         {
-            try { await alteredService.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected changed Fabric libraries to be rejected."); }
+            try { await alteredService.ConfigureAsync(alteredGameDirectory); throw new InvalidOperationException("Expected changed Fabric libraries to be rejected."); }
             catch (InstallerException ex) when (ex.Code == "FABRIC_HASH") { }
         }
-        Equal(profileBeforeAlteredArchive, File.ReadAllText(profilesPath), "changed Fabric libraries leave Launcher profile untouched");
+        Equal(profileBeforeAlteredArchive, File.ReadAllText(alteredProfilesPath), "changed Fabric libraries leave Launcher profile untouched");
         var profileBeforeConflict = File.ReadAllText(profilesPath);
         File.WriteAllText(versionJar, "different client JAR");
         try { await service.ConfigureAsync(gameDirectory); throw new InvalidOperationException("Expected foreign Fabric JAR rejection."); }
@@ -1304,7 +4036,7 @@ internal static class Smoke
             Equal(Path.GetFullPath(gameDirectory), root.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
                 .GetProperty("gameDir").GetString(), "automatic profile uses isolated game directory");
         }
-        service.RemoveOwnProfile();
+        service.RemoveOwnProfile(gameDirectory);
         using (var document = JsonDocument.Parse(File.ReadAllText(profilesPath)))
             True(!document.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _), "only owned profile removed");
 
@@ -1501,6 +4233,260 @@ internal static class Smoke
         Pass("official Fabric profile ZIP downloads, verifies, and configures an isolated Launcher fixture");
     }
 
+    private static async Task VerifyOfflineFabricProfileAsync(string tempRoot)
+    {
+        foreach (var minecraftVersion in new[] { "26.2", "26.3" })
+        {
+            var root = Path.Combine(tempRoot, "fabric-offline-" + minecraftVersion);
+            Directory.CreateDirectory(root);
+            var gameDirectory = Path.Combine(tempRoot, "fabric-offline-game-" + minecraftVersion);
+            Directory.CreateDirectory(gameDirectory);
+            var profiles = Path.Combine(root, "launcher_profiles.json");
+            File.WriteAllText(profiles, "{\"profiles\":{\"vanilla\":{\"name\":\"Original\"}}}");
+            var versionId = $"fabric-loader-{TestPackRelease.FabricLoaderVersion}-{minecraftVersion}";
+            var version = Path.Combine(root, "versions", versionId);
+            Directory.CreateDirectory(version);
+            var profileJson = $"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"{minecraftVersion}\",\"time\":\"2026-09-24\",\"releaseTime\":\"2026-09-24\"}}";
+            File.WriteAllText(Path.Combine(version, versionId + ".json"), profileJson);
+            File.WriteAllBytes(Path.Combine(version, versionId + ".jar"), []);
+            var expectedHash = HashBytes(Bytes($"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"{minecraftVersion}\"}}"));
+            var requests = 0;
+            using var service = new FabricLauncherService(root, new DelegateHandler(_ =>
+                {
+                    Interlocked.Increment(ref requests);
+                    throw new HttpRequestException("offline fixture must not be requested");
+                }), expectedHash, new string('A', 128), 1, minecraftVersion, static () => { },
+                TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(10));
+            await service.ConfigureAsync(gameDirectory);
+            Equal(0, requests, $"healthy pinned {minecraftVersion} Fabric version configures without HTTP");
+            using var configured = JsonDocument.Parse(File.ReadAllText(profiles));
+            Equal(versionId, configured.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+                .GetProperty("lastVersionId").GetString(), $"offline Fabric profile selects the pinned {minecraftVersion} version");
+        }
+
+        foreach (var invalid in new[] { "json", "jar" })
+        {
+            var root = Path.Combine(tempRoot, "fabric-invalid-local-" + invalid);
+            Directory.CreateDirectory(root);
+            var gameDirectory = Path.Combine(tempRoot, "fabric-invalid-local-game-" + invalid);
+            Directory.CreateDirectory(gameDirectory);
+            var profiles = Path.Combine(root, "launcher_profiles.json");
+            File.WriteAllText(profiles, "{\"profiles\":{\"vanilla\":{\"name\":\"Original\"}}}");
+            const string versionId = "fabric-loader-0.19.5-26.2";
+            var version = Path.Combine(root, "versions", versionId);
+            Directory.CreateDirectory(version);
+            var json = "{\"id\":\"fabric-loader-0.19.5-26.2\",\"inheritsFrom\":\"26.2\",\"time\":\"2026-09-24\",\"releaseTime\":\"2026-09-24\"}";
+            var jsonPath = Path.Combine(version, versionId + ".json");
+            var jarPath = Path.Combine(version, versionId + ".jar");
+            File.WriteAllText(jsonPath, invalid == "json" ? "{broken" : json);
+            File.WriteAllBytes(jarPath, invalid == "json" ? [] : Bytes("foreign client jar"));
+            var before = HashBytes(File.ReadAllBytes(profiles)) + HashBytes(File.ReadAllBytes(jsonPath)) + HashBytes(File.ReadAllBytes(jarPath));
+            var requests = 0;
+            var expectedHash = HashBytes(Bytes("{\"id\":\"fabric-loader-0.19.5-26.2\",\"inheritsFrom\":\"26.2\"}"));
+            using var service = new FabricLauncherService(root, new DelegateHandler(_ =>
+                {
+                    Interlocked.Increment(ref requests);
+                    throw new HttpRequestException("invalid local version must not be overwritten");
+                }), expectedHash, HashBytes(Bytes("expected jar")), Bytes("expected jar").Length, "26.2", static () => { },
+                TimeSpan.FromMilliseconds(50), TimeSpan.FromMilliseconds(10));
+            try
+            {
+                await service.ConfigureAsync(gameDirectory);
+                throw new InvalidOperationException("Expected invalid local Fabric version conflict.");
+            }
+            catch (InstallerException ex) when (ex.Code == "FABRIC_VERSION_CONFLICT") { }
+            Equal(0, requests, $"invalid local Fabric {invalid} is rejected before network");
+            Equal(before, HashBytes(File.ReadAllBytes(profiles)) + HashBytes(File.ReadAllBytes(jsonPath)) + HashBytes(File.ReadAllBytes(jarPath)),
+                $"invalid local Fabric {invalid} leaves version and profile bytes unchanged");
+        }
+
+        var missingRoot = Path.Combine(tempRoot, "fabric-missing-local");
+        Directory.CreateDirectory(missingRoot);
+        var missingGame = Path.Combine(tempRoot, "fabric-missing-local-game");
+        Directory.CreateDirectory(missingGame);
+        File.WriteAllText(Path.Combine(missingRoot, "launcher_profiles.json"), "{\"profiles\":{}}");
+        const string missingVersionId = "fabric-loader-0.19.5-26.2";
+        var missingProfileJson = "{\"id\":\"fabric-loader-0.19.5-26.2\",\"inheritsFrom\":\"26.2\",\"time\":\"2026-09-24\",\"releaseTime\":\"2026-09-24\"}";
+        var missingArchive = CreateFabricProfileArchive(missingVersionId, missingProfileJson);
+        var missingExpectedHash = HashBytes(Bytes("{\"id\":\"fabric-loader-0.19.5-26.2\",\"inheritsFrom\":\"26.2\"}"));
+        var missingRequests = 0;
+        using (var service = new FabricLauncherService(missingRoot, new DelegateHandler(_ =>
+               {
+                   Interlocked.Increment(ref missingRequests);
+                   return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(missingArchive) };
+               }), missingExpectedHash, new string('A', 128), 1, "26.2", static () => { },
+                   TimeSpan.FromSeconds(2), TimeSpan.FromMilliseconds(10)))
+            await service.ConfigureAsync(missingGame);
+        Equal(1, missingRequests, "missing Fabric version uses exactly one pinned profile request");
+
+        var stalledRoot = Path.Combine(tempRoot, "fabric-body-stall");
+        Directory.CreateDirectory(stalledRoot);
+        var stalledGame = Path.Combine(tempRoot, "fabric-body-stall-game");
+        Directory.CreateDirectory(stalledGame);
+        var stalledProfile = Path.Combine(stalledRoot, "launcher_profiles.json");
+        File.WriteAllText(stalledProfile, "{\"profiles\":{}}");
+        var stalledProfileBefore = HashFile(stalledProfile);
+        var stalledRequests = 0;
+        using (var service = new FabricLauncherService(stalledRoot, new AsyncDelegateHandler((_, _) =>
+               {
+                   Interlocked.Increment(ref stalledRequests);
+                   return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                   {
+                       Content = new StreamContent(new PendingReadStream())
+                   });
+               }), missingExpectedHash, new string('A', 128), 1, "26.2", static () => { },
+                   TimeSpan.FromMilliseconds(35), TimeSpan.FromMilliseconds(10)))
+        {
+            try
+            {
+                await service.ConfigureAsync(stalledGame);
+                throw new InvalidOperationException("Expected stalled Fabric profile body timeout.");
+            }
+            catch (InstallerException ex) when (ex.Code == "FABRIC_TIMEOUT") { }
+        }
+        Equal(3, stalledRequests, "Fabric body deadline retries are bounded");
+        Equal(stalledProfileBefore, HashFile(stalledProfile), "Fabric body timeout leaves Launcher profile unchanged");
+
+        var requestTimeoutRoot = Path.Combine(tempRoot, "fabric-request-timeout");
+        Directory.CreateDirectory(requestTimeoutRoot);
+        var requestTimeoutGame = Path.Combine(tempRoot, "fabric-request-timeout-game");
+        Directory.CreateDirectory(requestTimeoutGame);
+        var requestTimeoutProfile = Path.Combine(requestTimeoutRoot, "launcher_profiles.json");
+        File.WriteAllText(requestTimeoutProfile, "{\"profiles\":{}}");
+        var requestTimeoutProfileBefore = HashFile(requestTimeoutProfile);
+        var requestTimeoutRequests = 0;
+        using (var service = new FabricLauncherService(requestTimeoutRoot, new AsyncDelegateHandler((_, _) =>
+               {
+                   Interlocked.Increment(ref requestTimeoutRequests);
+                   return Task.FromException<HttpResponseMessage>(new TaskCanceledException("fixture request timeout", new TimeoutException()));
+               }), missingExpectedHash, new string('A', 128), 1, "26.2", static () => { },
+                   TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(10)))
+        {
+            try
+            {
+                await service.ConfigureAsync(requestTimeoutGame);
+                throw new InvalidOperationException("Expected Fabric request timeout after bounded retries.");
+            }
+            catch (InstallerException ex) when (ex.Code == "FABRIC_TIMEOUT") { }
+        }
+        Equal(3, requestTimeoutRequests, "non-caller Fabric request cancellation maps to timeout and retries three times");
+        Equal(requestTimeoutProfileBefore, HashFile(requestTimeoutProfile), "Fabric request timeout leaves Launcher profile unchanged");
+
+        var callerBodyRoot = Path.Combine(tempRoot, "fabric-caller-body-cancel");
+        Directory.CreateDirectory(callerBodyRoot);
+        var callerBodyGame = Path.Combine(tempRoot, "fabric-caller-body-cancel-game");
+        Directory.CreateDirectory(callerBodyGame);
+        var callerBodyProfile = Path.Combine(callerBodyRoot, "launcher_profiles.json");
+        File.WriteAllText(callerBodyProfile, "{\"profiles\":{}}");
+        var callerBodyProfileBefore = HashFile(callerBodyProfile);
+        var callerBodyRequests = 0;
+        using (var service = new FabricLauncherService(callerBodyRoot, new DelegateHandler(_ =>
+               {
+                   Interlocked.Increment(ref callerBodyRequests);
+                   return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new PendingReadStream()) };
+               }), missingExpectedHash, new string('A', 128), 1, "26.2", static () => { },
+                   TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(10)))
+        using (var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(35)))
+        {
+            try
+            {
+                await service.ConfigureAsync(callerBodyGame, cancel.Token);
+                throw new InvalidOperationException("Expected caller cancellation during Fabric body read.");
+            }
+            catch (OperationCanceledException) { }
+        }
+        Equal(1, callerBodyRequests, "caller cancellation during Fabric body read is not retried");
+        Equal(callerBodyProfileBefore, HashFile(callerBodyProfile), "caller-canceled Fabric body leaves Launcher profile unchanged");
+
+        var retryCancelRoot = Path.Combine(tempRoot, "fabric-retry-cancel");
+        Directory.CreateDirectory(retryCancelRoot);
+        var retryCancelGame = Path.Combine(tempRoot, "fabric-retry-cancel-game");
+        Directory.CreateDirectory(retryCancelGame);
+        var retryCancelProfile = Path.Combine(retryCancelRoot, "launcher_profiles.json");
+        File.WriteAllText(retryCancelProfile, "{\"profiles\":{}}");
+        var retryCancelProfileBefore = HashFile(retryCancelProfile);
+        var retryCancelRequests = 0;
+        using (var service = new FabricLauncherService(retryCancelRoot, new DelegateHandler(_ =>
+               {
+                   Interlocked.Increment(ref retryCancelRequests);
+                   var response = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
+                   response.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromDays(365));
+                   return response;
+               }), missingExpectedHash, new string('A', 128), 1, "26.2", static () => { },
+                   TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)))
+        using (var cancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(35)))
+        {
+            try
+            {
+                await service.ConfigureAsync(retryCancelGame, cancel.Token);
+                throw new InvalidOperationException("Expected caller cancellation during Fabric retry delay.");
+            }
+            catch (OperationCanceledException) { }
+        }
+        Equal(1, retryCancelRequests, "caller cancellation during Fabric retry delay prevents another request");
+        Equal(retryCancelProfileBefore, HashFile(retryCancelProfile), "caller-canceled Fabric retry leaves Launcher profile unchanged");
+
+        var declaredOversizedRoot = Path.Combine(tempRoot, "fabric-declared-oversize");
+        Directory.CreateDirectory(declaredOversizedRoot);
+        var declaredOversizedGame = Path.Combine(tempRoot, "fabric-declared-oversize-game");
+        Directory.CreateDirectory(declaredOversizedGame);
+        var declaredOversizedProfile = Path.Combine(declaredOversizedRoot, "launcher_profiles.json");
+        File.WriteAllText(declaredOversizedProfile, "{\"profiles\":{}}");
+        var declaredOversizedProfileBefore = HashFile(declaredOversizedProfile);
+        var declaredOversizedRequests = 0;
+        var declaredOversizedReads = 0;
+        using (var service = new FabricLauncherService(declaredOversizedRoot, new DelegateHandler(_ =>
+               {
+                   Interlocked.Increment(ref declaredOversizedRequests);
+                   var content = new StreamContent(new ChunkedMemoryStream(new byte[1_000_001], 16_384,
+                       TimeSpan.Zero, () => Interlocked.Increment(ref declaredOversizedReads)));
+                   content.Headers.ContentLength = 1_000_001;
+                   return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+               }), missingExpectedHash, new string('A', 128), 1, "26.2", static () => { },
+                   TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(10)))
+        {
+            try
+            {
+                await service.ConfigureAsync(declaredOversizedGame);
+                throw new InvalidOperationException("Expected declared oversized Fabric response rejection.");
+            }
+            catch (InstallerException ex) when (ex.Code == "FABRIC_DOWNLOAD") { }
+        }
+        Equal(1, declaredOversizedRequests, "declared oversized Fabric profile rejects before retry or body read");
+        Equal(0, declaredOversizedReads, "declared oversized Fabric Content-Length is rejected without reading bytes");
+        Equal(declaredOversizedProfileBefore, HashFile(declaredOversizedProfile), "declared oversized Fabric response leaves Launcher profile unchanged");
+
+        var oversizedRoot = Path.Combine(tempRoot, "fabric-chunked-oversize");
+        Directory.CreateDirectory(oversizedRoot);
+        var oversizedGame = Path.Combine(tempRoot, "fabric-chunked-oversize-game");
+        Directory.CreateDirectory(oversizedGame);
+        File.WriteAllText(Path.Combine(oversizedRoot, "launcher_profiles.json"), "{\"profiles\":{}}");
+        var oversizedRequests = 0;
+        using (var service = new FabricLauncherService(oversizedRoot, new DelegateHandler(_ =>
+               {
+                   Interlocked.Increment(ref oversizedRequests);
+                   var response = new HttpResponseMessage(HttpStatusCode.OK)
+                   {
+                       Content = new StreamContent(new ChunkedMemoryStream(new byte[1_000_001], 16_384, TimeSpan.Zero))
+                   };
+                   if (response.Content.Headers.ContentLength is not null)
+                       throw new InvalidOperationException("Chunked fixture unexpectedly has a Content-Length.");
+                   return response;
+               }), missingExpectedHash, new string('A', 128), 1, "26.2", static () => { },
+                   TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(10)))
+        {
+            try
+            {
+                await service.ConfigureAsync(oversizedGame);
+                throw new InvalidOperationException("Expected chunked Fabric response size rejection.");
+            }
+            catch (InstallerException ex) when (ex.Code == "FABRIC_DOWNLOAD") { }
+        }
+        Equal(1, oversizedRequests, "chunked Fabric body stops at the first byte beyond the 1 MB limit");
+
+        Pass("Fabric supports healthy offline versions, rejects local conflicts before HTTP, and bounds profile bodies");
+    }
+
     private static async Task VerifyCurrentLauncherCopyAsync(string tempRoot)
     {
         var realRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
@@ -1554,17 +4540,90 @@ internal static class Smoke
         return memory.ToArray();
     }
 
+    private static string CreateReleaseFixture(string tempRoot, PackArchive pack, bool legacy, out string instance)
+    {
+        var root = Path.Combine(tempRoot, "release-fixture-" + Guid.NewGuid().ToString("N"));
+        instance = Path.Combine(root, "instances", "fixture");
+        var files = pack.Files.Select(file => new ManagedFile(file.Path, file.Sha512,
+                file.Downloads.Select(uri => uri.AbsoluteUri).ToArray(), false, Math.Max(0, file.Size)))
+            .Concat(pack.Overrides.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path))
+                .Select(file => new ManagedFile(file.Path, file.Sha512, [], true, file.Size)))
+            .ToList();
+        var iris = pack.Overrides.SingleOrDefault(file => file.Path.Equals("config/iris.properties", StringComparison.OrdinalIgnoreCase));
+        if (legacy && iris is not null)
+            files.Add(new ManagedFile(iris.Path, iris.Sha512, [], true, iris.Size));
+        new InstallationManifest
+        {
+            PackVersion = pack.VersionId,
+            MinecraftVersion = pack.MinecraftVersion,
+            FabricLoaderVersion = pack.FabricLoaderVersion,
+            PackArchiveSha512 = pack.ArchiveSha512,
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = files.OrderBy(file => file.Path, StringComparer.OrdinalIgnoreCase).ToList()
+        }.SaveAtomic(instance);
+        File.WriteAllText(Path.Combine(root, ".minepack-active.json"),
+            JsonSerializer.Serialize(new { SchemaVersion = 1, InstanceDirectory = "instances/fixture" }));
+        return root;
+    }
+
+    private static string CreatePinnedReleaseFixture(string tempRoot, PackArchive pack, out string instance)
+    {
+        var root = Path.Combine(tempRoot, "pinned-release-fixture-" + Guid.NewGuid().ToString("N"));
+        instance = InstancePath(root, pack.VersionId, pack.ArchiveSha512);
+        var files = pack.Files.Select(file => new ManagedFile(file.Path, file.Sha512,
+                file.Downloads.Select(uri => uri.AbsoluteUri).ToArray(), false, Math.Max(0, file.Size)))
+            .Concat(pack.Overrides.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path))
+                .Select(file => new ManagedFile(file.Path, file.Sha512, [], true, file.Size)))
+            .OrderBy(file => file.Path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        new InstallationManifest
+        {
+            PackVersion = pack.VersionId,
+            MinecraftVersion = pack.MinecraftVersion,
+            FabricLoaderVersion = pack.FabricLoaderVersion,
+            PackArchiveSha512 = pack.ArchiveSha512,
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = files
+        }.SaveAtomic(instance);
+        File.WriteAllText(Path.Combine(root, ".minepack-active.json"),
+            JsonSerializer.Serialize(new
+            {
+                SchemaVersion = 1,
+                InstanceDirectory = Path.GetRelativePath(root, instance).Replace('\\', '/')
+            }));
+        return root;
+    }
+
+    private static string FixturePath(string root, string relativePath) =>
+        Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+    private static void RejectReleaseManifest(InstallService installer, string root, string instance,
+        string packPath, string packHash, string scenario)
+    {
+        try
+        {
+            _ = installer.ValidateUninstallTarget(root, instance, packPath, packHash);
+            throw new InvalidOperationException($"Expected {scenario} to be rejected.");
+        }
+        catch (InstallerException ex) when (ex.Code == "MANIFEST_INVALID") { }
+        Pass(scenario);
+    }
+
     private static string CreatePack(string path, string version, IReadOnlyList<TestFile> files,
         IReadOnlyList<TestOverride>? overrides = null)
     {
         overrides ??= [];
-        var indexFiles = files.Select(file => new
+        var indexFiles = files.Select(file =>
         {
-            path = file.Path,
-            hashes = new { sha512 = file.InvalidHash ? "bad" : HashBytes(file.Bytes) },
-            downloads = new[] { file.Url },
-            fileSize = file.Bytes.LongLength,
-            env = new { client = "required", server = "required" }
+            var item = new Dictionary<string, object?>
+            {
+                ["path"] = file.Path,
+                ["hashes"] = new { sha512 = file.InvalidHash ? "bad" : HashBytes(file.Bytes) },
+                ["downloads"] = new[] { file.Url },
+                ["env"] = new { client = "required", server = "required" }
+            };
+            if (!file.OmitSize) item["fileSize"] = file.Bytes.LongLength;
+            return item;
         });
         var index = new
         {
@@ -1609,7 +4668,7 @@ internal static class Smoke
 
     private static void Pass(string scenario) => Console.WriteLine($"PASS: {scenario}");
 
-    private sealed record TestFile(string Path, byte[] Bytes, string Url = "https://cdn.modrinth.com/data/test/version/test.jar", bool InvalidHash = false);
+    private sealed record TestFile(string Path, byte[] Bytes, string Url = "https://cdn.modrinth.com/data/test/version/test.jar", bool InvalidHash = false, bool OmitSize = false);
     private sealed record TestOverride(string Path, byte[] Bytes);
 
     private sealed class FakeLauncherPlatform(IReadOnlyList<MinecraftLauncherTarget> targets) : IMinecraftLauncherPlatform
@@ -1618,6 +4677,7 @@ internal static class Smoke
         public List<string> Events { get; } = [];
         public bool HasUnknownProcess { get; set; }
         public bool FailStart { get; set; }
+        public string? StartFailureMessage { get; set; }
 
         public IReadOnlyList<MinecraftLauncherTarget> FindTargets() => targets;
 
@@ -1631,7 +4691,7 @@ internal static class Smoke
         public void Start(MinecraftLauncherTarget target)
         {
             Events.Add("start");
-            if (FailStart) throw new InvalidOperationException("fixture launch failure");
+            if (FailStart) throw new InvalidOperationException(StartFailureMessage ?? "fixture launch failure");
         }
 
         public void SetRunning(MinecraftLauncherTarget target, bool allowClose) =>
@@ -1674,8 +4734,137 @@ internal static class Smoke
             Task.FromResult(respond(request));
     }
 
+    private sealed class AsyncDelegateHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)
+        : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            respond(request, cancellationToken);
+    }
+
+    private sealed class PendingReadStream : Stream
+    {
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => throw new NotSupportedException();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            WaitForCancellationAsync(cancellationToken);
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            new(WaitForCancellationAsync(cancellationToken));
+
+        private static async Task<int> WaitForCancellationAsync(CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return 0;
+        }
+    }
+
+    private sealed class PendingOpenContent : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, System.Net.TransportContext? context) => Task.CompletedTask;
+        protected override bool TryComputeLength(out long length) { length = 0; return false; }
+        protected override async Task<Stream> CreateContentReadStreamAsync(CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return new MemoryStream();
+        }
+    }
+
+    private sealed class LateOpenContent(Task<Stream> streamTask) : HttpContent
+    {
+        protected override Task SerializeToStreamAsync(Stream stream, System.Net.TransportContext? context) => Task.CompletedTask;
+        protected override bool TryComputeLength(out long length) { length = 0; return false; }
+        protected override Task<Stream> CreateContentReadStreamAsync(CancellationToken cancellationToken) => streamTask;
+    }
+
+    private sealed class TrackingDisposeStream(Action onDispose) : MemoryStream
+    {
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) onDispose();
+            base.Dispose(disposing);
+        }
+    }
+
+    private sealed class ChunkedMemoryStream(byte[] bytes, int chunkSize, TimeSpan delay, Action? onRead = null) : Stream
+    {
+        private int _position;
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+        public override void Flush() => throw new NotSupportedException();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+            ReadChunkAsync(buffer.AsMemory(offset, count), cancellationToken);
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default) =>
+            new(ReadChunkAsync(buffer, cancellationToken));
+
+        private async Task<int> ReadChunkAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (delay > TimeSpan.Zero) await Task.Delay(delay, cancellationToken);
+            onRead?.Invoke();
+            var count = Math.Min(Math.Min(buffer.Length, chunkSize), bytes.Length - _position);
+            if (count > 0)
+            {
+                bytes.AsMemory(_position, count).CopyTo(buffer);
+                _position += count;
+            }
+            return count;
+        }
+    }
+
     private sealed class DelegateProgress<T>(Action<T> report) : IProgress<T>
     {
         public void Report(T value) => report(value);
+    }
+
+    private sealed class PumpSynchronizationContext : SynchronizationContext, IDisposable
+    {
+        private readonly int _threadId = Environment.CurrentManagedThreadId;
+        private readonly Queue<(SendOrPostCallback Callback, object? State)> _callbacks = new();
+        private readonly AutoResetEvent _callbackReady = new(false);
+
+        public override void Post(SendOrPostCallback callback, object? state)
+        {
+            lock (_callbacks) _callbacks.Enqueue((callback, state));
+            _callbackReady.Set();
+        }
+
+        public void RunUntilComplete(Task task)
+        {
+            if (Environment.CurrentManagedThreadId != _threadId)
+                throw new InvalidOperationException("The smoke synchronization context must be pumped by its owner thread.");
+            while (!task.IsCompleted)
+            {
+                (SendOrPostCallback Callback, object? State) item;
+                lock (_callbacks)
+                    item = _callbacks.Count > 0 ? _callbacks.Dequeue() : default;
+                if (item.Callback is null)
+                {
+                    _callbackReady.WaitOne(100);
+                    continue;
+                }
+                item.Callback(item.State);
+            }
+            task.GetAwaiter().GetResult();
+        }
+
+        public void Dispose() => _callbackReady.Dispose();
+    }
+
+    private sealed class NonPumpingSynchronizationContext : SynchronizationContext
+    {
+        public override void Post(SendOrPostCallback callback, object? state) { }
     }
 }

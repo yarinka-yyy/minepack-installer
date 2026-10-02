@@ -1,5 +1,7 @@
 # Test pack releases
 
+This retained `test-pack` path contains Vanilla Plus release archives for installer compatibility. It is not the separate experimental Test 0.20.x pack.
+
 ## 0.18.1 — Vanilla Plus without Low On Fire
 
 Published with MinePack Installer `1.5.0` for Minecraft `26.2` and Fabric Loader `0.19.5`: 37 mods, 7 resource packs, and 1 shader. Removes only Low On Fire; all other pinned downloads, the shader, and initial player settings are unchanged. The former `0.18.0` archive remains immutable for Repair and Uninstall. Archive SHA-512: `2E259CEE78A2022CDE78012BA95E6EE5E789C3F0DA45D3C51B1D7E4FC689865E0D981FD784C850EF74492F02F8AF8497943394ADC15DBE9135718918FAFB9906`. Deterministic smoke plus direct network Install/Repair/Uninstall in a clean temporary instance passed in the normal Windows user environment.

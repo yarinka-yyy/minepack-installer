@@ -14,6 +14,12 @@ MinePack 适用于 Windows，安装的是 Minecraft: Java Edition 26.2 整合包
 
 MinePack Installer 1.5.0 包含 Vanilla Plus 0.18.1 和 Frontier 0.19.6。Low On Fire 已从两种整合包中移除。
 
+另有一个 Frontier 0.19.7 候选版本，更新了 xali 资源包和 YUNG's Better Desert Temples。其档案已包含在仓库中，但不包含在 Installer 1.5.0 中，也没有新的 GitHub Release；游戏内资源和进度检查尚未完成。
+
+## 离线文档与源代码
+
+本地 audit 候选包包含安装程序的 [0BSD 许可证](LICENSE)、[Vanilla Plus 历史档案](releases/test-pack/README.md)、[Frontier 版本说明](releases/vanilla-2-plus/README.md)以及[第三方源代码和构建说明](third-party/README.md)。对应的 YUNG's 源代码位于 `third-party/yungs-sources/`，其中包含七个分支的八个版本化快照、精确的二进制映射、构建文件和许可证。同一套源代码已包含在仓库中；安装程序 ZIP 仍是本地候选包，没有新的 GitHub Release。
+
 ## 安装
 
 1. 下载 [MinePack-Installer-1.5.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.5.0/MinePack-Installer-1.5.0-win-x64.zip)，并将整个 ZIP 解压到一个文件夹中。请将解压后的文件放在一起。

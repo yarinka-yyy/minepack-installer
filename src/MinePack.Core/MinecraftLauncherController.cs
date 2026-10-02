@@ -55,7 +55,26 @@ public sealed class MinecraftLauncherController
         return new WindowsMinecraftLauncherPlatform();
     }
 
-    public async Task<MinecraftLauncherTarget?> CloseBeforeInstallAsync(CancellationToken cancellationToken = default)
+    public async Task<MinecraftLauncherTarget?> CloseBeforeInstallAsync(CancellationToken cancellationToken = default,
+        OperationLog? operationLog = null)
+    {
+        operationLog?.Write("preflight", "started", "launcher_close_started");
+        try
+        {
+            var target = await OperationGuard.RunAsync(() => CloseBeforeInstallCoreAsync(cancellationToken), cancellationToken)
+                .ConfigureAwait(false);
+            operationLog?.Write("preflight", "completed", "launcher_close_completed", new { targetFound = target is not null });
+            return target;
+        }
+        catch (Exception ex)
+        {
+            operationLog?.WriteException("preflight", "launcher_close_failed", ex,
+                ex is OperationCanceledException && cancellationToken.IsCancellationRequested ? "cancelled" : "failed");
+            throw;
+        }
+    }
+
+    private async Task<MinecraftLauncherTarget?> CloseBeforeInstallCoreAsync(CancellationToken cancellationToken)
     {
         var targets = _platform.FindTargets().Distinct().ToArray();
         if (_platform.HasUnidentifiedLauncherProcess())
@@ -121,7 +140,24 @@ public sealed class MinecraftLauncherController
     }
 
     public async Task<MinecraftLauncherStartResult> ConfigureAndStartAsync(
-        MinecraftLauncherTarget? target, Func<Task> configureProfile)
+        MinecraftLauncherTarget? target, Func<Task> configureProfile, OperationLog? operationLog = null)
+    {
+        try
+        {
+            var result = await OperationGuard.RunAsync(() => ConfigureAndStartCoreAsync(target, configureProfile, operationLog)).ConfigureAwait(false);
+            operationLog?.Write("profile", result.Status == MinecraftLauncherStartStatus.Requested ? "completed" : "pending",
+                "launcher_start_result", new { status = result.Status.ToString() });
+            return result;
+        }
+        catch (Exception ex)
+        {
+            operationLog?.WriteException("profile", "launcher_start_failed", ex);
+            throw;
+        }
+    }
+
+    private async Task<MinecraftLauncherStartResult> ConfigureAndStartCoreAsync(
+        MinecraftLauncherTarget? target, Func<Task> configureProfile, OperationLog? operationLog)
     {
         await configureProfile();
         if (target is null)
@@ -134,6 +170,7 @@ public sealed class MinecraftLauncherController
         }
         catch (Exception ex)
         {
+            operationLog?.WriteException("profile", "launcher_start_failed", ex);
             return new MinecraftLauncherStartResult(MinecraftLauncherStartStatus.Failed,
                 $"LAUNCHER_START_FAILED ({ex.GetType().Name})");
         }

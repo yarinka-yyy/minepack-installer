@@ -1,0 +1,35 @@
+package com.yungnickyoung.minecraft.yungsapi.world.util;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.server.level.ColumnPos;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
+
+public final class SurfaceHelper {
+    private SurfaceHelper() {}
+
+    /**
+     * Returns the y-coordinate of the topmost non-air block at the given column position in the world.
+     * Returns 1 if somehow no non-air block is found.
+     */
+    public static int getSurfaceHeight(ChunkAccess chunk, ColumnPos pos) {
+        int maxY = chunk.getMaxY();
+        int minY = chunk.getMinY();
+        BlockPos.MutableBlockPos blockPos = new BlockPos.MutableBlockPos(pos.x(), maxY, pos.z());
+
+        // Edge case: blocks go all the way up to build height
+        if (!chunk.getBlockState(blockPos).isAir())
+            return maxY;
+
+        for (int y = maxY; y >= minY; y--) {
+            BlockState blockState = chunk.getBlockState(blockPos);
+            if (!blockState.isAir())
+                return y;
+            blockPos.move(Direction.DOWN);
+        }
+
+        return 1; // Surface somehow not found
+    }
+}

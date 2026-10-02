@@ -1,0 +1,92 @@
+{
+  "parent": "betterdungeons:root",
+  "display": {
+    "icon": {
+      "count": 1,
+      "id": "minecraft:diamond_sword"
+    },
+    "title": {
+      "translate": "betterdungeons.advancements.all_dungeons.title",
+      "fallback": "Professional Dungeoneer"
+    },
+    "description": {
+      "translate": "betterdungeons.advancements.all_dungeons.description",
+      "fallback": "Explore all of the Better Dungeons!"
+    },
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "in_better_monster_room": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "location": {
+                "structures": "betterdungeons:small_dungeon"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "in_better_zombie_dungeon": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "location": {
+                "structures": "betterdungeons:zombie_dungeon"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "in_better_skeleton_dungeon": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "location": {
+                "structures": "betterdungeons:skeleton_dungeon"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "in_better_spider_dungeon": {
+      "trigger": "minecraft:location",
+      "conditions": {
+        "player": [
+          {
+            "condition": "minecraft:entity_properties",
+            "entity": "this",
+            "predicate": {
+              "location": {
+                "structures": "betterdungeons:spider_dungeon"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    ["in_better_monster_room"],
+    ["in_better_zombie_dungeon"],
+    ["in_better_skeleton_dungeon"],
+    ["in_better_spider_dungeon"]
+  ]
+}

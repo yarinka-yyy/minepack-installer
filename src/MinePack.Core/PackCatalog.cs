@@ -103,7 +103,7 @@ public static class PackCatalog
                 {
                     new CatalogItem("Semos Animations Lib", "CatalogResourcePacks", "resourcepack", "SY2QNRYK", "resourcepacks/Semos Animations Lib 2.0.4.zip"),
                     new CatalogItem("F.M.R.P", "CatalogResourcePacks", "resourcepack", "u4nhiAdP", "resourcepacks/Freshly Modded 3.0.5.zip"),
-                    new CatalogItem("xali's Enhanced Vanilla (MinePack 26.2 port)", "CatalogResourcePacks", "resourcepack", "", "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip"),
+                    new CatalogItem("xali's Enhanced Vanilla (MinePack 26.2 port)", "CatalogResourcePacks", "resourcepack", "", "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.2.zip"),
                     new CatalogItem("Remodeled Doors 3D", "CatalogResourcePacks", "resourcepack", "emO4C1kf", "resourcepacks/§aRemodeled-Doors§8_§62.2.1.zip"),
                     new CatalogItem("Remodeled Doors / xali compatibility", "CatalogResourcePacks", "resourcepack", "", "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip")
                 }).ToArray() }
@@ -122,7 +122,7 @@ public static class PackCatalog
             new CatalogItem("Structory", "CatalogWorldgen", "datapack", "aKCwCJlY", "mods/Structory_26.2_v1.3.7.jar"),
             new CatalogItem("Guard Villagers (Fabric/Quilt)", "CatalogWorldgen", "mod", "59rkB3YY", "mods/guardvillagers-2.1.3-26.2.jar"),
             new CatalogItem("It Takes a Pillage Continuation", "CatalogWorldgen", "mod", "QOJOg1gE", "mods/takesapillage-fabric-1.0.12+mc26.2.jar"),
-            new CatalogItem("YUNG's Better Desert Temples", "CatalogWorldgen", "mod", "", "mods/YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.1.jar"),
+            new CatalogItem("YUNG's Better Desert Temples", "CatalogWorldgen", "mod", "", "mods/YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.2.jar"),
             new CatalogItem("YUNG's Better Dungeons", "CatalogWorldgen", "mod", "", "mods/YungsBetterDungeons-26.2-Fabric-6.1.1-minepack.1.jar"),
             new CatalogItem("YUNG's Better Jungle Temples", "CatalogWorldgen", "mod", "", "mods/YungsBetterJungleTemples-26.2-Fabric-4.1.1-minepack.1.jar"),
             new CatalogItem("YUNG's Better Mineshafts", "CatalogWorldgen", "mod", "", "mods/YungsBetterMineshafts-26.2-Fabric-6.1.1-minepack.1.jar"),

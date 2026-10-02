@@ -6,7 +6,7 @@ namespace MinePack.Core;
 
 public sealed record PackFile(string Path, IReadOnlyList<Uri> Downloads, string Sha512, long Size);
 
-public sealed record PackOverride(string Path, string ArchivePath, long Size);
+public sealed record PackOverride(string Path, string ArchivePath, long Size, string Sha512);
 
 public sealed class PackArchive
 {
@@ -105,10 +105,10 @@ public sealed class PackArchive
                 ValidateManagedTarget(target);
                 if (!names.Add("override-target:" + target))
                     throw new InstallerException("PACK_DUPLICATE_PATH", LocalizedText.Get("PackOverridesConflict"));
-                totalOverrideBytes += entry.Length;
-                if (entry.Length > MaxOverrideBytes || totalOverrideBytes > MaxOverrideBytes)
+                if (entry.Length > MaxOverrideBytes || totalOverrideBytes > MaxOverrideBytes - entry.Length)
                     throw new InstallerException("PACK_OVERRIDE_TOO_LARGE", LocalizedText.Get("PackOverridesTooLarge"));
-                overrideEntries.Add(new PackOverride(target, entry.FullName, entry.Length));
+                totalOverrideBytes += entry.Length;
+                overrideEntries.Add(new PackOverride(target, entry.FullName, entry.Length, HashOverrideEntry(entry)));
             }
 
             if (manifestEntry is null) throw new InstallerException("PACK_INVALID_INDEX", LocalizedText.Get("ModrinthIndexMissing"));
@@ -166,7 +166,10 @@ public sealed class PackArchive
 
             var info = new FileInfo(target);
             if (info.Length != item.Size) throw new InstallerException("OVERRIDE_SIZE_MISMATCH", LocalizedText.Get("OverrideSizeMismatch"));
-            result.Add(new ManagedFile(item.Path, HashFile(target), [], true, info.Length));
+            var hash = HashFile(target);
+            if (!FixedTimeHashEquals(hash, item.Sha512))
+                throw new InstallerException("PACK_HASH_MISMATCH", LocalizedText.Get("PackChangedAfterCheck"));
+            result.Add(new ManagedFile(item.Path, item.Sha512, [], true, info.Length));
         }
         return result;
     }
@@ -260,12 +263,32 @@ public sealed class PackArchive
             throw new InstallerException("PACK_RESERVED_PATH", LocalizedText.Get("ReservedPackPath"));
     }
 
+    private static string HashOverrideEntry(ZipArchiveEntry entry)
+    {
+        using var source = entry.Open();
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA512);
+        var buffer = new byte[81920];
+        long readTotal = 0;
+        while (true)
+        {
+            var read = source.Read(buffer, 0, buffer.Length);
+            if (read == 0) break;
+            readTotal += read;
+            if (readTotal > entry.Length || readTotal > MaxOverrideBytes)
+                throw new InstallerException("PACK_INVALID_ARCHIVE", LocalizedText.Get("PackArchiveInvalid"));
+            hash.AppendData(buffer, 0, read);
+        }
+        if (readTotal != entry.Length)
+            throw new InstallerException("PACK_INVALID_ARCHIVE", LocalizedText.Get("PackArchiveInvalid"));
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
     internal static bool IsAllowedDownloadUri(Uri uri) =>
         uri.IsAbsoluteUri && uri.Scheme == Uri.UriSchemeHttps &&
         uri.Host.Equals("cdn.modrinth.com", StringComparison.OrdinalIgnoreCase) && uri.Port == 443 &&
         string.IsNullOrEmpty(uri.UserInfo) && string.IsNullOrEmpty(uri.Fragment);
 
-    internal static bool IsSha512(string value) => value.Length == 128 && value.All(Uri.IsHexDigit);
+    internal static bool IsSha512(string? value) => value is { Length: 128 } && value.All(Uri.IsHexDigit);
 
     internal static string HashFile(string path)
     {

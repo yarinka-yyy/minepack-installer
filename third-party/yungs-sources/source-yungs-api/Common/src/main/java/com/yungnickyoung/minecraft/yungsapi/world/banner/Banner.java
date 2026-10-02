@@ -1,0 +1,197 @@
+package com.yungnickyoung.minecraft.yungsapi.world.banner;
+
+import it.unimi.dsi.fastutil.objects.ReferenceSortedSets;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.network.chat.TextColor;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.item.Rarity;
+import net.minecraft.world.item.component.TooltipDisplay;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.WallBannerBlock;
+import net.minecraft.world.level.block.entity.BannerPattern;
+import net.minecraft.world.level.block.state.BlockState;
+import org.jspecify.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Custom representation of a Banner.
+ * Includes fields for patterns, BlockState, and NBT tags.
+ * Includes a public Builder for easy Banner construction.
+ * Useful for processing banners in structures during worldgen.
+ */
+public class Banner {
+    private List<ColoredBannerPattern> patterns;
+    private BlockState state;
+    private CompoundTag nbt;
+    private boolean isWallBanner;
+
+    public Banner(List<ColoredBannerPattern> patterns, BlockState state, CompoundTag nbt) {
+        this.patterns = patterns;
+        this.state = state;
+        this.nbt = nbt;
+        this.isWallBanner = this.state.getBlock() instanceof WallBannerBlock;
+    }
+
+    public Banner(List<ColoredBannerPattern> patterns, BlockState state, CompoundTag nbt, boolean isWallBanner) {
+        this.patterns = patterns;
+        this.state = state;
+        this.nbt = nbt;
+        this.isWallBanner = isWallBanner;
+    }
+
+    public List<ColoredBannerPattern> getPatterns() {
+        return patterns;
+    }
+
+    public void setPatterns(List<ColoredBannerPattern> patterns) {
+        this.patterns = patterns;
+    }
+
+    public BlockState getState() {
+        return state;
+    }
+
+    public void setState(BlockState state) {
+        this.state = state;
+    }
+
+    public CompoundTag getNbt() {
+        return nbt;
+    }
+
+    public void setNbt(CompoundTag nbt) {
+        this.nbt = nbt;
+    }
+
+    public boolean isWallBanner() {
+        return isWallBanner;
+    }
+
+    public void setWallBanner(boolean wallBanner) {
+        isWallBanner = wallBanner;
+    }
+
+    /**
+     * Builder class for Banners.
+     * <p>
+     * This makes it easy to construct banners from code and then extract the BlockState and NBT,
+     * without having to manually construct a compound NBT.
+     */
+    public static class Builder {
+        private final List<ColoredBannerPattern> patterns = new ArrayList<>();
+        private String     customNameTranslate;
+        private String     customNameFallback;
+        private TextColor  customColor;
+        private @Nullable Boolean    showPatternsInTooltip = null;
+        private @Nullable Rarity     rarity = null;
+        private           BlockState state  = Blocks.WALL_BANNER.black().defaultBlockState();
+
+        public Builder() {
+        }
+
+        public Builder blockState(BlockState state) {
+            this.state = state;
+            return this;
+        }
+
+        public Builder pattern(ColoredBannerPattern pattern) {
+            patterns.add(pattern);
+            return this;
+        }
+
+        public Builder pattern(ResourceKey<BannerPattern> pattern, DyeColor color) {
+            patterns.add(new ColoredBannerPattern(pattern, color));
+            return this;
+        }
+
+        public Builder customName(String translatableNamePath) {
+            return this.customName(translatableNamePath, null);
+        }
+
+        public Builder customName(String translatableNamePath, String fallback) {
+            this.customNameTranslate = translatableNamePath;
+            this.customNameFallback = fallback;
+            if (this.showPatternsInTooltip == null) {
+                this.showPatternsInTooltip = false;
+            }
+            if (this.rarity == null) {
+                this.rarity = Rarity.UNCOMMON;
+            }
+            return this;
+        }
+
+        public Builder showPatternsInTooltip() {
+            this.showPatternsInTooltip = true;
+            return this;
+        }
+
+        public Builder customColor(String colorString) {
+            this.customColor = TextColor.parseColor(colorString).getOrThrow();
+            return this;
+        }
+
+        public Builder customColor(TextColor textColor) {
+            this.customColor = textColor;
+            return this;
+        }
+
+        public Builder rarity(Rarity rarity) {
+            this.rarity = rarity;
+            return this;
+        }
+
+        public Banner build() {
+            CompoundTag nbt = createBannerNBT();
+            return new Banner(patterns, state, nbt);
+        }
+
+        /**
+         * Helper function that creates a complete CompoundNBT for a banner BlockState
+         * with the provided patterns.
+         */
+        private CompoundTag createBannerNBT() {
+            CompoundTag nbt = new CompoundTag();
+            ListTag patternList = new ListTag();
+
+            // Construct list of patterns from args
+            patterns.forEach(pattern -> {
+                CompoundTag patternNBT = new CompoundTag();
+                patternNBT.putString("pattern", pattern.getPattern().identifier().toString());
+                patternNBT.putString("color", pattern.getColor().getName());
+                patternList.add(patternNBT);
+            });
+
+            var components = DataComponentMap.builder();
+            // Custom name and color
+            if (this.customNameTranslate != null) {
+                components.set(DataComponents.ITEM_NAME,
+                               Component.translatableWithFallback(this.customNameTranslate, this.customNameFallback)
+                                       .withStyle(s -> this.customColor == null ? s : s.withColor(this.customColor)));
+            }
+            // Tooltip
+            if (this.showPatternsInTooltip != null && !this.showPatternsInTooltip) {
+                components.set(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT.withHidden(DataComponents.BANNER_PATTERNS, true));
+            }
+            // Rarity
+            if (this.rarity != null) {
+                components.set(DataComponents.RARITY, this.rarity);
+            }
+
+            nbt.store("components", DataComponentMap.CODEC, components.build());
+
+            // Add tags to NBT
+            nbt.put("patterns", patternList);
+            nbt.putString("id", "minecraft:banner");
+
+            return nbt;
+        }
+    }
+}

@@ -14,6 +14,12 @@ MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. T
 
 MinePack Installer 1.5.0 includes Vanilla Plus 0.18.1 and Frontier 0.19.6. Low On Fire has been removed from both packs.
 
+A separate local Frontier 0.19.7 candidate updates xali's resource pack and YUNG's Better Desert Temples. It is not included in or published with Installer 1.5.0; in-game resource and advancement checks remain pending.
+
+## Offline documents and sources
+
+The local audit-candidate bundle includes the installer [0BSD license](LICENSE), the [Vanilla Plus archive history](releases/test-pack/README.md), [Frontier release notes](releases/vanilla-2-plus/README.md), and the [third-party source/build notes](third-party/README.md). The corresponding YUNG's source kit is at `third-party/yungs-sources/`; it contains eight versioned source snapshots for seven forks, exact artifact mappings, build files, and licenses. The same source kit is included in this repository; the audit-candidate installer ZIP has no GitHub Release yet.
+
 ## Install
 
 1. Download [MinePack-Installer-1.5.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.5.0/MinePack-Installer-1.5.0-win-x64.zip) and extract the entire ZIP into a folder. Keep the extracted files together.

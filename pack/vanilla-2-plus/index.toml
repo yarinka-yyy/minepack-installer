@@ -17,8 +17,8 @@ file = "mods/YungsApi-26.2-Fabric-6.1.3-minepack.1.jar"
 hash = "0c03efe456698bf64cc58797d6ff852aebbbaf67f85ad8dcf4dd9eb985821604"
 
 [[files]]
-file = "mods/YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.1.jar"
-hash = "2ee144f747c2f54cb675484b1728ccc468b36e2dead2282e1ab7aff0194f1fd2"
+file = "mods/YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.2.jar"
+hash = "59486b06ead7d5b0ae30e60e738604490184f432b0ac263c27c20ce6a3aed59c"
 
 [[files]]
 file = "mods/YungsBetterDungeons-26.2-Fabric-6.1.1-minepack.1.jar"
@@ -383,8 +383,8 @@ hash = "3bd79a2e8fb89d9d094ea8c53ca657193d6a18f5173f7efdb69c8de79e053057"
 metafile = true
 
 [[files]]
-file = "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.1.zip"
-hash = "3dda9307df5e295624c5bbde1c4c1cb88a64d02ee1cafb53f447fa56d68b42d7"
+file = "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.2.zip"
+hash = "834bd7a0b37e5c241ed3cb34fed7dec15be3172c5b0166a3fe8fa15bc3aa6034"
 
 [[files]]
 file = "shaderpacks/complementary-reimagined.pw.toml"

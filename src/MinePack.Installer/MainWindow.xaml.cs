@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.ComponentModel;
 using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Navigation;
@@ -19,6 +20,13 @@ public partial class MainWindow : Window
     private IInputElement? _uninstallReturnFocus;
     private bool _operationCanBeCancelled = true;
     private string? _gameDirectory;
+    private readonly string _installerVersion;
+    private OperationLog? _currentOperationLog;
+    private IReadOnlyList<InstanceChoice> _instanceChoices = [];
+    private string? _selectedInstancePath;
+    private bool _changingInstanceSelection;
+    private ActiveMarkerInspection? _activeMarker;
+    private string? _missingSavedRootPath;
 
     public MainWindow()
     {
@@ -27,10 +35,19 @@ public partial class MainWindow : Window
         _launcher = new FabricLauncherService(ensureLauncherClosed: _launcherController.EnsureClosed);
         VanillaPlusOption.Checked += PackChoice_Changed;
         Vanilla2PlusOption.Checked += PackChoice_Changed;
-        var installerVersion = typeof(MainWindow).Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
-        InstallerVersionText.Text = LocalizedText.Get("UiInstallerVersion", installerVersion);
+        var assembly = typeof(MainWindow).Assembly;
+        _installerVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+            ?? assembly.GetName().Version?.ToString(3)
+            ?? "0.0.0";
+        InstallerVersionText.Text = LocalizedText.Get("UiInstallerVersion", _installerVersion);
         UpdatePackSelection();
-        InstallRootBox.Text = InstallService.DefaultInstallRoot;
+        var preferences = InstallerPreferences.Load(InstallerPreferences.DefaultPath);
+        InstallRootBox.Text = preferences.LastValidatedRoot ?? InstallService.DefaultInstallRoot;
+        if (preferences.LastValidatedRoot is not null && !Directory.Exists(preferences.LastValidatedRoot))
+            _missingSavedRootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(preferences.LastValidatedRoot));
+        if (preferences.IsCorrupt) StatusBox.Text = LocalizedText.Get("UiPreferencesCorrupt");
+        var root = RefreshRootState(persist: false);
+        if (root is null && !preferences.IsCorrupt) StatusBox.Text = LocalizedText.Get("UiSavedRootUnavailable");
     }
 
     private static string ReleasePath(string relativePath) => Path.Combine(AppContext.BaseDirectory,
@@ -63,10 +80,19 @@ public partial class MainWindow : Window
 
     private async void ImportWorlds_Click(object sender, RoutedEventArgs e)
     {
+        var root = RefreshRootState(persist: true);
+        if (root is null) return;
+        var target = ResolveImportTarget(root);
+        if (target is null)
+        {
+            StatusBox.Text = LocalizedText.Get("UiSelectTrustedInstance");
+            return;
+        }
         var vanillaSaves = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft", "saves");
         var picker = new OpenFolderDialog
         {
-            Title = LocalizedText.Get("UiWorldFolderDialog"),
+            Title = LocalizedText.Get("UiWorldFolderDialogTarget", target.Release?.PackName ?? LocalizedText.Get("UiInstalledInstance"),
+                target.Release?.PackVersion ?? Path.GetFileName(target.Path)),
             InitialDirectory = Directory.Exists(vanillaSaves) ? vanillaSaves : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
         };
         if (picker.ShowDialog(this) == true)
@@ -75,6 +101,21 @@ public partial class MainWindow : Window
 
     private void Uninstall_Click(object sender, RoutedEventArgs e)
     {
+        var root = RefreshRootState(persist: true);
+        var selected = GetSelectedEntry();
+        if (root is null || selected is not { IsTrusted: true, Release: not null })
+        {
+            StatusBox.Text = LocalizedText.Get("UiSelectTrustedInstance");
+            return;
+        }
+        var pending = _installer.GetPendingOperation(root);
+        if (pending is not null && !SamePath(pending.Value.InstancePath, selected.Path))
+        {
+            StatusBox.Text = LocalizedText.Get("TransactionRecoveryRequired", pending.Value.InstancePath);
+            return;
+        }
+        UninstallConfirmDetails.Text = LocalizedText.Get("UiUninstallConfirmTarget", selected.Release.PackName,
+            selected.Release.PackVersion, selected.Path);
         _uninstallReturnFocus = UninstallButton;
         MainContentScrollViewer.IsEnabled = false;
         UninstallConfirmOverlay.Visibility = Visibility.Visible;
@@ -112,8 +153,196 @@ public partial class MainWindow : Window
             Title = LocalizedText.Get("UiInstallFolderDialog"),
             InitialDirectory = Directory.Exists(InstallRootBox.Text) ? InstallRootBox.Text : InstallService.DefaultInstallRoot
         };
-        if (picker.ShowDialog(this) == true) InstallRootBox.Text = picker.FolderName;
+        if (picker.ShowDialog(this) == true)
+        {
+            InstallRootBox.Text = picker.FolderName;
+            _ = RefreshRootState(persist: true);
+        }
     }
+
+    private void InstallRootBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        _selectedInstancePath = null;
+        _instanceChoices = [];
+        _activeMarker = null;
+        _gameDirectory = null;
+        _currentOperationLog = null;
+        InstalledInstanceComboBox.ItemsSource = null;
+        InstalledInstanceStatusText.Text = LocalizedText.Get("UiRootChangedSelectInstance");
+        RootAvailabilityText.Text = LocalizedText.Get("UiRootNeedsValidation");
+    }
+
+    private void InstallRootBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e) =>
+        _ = RefreshRootState(persist: true);
+
+    private void InstalledInstanceComboBox_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_changingInstanceSelection) return;
+        var selected = GetSelectedEntry();
+        _selectedInstancePath = selected?.Path;
+        UpdateSelectedInstanceStatus();
+    }
+
+    private string? RefreshRootState(bool persist)
+    {
+        try
+        {
+            var root = Path.TrimEndingDirectorySeparator(InstallService.ValidateInstallRoot(InstallRootBox.Text));
+            var volumeRoot = Path.GetPathRoot(root);
+            if (volumeRoot is null || !Directory.Exists(volumeRoot))
+                throw new InstallerException("ROOT_UNAVAILABLE", LocalizedText.Get("UiSavedRootUnavailable"));
+            if (!Directory.Exists(root) && _missingSavedRootPath is not null && SamePath(root, _missingSavedRootPath))
+                throw new InstallerException("ROOT_UNAVAILABLE", LocalizedText.Get("UiSavedRootUnavailable"));
+
+            if (persist)
+            {
+                try
+                {
+                    InstallerPreferences.SaveLastValidatedRoot(InstallerPreferences.DefaultPath, root);
+                    _missingSavedRootPath = null;
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InstallerException)
+                {
+                    StatusBox.Text = LocalizedText.Get("UiPreferencesNotSaved");
+                }
+            }
+
+            _activeMarker = null;
+            var pending = _installer.GetPendingOperation(root);
+            if (Directory.Exists(root) && pending is null) _activeMarker = _installer.InspectActiveMarker(root);
+            _instanceChoices = Directory.Exists(root)
+                ? InstalledInstanceCatalog.Enumerate(root, AppContext.BaseDirectory)
+                    .Select(entry => new InstanceChoice(entry, FormatInstanceChoice(entry)))
+                    .ToArray()
+                : [];
+            _changingInstanceSelection = true;
+            InstalledInstanceComboBox.ItemsSource = _instanceChoices;
+            RootAvailabilityText.Text = pending is not null
+                ? LocalizedText.Get("UiPendingRecoveryAt", pending.Value.InstancePath)
+                : Directory.Exists(root) ? LocalizedText.Get("UiRootAvailable", root) : LocalizedText.Get("UiRootReady", root);
+            if (_activeMarker is { State: not (ActiveMarkerState.Absent or ActiveMarkerState.Valid) } markerState)
+                RootAvailabilityText.Text += Environment.NewLine + LocalizedText.Get("UiActiveMarkerStatus",
+                    LocalizedText.Get(markerState.State switch
+                    {
+                        ActiveMarkerState.Malformed => "UiMarkerMalformed",
+                        ActiveMarkerState.MissingTarget => "UiMarkerTargetMissing",
+                        ActiveMarkerState.UnsupportedSchema => "ActiveMarkerUnsupported",
+                        _ => "ActiveMarkerUnsafe"
+                    }));
+
+            var preferredPath = _selectedInstancePath;
+            var activePath = _activeMarker?.InstancePath;
+            var choice = _instanceChoices.FirstOrDefault(item => SamePath(item.Entry.Path, preferredPath)) ??
+                _instanceChoices.FirstOrDefault(item => SamePath(item.Entry.Path, activePath)) ??
+                _instanceChoices.FirstOrDefault(item => item.Entry.IsTrusted) ?? _instanceChoices.FirstOrDefault(item => item.Entry.IsOpenable);
+            InstalledInstanceComboBox.SelectedItem = choice;
+            _changingInstanceSelection = false;
+            _selectedInstancePath = choice?.Entry.Path;
+            UpdateSelectedInstanceStatus();
+            return root;
+        }
+        catch (InstallerException ex)
+        {
+            _instanceChoices = [];
+            _activeMarker = null;
+            _selectedInstancePath = null;
+            InstalledInstanceComboBox.ItemsSource = null;
+            InstalledInstanceStatusText.Text = LocalizedText.Get("UiNoTrustedInstances");
+            RootAvailabilityText.Text = ex.Code == "ROOT_UNSAFE" || ex.Code == "VANILLA_PATH_BLOCKED"
+                ? ex.Message : LocalizedText.Get("UiSavedRootUnavailable");
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            _instanceChoices = [];
+            _activeMarker = null;
+            _selectedInstancePath = null;
+            InstalledInstanceComboBox.ItemsSource = null;
+            InstalledInstanceStatusText.Text = LocalizedText.Get("UiNoTrustedInstances");
+            RootAvailabilityText.Text = LocalizedText.Get("UiSavedRootUnavailable");
+            return null;
+        }
+    }
+
+    private string FormatInstanceChoice(InstalledInstanceEntry entry)
+    {
+        var release = entry.Release;
+        var name = release is null ? Path.GetFileName(entry.Path) : $"{release.PackName} {release.PackVersion}";
+        var state = SamePath(entry.Path, _activeMarker?.InstancePath)
+            ? LocalizedText.Get("UiInstanceActive") : LocalizedText.Get("UiInstanceInactive");
+        state += " · " + LocalizedText.Get(entry.State switch
+        {
+            InstalledInstanceState.Trusted => "UiInstanceTrusted",
+            InstalledInstanceState.PackageMissing => "UiInstancePackageMissing",
+            InstalledInstanceState.Residue => "UiInstanceResidue",
+            InstalledInstanceState.UnknownRelease => "UiInstanceUnknown",
+            InstalledInstanceState.Invalid => "UiInstanceInvalid",
+            _ => "UiInstanceUnsafe"
+        });
+        return $"{name} — {state}";
+    }
+
+    private void UpdateSelectedInstanceStatus()
+    {
+        var selected = GetSelectedEntry();
+        if (selected is null)
+        {
+            InstalledInstanceStatusText.Text = LocalizedText.Get("UiNoTrustedInstances");
+            return;
+        }
+        var releaseLabel = selected.Release is null
+            ? Path.GetFileName(selected.Path)
+            : $"{selected.Release.PackName} {selected.Release.PackVersion}";
+        InstalledInstanceStatusText.Text = LocalizedText.Get("UiSelectedInstanceStatus", releaseLabel, selected.Path,
+            SamePath(selected.Path, _activeMarker?.InstancePath)
+                ? LocalizedText.Get("UiInstanceActive") : LocalizedText.Get("UiInstanceInactive"));
+    }
+
+    private InstalledInstanceEntry? GetSelectedEntry() =>
+        (InstalledInstanceComboBox.SelectedItem as InstanceChoice)?.Entry;
+
+    private InstalledInstanceEntry RequireTrustedSelected(string root)
+    {
+        var selected = GetSelectedEntry();
+        if (selected is not { IsTrusted: true } || !IsUnderSelectedRoot(root, selected.Path))
+            throw new InstallerException("INSTANCE_UNTRUSTED", LocalizedText.Get("UiSelectTrustedInstance"));
+        return selected;
+    }
+
+    private bool ConfirmMarkerRecovery(string root, ActiveMarkerInspection marker)
+    {
+        if (marker.State == ActiveMarkerState.UnsupportedSchema)
+            throw new InstallerException("ACTIVE_MARKER_UNSUPPORTED", LocalizedText.Get("ActiveMarkerUnsupported"));
+        if (marker.State == ActiveMarkerState.UnsafePath)
+            throw new InstallerException("ACTIVE_MARKER_UNSAFE", LocalizedText.Get("ActiveMarkerUnsafe"));
+        if (marker.State is not (ActiveMarkerState.Malformed or ActiveMarkerState.MissingTarget)) return false;
+        var hasTrustedInstance = InstalledInstanceCatalog.Enumerate(root, AppContext.BaseDirectory).Any(entry => entry.IsTrusted);
+        var confirmation = hasTrustedInstance
+            ? LocalizedText.Get("UiActiveMarkerRecoveryConfirm", root,
+                LocalizedText.Get(marker.State == ActiveMarkerState.Malformed ? "UiMarkerMalformed" : "UiMarkerTargetMissing"))
+            : LocalizedText.Get("UiEmptyRootMarkerRecoveryConfirm", root);
+        return MessageBox.Show(this, confirmation,
+            LocalizedText.Get("UiActiveMarkerRecoveryTitle"), MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
+    }
+
+    private InstalledInstanceEntry? ResolveImportTarget(string root)
+    {
+        var selected = GetSelectedEntry();
+        if (selected is { IsTrusted: true } && IsUnderSelectedRoot(root, selected.Path)) return selected;
+        var activePath = _installer.GetActiveInstancePath(root);
+        return _instanceChoices.Select(item => item.Entry)
+            .FirstOrDefault(entry => entry.IsTrusted && SamePath(entry.Path, activePath));
+    }
+
+    private static bool IsUnderSelectedRoot(string root, string path) =>
+        Path.GetDirectoryName(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)))) is { } parent &&
+        SamePath(parent, root);
+
+    private static bool SamePath(string? first, string? second) => first is not null && second is not null &&
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(first)).Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(second)), StringComparison.OrdinalIgnoreCase);
 
     private async Task RunOperationAsync(Operation operation, string? sourceWorlds = null)
     {
@@ -121,11 +350,22 @@ public partial class MainWindow : Window
         var cancellation = new CancellationTokenSource();
         _operationCancellation = cancellation;
         _operationCanBeCancelled = operation != Operation.Uninstall;
+        var selectedPackForLog = SelectedPack;
+        var installedReleaseForLog = operation == Operation.Install ? null : GetSelectedEntry()?.Release;
+        var operationLog = new OperationLog(operation.ToString().ToLowerInvariant(), _installerVersion,
+            InstallRootBox.Text, installedReleaseForLog?.PackVersion ?? selectedPackForLog.Version,
+            installedReleaseForLog?.MinecraftVersion ?? TestPackRelease.MinecraftVersion,
+            installedReleaseForLog?.FabricLoaderVersion ?? TestPackRelease.FabricLoaderVersion,
+            installedReleaseForLog?.ArchiveSha512 ?? selectedPackForLog.Hash);
+        _currentOperationLog = operationLog;
         SetBusy(true);
         var filesInstalled = false;
         var filesRemoved = false;
+        var operationOutcome = "failed";
+        string? operationFailureCode = null;
         MinecraftLauncherTarget? launcherTarget = null;
         OperationProgress.Value = 0;
+        OperationProgress.IsIndeterminate = true;
         InstructionsBox.Text = "";
         DiagnosticText.Text = "";
         StatusBox.Text = LocalizedText.Get("OperationWait");
@@ -141,110 +381,278 @@ public partial class MainWindow : Window
 
         try
         {
-            var root = Path.GetFullPath(InstallRootBox.Text);
+            operationLog.Write("preflight", "started", "ui_operation_started");
+            await OperationGuard.RunAsync(async () =>
+            {
+            var root = RefreshRootState(persist: true)
+                ?? throw new InstallerException("ROOT_UNAVAILABLE", LocalizedText.Get("UiSavedRootUnavailable"));
             var selectedPack = SelectedPack;
             if (operation == Operation.Install && !File.Exists(selectedPack.Path))
                 throw new InstallerException("PACK_NOT_FOUND", LocalizedText.Get("PublishedPackMissing"));
 
             if (operation == Operation.ImportWorlds)
             {
+                var importTarget = ResolveImportTarget(root)
+                    ?? throw new InstallerException("INSTANCE_UNTRUSTED", LocalizedText.Get("UiSelectTrustedInstance"));
                 var worldProgress = new Progress<string>(message => ProgressLabel.Text = message);
                 var imported = await Task.Run(async () =>
                 {
-                    var instance = _installer.GetActiveInstancePath(root)
-                        ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("InstallBeforeImport"));
-                    return await WorldImportService.ImportAsync(sourceWorlds!, instance, worldProgress, cancellation.Token);
+                    return await WorldImportService.ImportAsync(sourceWorlds!, importTarget.Path, worldProgress, cancellation.Token, operationLog);
                 }, cancellation.Token);
                 StateHeading.Text = LocalizedText.Get("WorldImportComplete");
-                StatusBox.Text = LocalizedText.Get("WorldImportSummary", imported.Imported, imported.Skipped);
-                InstructionsBox.Text = LocalizedText.Get("WorldImportSafety");
+                StatusBox.Text = FormatWorldImportSummary(imported);
+                InstructionsBox.Text = LocalizedText.Get("UiWorldImportSafetyTarget", importTarget.Release!.PackName,
+                    importTarget.Release.PackVersion, importTarget.Path);
                 ProgressLabel.Text = LocalizedText.Get("OperationComplete");
+                operationOutcome = "completed";
                 return;
             }
 
             var lastByteUpdate = 0L;
+            var fileProgressPhase = "files";
+            var progressProjector = new InstallProgressProjector();
             var progress = new Progress<InstallProgress>(item =>
             {
-                if (item.Stage == "download" && item.ExpectedBytes is > 0 && item.BytesReceived > 0)
+                if (item.Stage == "download" && item.BytesReceived > 0)
                 {
                     var now = Stopwatch.GetTimestamp();
                     if (now - lastByteUpdate < Stopwatch.Frequency / 10) return;
                     lastByteUpdate = now;
                 }
-                if (item.ExpectedBytes is > 0 && item.BytesReceived > 0)
-                {
-                    OperationProgress.Maximum = item.ExpectedBytes.Value;
-                    OperationProgress.Value = Math.Min(item.BytesReceived, item.ExpectedBytes.Value);
-                }
-                else
-                {
-                    OperationProgress.Maximum = Math.Max(1, item.TotalFiles);
-                    OperationProgress.Value = Math.Clamp(item.CompletedFiles, 0, OperationProgress.Maximum);
-                }
-                ProgressLabel.Text = item.Message;
+                var phase = item.Stage is "download" or "override" or "prepare" or "repair" or "complete"
+                    ? fileProgressPhase : item.Stage;
+                var view = progressProjector.Update(phase, item);
+                OperationProgress.IsIndeterminate = view.IsIndeterminate;
+                OperationProgress.Maximum = Math.Max(1, view.TotalFiles);
+                if (!view.IsIndeterminate) OperationProgress.Value = view.CompletedFiles;
+                ProgressLabel.Text = item.ExpectedBytes is > 0 && item.BytesReceived > 0
+                    ? item.Message + " " + LocalizedText.Get("ProgressBytes", item.BytesReceived, item.ExpectedBytes.Value)
+                    : item.Message;
             });
 
             if (operation == Operation.ConfigureLauncher)
             {
-                _gameDirectory = await Task.Run(() => _installer.GetActiveInstancePath(root), cancellation.Token)
-                    ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("InstallBeforeLauncherRepair"));
-                filesInstalled = true;
-                await ConfigureLauncherAsync(_gameDirectory, cancellation.Token);
+                var target = RequireTrustedSelected(root);
+                var release = target.Release!;
+                var (archivePath, archiveHash) = InstalledInstanceCatalog.PinnedArchive(release.PackVersion, AppContext.BaseDirectory);
+                if (!File.Exists(archivePath))
+                    throw new InstallerException("PACK_NOT_FOUND", LocalizedText.Get("SelectedPackUnavailable"));
+
+                var pending = _installer.GetPendingOperation(root);
+                if (pending is not null)
+                {
+                    var selectedPath = target.Path;
+                    fileProgressPhase = "pending-recovery";
+                    OperationProgress.Value = 0;
+                    OperationProgress.IsIndeterminate = true;
+                    ProgressLabel.Text = LocalizedText.Get("SearchingPack");
+                    var (pendingArchive, pendingHash) = InstalledInstanceCatalog.PinnedArchive(pending.Value.PackVersion, AppContext.BaseDirectory);
+                    var recovery = await Task.Run(() => _installer.RepairAsync(pending.Value.InstancePath,
+                        pendingArchive, pendingHash, progress, cancellation.Token, _launcher, operationLog), cancellation.Token);
+                    if (!recovery.Success)
+                    {
+                        StateHeading.Text = LocalizedText.Get("OperationFailedHeading");
+                        StatusBox.Text = recovery.Message;
+                        operationFailureCode = recovery.Code;
+                        operationOutcome = "failed";
+                        return;
+                    }
+                    fileProgressPhase = "selected-files";
+                    OperationProgress.Value = 0;
+                    OperationProgress.IsIndeterminate = true;
+                    ProgressLabel.Text = LocalizedText.Get("PreparingFiles");
+                    _ = RefreshRootState(persist: false);
+                    target = RequireTrustedSelected(root);
+                    if (!SamePath(target.Path, selectedPath))
+                        throw new InstallerException("INSTANCE_UNTRUSTED", LocalizedText.Get("UiSelectTrustedInstance"));
+                }
+
+                var activePath = _installer.GetActiveInstancePath(root);
+                var marker = _installer.InspectActiveMarker(root);
+                if (marker.State is ActiveMarkerState.UnsupportedSchema or ActiveMarkerState.UnsafePath)
+                    throw new InstallerException(marker.State == ActiveMarkerState.UnsupportedSchema
+                        ? "ACTIVE_MARKER_UNSUPPORTED" : "ACTIVE_MARKER_UNSAFE",
+                        LocalizedText.Get(marker.State == ActiveMarkerState.UnsupportedSchema
+                            ? "ActiveMarkerUnsupported" : "ActiveMarkerUnsafe"));
+                var allowMarkerRecovery = marker.State is ActiveMarkerState.Malformed or ActiveMarkerState.MissingTarget;
+                if (!SamePath(activePath, target.Path) || allowMarkerRecovery)
+                {
+                    var markerNote = allowMarkerRecovery
+                        ? LocalizedText.Get("UiMarkerWillBeBackedUp")
+                        : LocalizedText.Get("UiMarkerWillSwitch");
+                    if (MessageBox.Show(this,
+                            LocalizedText.Get("UiActivateInstanceConfirm", release.PackName,
+                                release.PackVersion, target.Path) + Environment.NewLine + markerNote,
+                            LocalizedText.Get("UiActivateInstanceTitle"), MessageBoxButton.YesNo,
+                            MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                    {
+                        operationOutcome = "cancelled";
+                        operationFailureCode = "CANCELLED";
+                        StatusBox.Text = LocalizedText.Get("OperationStoppedStatus");
+                        return;
+                    }
+                }
+
+                await Task.Run(() => _launcherController.CloseBeforeInstallAsync(cancellation.Token, operationLog), cancellation.Token);
+                FabricLauncherService? activationLauncher = null;
+                var releaseLauncher = _launcher;
+                if (release.MinecraftVersion != TestPackRelease.MinecraftVersion)
+                    releaseLauncher = activationLauncher = new FabricLauncherService(
+                        minecraftVersion: release.MinecraftVersion,
+                        ensureLauncherClosed: _launcherController.EnsureClosed);
+                try
+                {
+                    var markerBackup = await Task.Run(() => _installer.ActivateExistingInstanceAsync(root, target.Path,
+                        archivePath, archiveHash, releaseLauncher, allowMarkerRecovery, cancellation.Token, operationLog), cancellation.Token);
+                    filesInstalled = true;
+                    if (markerBackup is not null) StatusBox.Text = LocalizedText.Get("ActiveMarkerBackupSaved", markerBackup);
+                }
+                finally { activationLauncher?.Dispose(); }
+                _gameDirectory = target.Path;
+                _ = RefreshRootState(persist: false);
+                operationOutcome = "completed";
                 return;
             }
 
             InstallResult result;
+            var configureRepairedTarget = false;
             if (operation == Operation.Install)
             {
+                var pending = _installer.GetPendingOperation(root);
+                var allowMarkerRecovery = false;
+                if (pending is null)
+                {
+                    var marker = _installer.InspectActiveMarker(root);
+                    if (marker.State is ActiveMarkerState.UnsupportedSchema or ActiveMarkerState.UnsafePath)
+                        throw new InstallerException(marker.State == ActiveMarkerState.UnsupportedSchema
+                            ? "ACTIVE_MARKER_UNSUPPORTED" : "ACTIVE_MARKER_UNSAFE",
+                            LocalizedText.Get(marker.State == ActiveMarkerState.UnsupportedSchema
+                                ? "ActiveMarkerUnsupported" : "ActiveMarkerUnsafe"));
+                    if (marker.State is ActiveMarkerState.Malformed or ActiveMarkerState.MissingTarget)
+                    {
+                        allowMarkerRecovery = ConfirmMarkerRecovery(root, marker);
+                        if (!allowMarkerRecovery)
+                        {
+                            operationOutcome = "cancelled";
+                            operationFailureCode = "CANCELLED";
+                            StatusBox.Text = LocalizedText.Get("OperationStoppedStatus");
+                            return;
+                        }
+                    }
+                }
                 await Task.Run(_launcher.CheckProfileReady, cancellation.Token);
                 ProgressLabel.Text = LocalizedText.Get("ClosingLauncherProgress");
-                launcherTarget = await Task.Run(() => _launcherController.CloseBeforeInstallAsync(cancellation.Token), cancellation.Token);
+                launcherTarget = await Task.Run(() => _launcherController.CloseBeforeInstallAsync(cancellation.Token, operationLog), cancellation.Token);
                 await Task.Run(_launcher.CheckReady, cancellation.Token);
-                var (active, current) = await Task.Run(() =>
+                if (pending is not null)
                 {
-                    var instance = _installer.GetActiveInstancePath(root);
-                    return (instance, instance is null ? null : InstallationManifest.Load(instance));
-                }, cancellation.Token);
-                result = current?.PackVersion == selectedPack.Version &&
-                         current.PackArchiveSha512.Equals(selectedPack.Hash, StringComparison.OrdinalIgnoreCase)
-                    ? await Task.Run(() => _installer.RepairAsync(active!, selectedPack.Path, selectedPack.Hash, progress, cancellation.Token), cancellation.Token)
-                    : await Task.Run(() => _installer.InstallAsync(selectedPack.Path, selectedPack.Hash, root, progress, cancellation.Token), cancellation.Token);
+                    fileProgressPhase = "pending-recovery";
+                    OperationProgress.Value = 0;
+                    OperationProgress.IsIndeterminate = true;
+                    ProgressLabel.Text = LocalizedText.Get("SearchingPack");
+                    var (pendingPack, pendingHash) = PinnedArchive(pending.Value.PackVersion);
+                    var recovery = await Task.Run(() => _installer.RepairAsync(pending.Value.InstancePath,
+                        pendingPack, pendingHash, progress, cancellation.Token, _launcher, operationLog), cancellation.Token);
+                    if (!recovery.Success) result = recovery;
+                    else
+                    {
+                        fileProgressPhase = "selected-files";
+                        OperationProgress.Value = 0;
+                        OperationProgress.IsIndeterminate = true;
+                        ProgressLabel.Text = LocalizedText.Get("PreparingFiles");
+                        var marker = _installer.InspectActiveMarker(root);
+                        allowMarkerRecovery = marker.State is ActiveMarkerState.Malformed or ActiveMarkerState.MissingTarget
+                            ? ConfirmMarkerRecovery(root, marker) : false;
+                        if ((marker.State is ActiveMarkerState.Malformed or ActiveMarkerState.MissingTarget) && !allowMarkerRecovery)
+                        {
+                            operationOutcome = "cancelled";
+                            operationFailureCode = "CANCELLED";
+                            StatusBox.Text = LocalizedText.Get("OperationStoppedStatus");
+                            return;
+                        }
+                        var (active, current) = await Task.Run(() =>
+                        {
+                            var instance = _installer.GetActiveInstancePath(root);
+                            return (instance, instance is null ? null : InstallationManifest.Load(instance));
+                        }, cancellation.Token);
+                        result = current?.PackVersion == selectedPack.Version &&
+                                 current.PackArchiveSha512.Equals(selectedPack.Hash, StringComparison.OrdinalIgnoreCase)
+                            ? await Task.Run(() => _installer.RepairAsync(active!, selectedPack.Path, selectedPack.Hash,
+                                progress, cancellation.Token, _launcher, operationLog), cancellation.Token)
+                            : await Task.Run(() => _installer.InstallAsync(selectedPack.Path, selectedPack.Hash, root,
+                                progress, cancellation.Token, _launcher, operationLog, allowMarkerRecovery), cancellation.Token);
+                    }
+                }
+                else
+                {
+                    var (active, current) = await Task.Run(() =>
+                    {
+                        var instance = _installer.GetActiveInstancePath(root);
+                        return (instance, instance is null ? null : InstallationManifest.Load(instance));
+                    }, cancellation.Token);
+                    result = current?.PackVersion == selectedPack.Version &&
+                             current.PackArchiveSha512.Equals(selectedPack.Hash, StringComparison.OrdinalIgnoreCase)
+                        ? await Task.Run(() => _installer.RepairAsync(active!, selectedPack.Path, selectedPack.Hash,
+                            progress, cancellation.Token, _launcher, operationLog), cancellation.Token)
+                        : await Task.Run(() => _installer.InstallAsync(selectedPack.Path, selectedPack.Hash, root,
+                            progress, cancellation.Token, _launcher, operationLog, allowMarkerRecovery), cancellation.Token);
+                }
             }
             else if (operation == Operation.Uninstall)
             {
-                var uninstall = await Task.Run(async () =>
+                result = await Task.Run(async () =>
                 {
-                    var instance = _installer.GetActiveInstancePath(root);
-                    if (instance is null)
-                    {
-                        _launcher.RemoveOwnProfile();
-                        return (Instance: (string?)null, Result: (InstallResult?)null);
-                    }
-                    var installedVersion = InstallationManifest.Load(instance).PackVersion;
-                    var (packPath, packHash) = PinnedArchive(installedVersion);
-                    _launcher.RemoveOwnProfile(instance);
-                    return (Instance: instance, Result: (InstallResult?)await _installer.UninstallAsync(instance, packPath, packHash));
+                    var pending = _installer.GetPendingOperation(root);
+                    var target = RequireTrustedSelected(root);
+                    if (pending is not null && !SamePath(pending.Value.InstancePath, target.Path))
+                        throw new InstallerException("TRANSACTION_RECOVERY_REQUIRED",
+                            LocalizedText.Get("TransactionRecoveryRequired", pending.Value.InstancePath));
+                    var (packPath, packHash) = InstalledInstanceCatalog.PinnedArchive(target.Release!.PackVersion, AppContext.BaseDirectory);
+                    var active = _installer.GetActiveInstancePath(root);
+                    var launcher = SamePath(active, target.Path) ? _launcher : null;
+                    return await _installer.UninstallAsync(root, target.Path, packPath, packHash, launcher, operationLog);
                 }, cancellation.Token);
-                if (uninstall.Result is null)
-                {
-                    StateHeading.Text = LocalizedText.Get("ProfileRemoved");
-                    ProgressLabel.Text = LocalizedText.Get("OperationComplete");
-                    StatusBox.Text = LocalizedText.Get("NoActivePackProfileRemoved");
-                    InstructionsBox.Text = LocalizedText.Get("OtherProfilesUnchanged");
-                    return;
-                }
-                result = uninstall.Result;
             }
             else
             {
-                var (instance, manifest) = await Task.Run(() =>
+                var pending = _installer.GetPendingOperation(root);
+                var selectedTargetPath = _selectedInstancePath;
+                if (pending is not null)
                 {
-                    var active = _installer.GetActiveInstancePath(root)
-                        ?? throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("PackNotFoundInFolder"));
-                    return (active, InstallationManifest.Load(active));
-                }, cancellation.Token);
-                var (installedPackPath, installedPackHash) = PinnedArchive(manifest.PackVersion);
-                result = await Task.Run(() => _installer.RepairAsync(instance, installedPackPath, installedPackHash, progress, cancellation.Token), cancellation.Token);
+                    fileProgressPhase = "pending-recovery";
+                    OperationProgress.Value = 0;
+                    OperationProgress.IsIndeterminate = true;
+                    ProgressLabel.Text = LocalizedText.Get("SearchingPack");
+                    var (pendingArchive, pendingHash) = InstalledInstanceCatalog.PinnedArchive(pending.Value.PackVersion, AppContext.BaseDirectory);
+                    var recovered = await Task.Run(() => _installer.RepairAsync(pending.Value.InstancePath,
+                        pendingArchive, pendingHash, progress, cancellation.Token, _launcher, operationLog), cancellation.Token);
+                    if (!recovered.Success) result = recovered;
+                    else
+                    {
+                        fileProgressPhase = "selected-files";
+                        OperationProgress.Value = 0;
+                        OperationProgress.IsIndeterminate = true;
+                        ProgressLabel.Text = LocalizedText.Get("PreparingFiles");
+                        _ = RefreshRootState(persist: false);
+                        var selected = RequireTrustedSelected(root);
+                        if (selectedTargetPath is null || !SamePath(selected.Path, selectedTargetPath))
+                            throw new InstallerException("INSTANCE_UNTRUSTED", LocalizedText.Get("UiSelectTrustedInstance"));
+                        var (installedPackPath, installedPackHash) = InstalledInstanceCatalog.PinnedArchive(selected.Release!.PackVersion, AppContext.BaseDirectory);
+                        var active = _installer.GetActiveInstancePath(root);
+                        configureRepairedTarget = SamePath(active, selected.Path);
+                        result = await Task.Run(() => _installer.RepairAsync(selected.Path, installedPackPath, installedPackHash,
+                            progress, cancellation.Token, configureRepairedTarget ? _launcher : null, operationLog), cancellation.Token);
+                    }
+                }
+                else
+                {
+                    var selected = RequireTrustedSelected(root);
+                    var (installedPackPath, installedPackHash) = InstalledInstanceCatalog.PinnedArchive(selected.Release!.PackVersion, AppContext.BaseDirectory);
+                    var active = _installer.GetActiveInstancePath(root);
+                    configureRepairedTarget = SamePath(active, selected.Path);
+                    result = await Task.Run(() => _installer.RepairAsync(selected.Path, installedPackPath, installedPackHash,
+                        progress, cancellation.Token, configureRepairedTarget ? _launcher : null, operationLog), cancellation.Token);
+                }
             }
 
             if (result.Success)
@@ -255,20 +663,30 @@ public partial class MainWindow : Window
                     filesInstalled = true;
                     if (operation == Operation.Install)
                     {
+                        _selectedInstancePath = result.GameDirectory;
                         var launch = await _launcherController.ConfigureAndStartAsync(launcherTarget,
-                            () => ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token));
+                            () => ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token, operationLog), operationLog);
                         if (launch.Status == MinecraftLauncherStartStatus.Requested)
                             StatusBox.Text = LocalizedText.Get("LauncherStartRequestedStatus");
                         else
                         {
+                            operationOutcome = "profile_pending";
                             StatusBox.Text = LocalizedText.Get(launch.Status == MinecraftLauncherStartStatus.Failed
                                 ? "LauncherStartFailedStatus" : "LauncherStartUnavailableStatus");
                             InstructionsBox.Text = LocalizedText.Get("LaunchInstruction");
                             DiagnosticText.Text = launch.Diagnostic;
                         }
                     }
-                    else
-                        await ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token);
+                    else if (operation == Operation.Repair && configureRepairedTarget)
+                        await ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token, operationLog);
+                    else if (operation == Operation.Repair)
+                    {
+                        StateHeading.Text = LocalizedText.Get("RepairCompleteInactiveHeading");
+                        StatusBox.Text = result.Message;
+                        InstructionsBox.Text = LocalizedText.Get("RepairInactiveHint");
+                        ProgressLabel.Text = LocalizedText.Get("OperationComplete");
+                    }
+                    _ = RefreshRootState(persist: false);
                 }
                 else
                 {
@@ -277,22 +695,32 @@ public partial class MainWindow : Window
                     ProgressLabel.Text = LocalizedText.Get("OperationComplete");
                     StatusBox.Text = result.Message;
                     InstructionsBox.Text = LocalizedText.Get("UserFilesPreserved");
+                    _ = RefreshRootState(persist: false);
                 }
+                if (operationOutcome != "profile_pending") operationOutcome = "completed";
             }
             else
             {
+                operationOutcome = result.Code == "CANCELLED" ? "cancelled" : "failed";
+                operationFailureCode = result.Code;
                 StateHeading.Text = LocalizedText.Get(result.Code == "CANCELLED" ? "OperationCancelledHeading" : "OperationFailedHeading");
                 StatusBox.Text = result.Code == "CANCELLED" ? LocalizedText.Get("OperationStoppedStatus") : result.Message;
-                DiagnosticText.Text = FormatDiagnostic(result.Code, result.LogPath ?? _installer.GetLatestLogPath(root));
+                DiagnosticText.Text = FormatDiagnostic(result.Code, operationLog.CurrentLogPath);
                 ProgressLabel.Text = LocalizedText.Get(result.Code == "CANCELLED" ? "OperationCancelledHeading" : "OperationFailedProgress");
             }
+            }, cancellation.Token);
         }
         catch (InstallerException ex)
         {
+            operationFailureCode = ex.Code;
+            operationOutcome = filesInstalled ? "profile_pending" : "failed";
+            operationLog.WriteException("end", "ui_operation_failed", ex);
             if (operation == Operation.ImportWorlds)
             {
                 StateHeading.Text = LocalizedText.Get("WorldImportFailedHeading");
-                StatusBox.Text = ex.Message;
+                StatusBox.Text = ex is WorldImportFailureException partial
+                    ? ex.Message + Environment.NewLine + FormatWorldImportSummary(partial.PartialResult)
+                    : ex.Message;
                 ShowDiagnostic(ex.Code);
                 InstructionsBox.Text = LocalizedText.Get("WorldImportPartialSafety");
                 ProgressLabel.Text = LocalizedText.Get("OperationIncomplete");
@@ -309,12 +737,18 @@ public partial class MainWindow : Window
                 : LocalizedText.Get("FixAndRetry");
             ProgressLabel.Text = LocalizedText.Get("OperationIncomplete");
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex) when (cancellation.IsCancellationRequested)
         {
+            operationFailureCode = "CANCELLED";
+            operationOutcome = "cancelled";
+            operationLog.WriteException("end", "ui_operation_cancelled", ex, "cancelled");
             if (operation == Operation.ImportWorlds)
             {
                 StateHeading.Text = LocalizedText.Get("WorldImportStopped");
-                StatusBox.Text = LocalizedText.Get("WorldCopyCancelled");
+                var partial = ex is WorldImportCancelledException canceled
+                    ? canceled.PartialResult : new WorldImportResult(0, 0, 0, 0);
+                StatusBox.Text = LocalizedText.Get("WorldCopyCancelled", FormatWorldImportSummary(partial));
+                InstructionsBox.Text = LocalizedText.Get("WorldImportPartialSafety");
                 ProgressLabel.Text = LocalizedText.Get("OperationCancelledHeading");
                 return;
             }
@@ -326,6 +760,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
+            operationOutcome = filesInstalled ? "profile_pending" : "failed";
+            operationLog.WriteException("end", "ui_operation_failed", ex);
             if (operation == Operation.ImportWorlds)
             {
                 StateHeading.Text = LocalizedText.Get("WorldImportFailedHeading");
@@ -348,6 +784,8 @@ public partial class MainWindow : Window
         }
         finally
         {
+            operationLog.Complete(operationOutcome, operationFailureCode);
+            OperationProgress.IsIndeterminate = false;
             cancellation.Dispose();
             _operationCancellation = null;
             _operationCanBeCancelled = true;
@@ -355,21 +793,30 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task ConfigureLauncherAsync(string gameDirectory, CancellationToken cancellationToken)
+    private async Task ConfigureLauncherAsync(string gameDirectory, CancellationToken cancellationToken,
+        OperationLog operationLog)
     {
+        operationLog.Write("profile", "started", "ui_profile_setup_started");
+        OperationProgress.Maximum = Math.Max(1, OperationProgress.Maximum);
+        OperationProgress.IsIndeterminate = true;
         ProgressLabel.Text = LocalizedText.Get("ConfigureLauncherProgress");
         await Task.Run(async () =>
         {
             var manifest = InstallationManifest.Load(gameDirectory);
+            operationLog.SetRelease(manifest.PackVersion, manifest.MinecraftVersion,
+                manifest.FabricLoaderVersion, manifest.PackArchiveSha512);
             if (manifest.MinecraftVersion == TestPackRelease.MinecraftVersion)
-                await _launcher.ConfigureAsync(gameDirectory, cancellationToken);
+                await _launcher.ConfigureAsync(gameDirectory, cancellationToken, operationLog);
             else
             {
                 using var previousLauncher = new FabricLauncherService(minecraftVersion: manifest.MinecraftVersion,
                     ensureLauncherClosed: _launcherController.EnsureClosed);
-                await previousLauncher.ConfigureAsync(gameDirectory, cancellationToken);
+                await previousLauncher.ConfigureAsync(gameDirectory, cancellationToken, operationLog);
             }
         }, cancellationToken);
+        OperationProgress.IsIndeterminate = false;
+        if (OperationProgress.Value == 0 && OperationProgress.Maximum == 1) OperationProgress.Value = 1;
+        operationLog.Write("profile", "completed", "ui_profile_setup_completed");
         StateHeading.Text = LocalizedText.Get("PackReady");
         ProgressLabel.Text = LocalizedText.Get("InstallComplete");
         StatusBox.Text = LocalizedText.Get("LaunchInstruction");
@@ -381,7 +828,10 @@ public partial class MainWindow : Window
     {
         try
         {
-            var path = _gameDirectory ?? _installer.GetActiveInstancePath(Path.GetFullPath(InstallRootBox.Text));
+            var root = RefreshRootState(persist: false);
+            var selected = GetSelectedEntry();
+            var path = root is not null && selected is { IsOpenable: true } && IsUnderSelectedRoot(root, selected.Path)
+                ? selected.Path : null;
             if (path is null || !Directory.Exists(path))
             {
                 StatusBox.Text = LocalizedText.Get("InstalledFolderNotFound");
@@ -399,10 +849,10 @@ public partial class MainWindow : Window
     {
         try
         {
-            var path = _installer.GetLatestLogPath(Path.GetFullPath(InstallRootBox.Text));
+            var path = _currentOperationLog?.CurrentLogPath;
             if (path is null)
             {
-                StatusBox.Text = LocalizedText.Get("LogAfterFirstOperation");
+                StatusBox.Text = LocalizedText.Get("LogUnavailable");
                 return;
             }
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
@@ -411,6 +861,29 @@ public partial class MainWindow : Window
         {
             StatusBox.Text = LocalizedText.Get("OpenLogFailed", ex.GetType().Name);
         }
+    }
+
+    private void ExportLog_Click(object sender, RoutedEventArgs e)
+    {
+        var operationLog = _currentOperationLog;
+        if (operationLog?.CurrentLogPath is null)
+        {
+            StatusBox.Text = LocalizedText.Get("LogUnavailable");
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            FileName = Path.GetFileName(operationLog.CurrentLogPath),
+            DefaultExt = ".jsonl",
+            AddExtension = true,
+            Filter = "JSONL diagnostics (*.jsonl)|*.jsonl",
+            OverwritePrompt = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        StatusBox.Text = operationLog.TryExportCurrent(dialog.FileName)
+            ? LocalizedText.Get("DiagnosticExported")
+            : LocalizedText.Get("DiagnosticExportFailed");
     }
 
     private void ModrinthLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
@@ -431,45 +904,18 @@ public partial class MainWindow : Window
 
     private void ShowDiagnostic(string code)
     {
-        string? log = null;
-        try { log = _installer.GetLatestLogPath(Path.GetFullPath(InstallRootBox.Text)); }
-        catch (Exception) { }
-        DiagnosticText.Text = FormatDiagnostic(code, log);
+        DiagnosticText.Text = FormatDiagnostic(code, _currentOperationLog?.CurrentLogPath);
     }
 
     private static string FormatDiagnostic(string code, string? logPath) =>
-        $"{LocalizedText.Get("DiagnosticCode", code)}\n{LocalizedText.Get("DiagnosticLog", logPath ?? LocalizedText.Get("NotCreated"))}";
+        $"{LocalizedText.Get("DiagnosticCode", code)}\n{LocalizedText.Get("DiagnosticLog", logPath ?? LocalizedText.Get("LogUnavailable"))}";
 
-    private static (string Path, string Hash) PinnedArchive(string version) => version switch
-    {
-        TestPackRelease.PackVersion => (Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar)), TestPackRelease.ArtifactSha512),
-        "0.18.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LowFireArtifactFileName), TestPackRelease.LowFireArtifactSha512),
-        "0.15.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.SmoothArtifactFileName), TestPackRelease.SmoothArtifactSha512),
-        Vanilla2PlusRelease.PackVersion => (Path.Combine(AppContext.BaseDirectory, Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar)), Vanilla2PlusRelease.ArtifactSha512),
-        "0.19.5" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.DoorsArtifactFileName), Vanilla2PlusRelease.DoorsArtifactSha512),
-        "0.19.4" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.XalisArtifactFileName), Vanilla2PlusRelease.XalisArtifactSha512),
-        "0.19.3" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.SpidersArtifactFileName), Vanilla2PlusRelease.SpidersArtifactSha512),
-        "0.19.2" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.YungsArtifactFileName), Vanilla2PlusRelease.YungsArtifactSha512),
-        "0.19.1" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.TunedArtifactFileName), Vanilla2PlusRelease.TunedArtifactSha512),
-        "0.19.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.UntunedArtifactFileName), Vanilla2PlusRelease.UntunedArtifactSha512),
-        "0.17.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.WorldgenArtifactFileName), Vanilla2PlusRelease.WorldgenArtifactSha512),
-        "0.16.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.GuardArtifactFileName), Vanilla2PlusRelease.GuardArtifactSha512),
-        "0.14.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PriorArtifactFileName), Vanilla2PlusRelease.PriorArtifactSha512),
-        "0.13.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.PreviousArtifactFileName), Vanilla2PlusRelease.PreviousArtifactSha512),
-        "0.12.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.LegacyArtifactFileName), Vanilla2PlusRelease.LegacyArtifactSha512),
-        "0.11.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "vanilla-2-plus", Vanilla2PlusRelease.OriginalArtifactFileName), Vanilla2PlusRelease.OriginalArtifactSha512),
-        "0.10.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PriorArtifactFileName), TestPackRelease.PriorArtifactSha512),
-        "0.9.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.MapArtifactFileName), TestPackRelease.MapArtifactSha512),
-        "0.8.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.AnimationArtifactFileName), TestPackRelease.AnimationArtifactSha512),
-        "0.7.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.GraphicsArtifactFileName), TestPackRelease.GraphicsArtifactSha512),
-        "0.6.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.InventoryArtifactFileName), TestPackRelease.InventoryArtifactSha512),
-        "0.5.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VisualArtifactFileName), TestPackRelease.VisualArtifactSha512),
-        "0.4.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.C2meArtifactFileName), TestPackRelease.C2meArtifactSha512),
-        "0.3.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.VoxyArtifactFileName), TestPackRelease.VoxyArtifactSha512),
-        "0.2.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PreviousArtifactFileName), TestPackRelease.PreviousArtifactSha512),
-        "0.1.0" => (Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.LegacyArtifactFileName), TestPackRelease.LegacyArtifactSha512),
-        _ => throw new InstallerException("RELEASE_UNKNOWN", LocalizedText.Get("PinnedArchiveUnavailable"))
-    };
+    private static string FormatWorldImportSummary(WorldImportResult result) =>
+        LocalizedText.Get("WorldImportSummary", result.Imported, result.SkippedExisting,
+            result.SkippedMissingLock, result.SkippedLockedOrUnverified);
+
+    private static (string Path, string Hash) PinnedArchive(string version) =>
+        InstalledInstanceCatalog.PinnedArchive(version, AppContext.BaseDirectory);
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => _operationCancellation?.Cancel();
 
@@ -502,9 +948,12 @@ public partial class MainWindow : Window
         CancelButton.Visibility = busy && _operationCanBeCancelled ? Visibility.Visible : Visibility.Collapsed;
         RetryLauncherButton.IsEnabled = !busy;
         ImportWorldsButton.IsEnabled = !busy;
+        InstalledInstanceComboBox.IsEnabled = !busy;
         OpenFolderButton.IsEnabled = !busy;
         OpenLogButton.IsEnabled = !busy;
+        ExportLogButton.IsEnabled = !busy;
     }
+
 
     protected override void OnClosed(EventArgs e)
     {
@@ -513,6 +962,8 @@ public partial class MainWindow : Window
         _launcher.Dispose();
         base.OnClosed(e);
     }
+
+    private sealed record InstanceChoice(InstalledInstanceEntry Entry, string Display);
 
     private enum Operation { Install, Repair, Uninstall, ConfigureLauncher, ImportWorlds }
 }

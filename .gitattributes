@@ -1,2 +1,3 @@
 pack/test-pack/** text eol=lf
 releases/test-pack/*.mrpack binary
+third-party/yungs-sources/** -text
