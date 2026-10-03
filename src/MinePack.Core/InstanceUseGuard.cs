@@ -76,6 +76,10 @@ public static class InstanceUseGuard
         if (!OperatingSystem.IsWindows())
             throw new InstallerException("GAME_USE_UNVERIFIED", LocalizedText.Get("GameUseUnverified"));
 
+        var processInspection = Volatile.Read(ref _processInspectionForTesting);
+        processCandidates ??= processInspection?.Candidates;
+        commandLineReader ??= processInspection?.CommandLineReader;
+
         IReadOnlyList<(int ProcessId, string ProcessName)> candidates;
         try { candidates = (processCandidates ?? FindJavaProcesses()).ToArray(); }
         catch (Exception ex)
@@ -200,7 +204,7 @@ public static class InstanceUseGuard
         catch { return false; }
     }
 
-    private static string[] ParseCommandLine(string commandLine)
+    internal static string[] ParseCommandLine(string commandLine)
     {
         var argumentsPointer = CommandLineToArgvW(commandLine, out var count);
         if (argumentsPointer == IntPtr.Zero)
@@ -266,10 +270,12 @@ public static class InstanceUseGuard
         private readonly List<FileStream> _handles = [];
         private readonly HashSet<string> _protectedPaths = new(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, FileStream> _managedHandles = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _protectedWorldLockPaths = new(StringComparer.OrdinalIgnoreCase);
         private int _active = 1;
 
         public string GameDirectory { get; } = gameDirectory;
         public bool IsActive => Volatile.Read(ref _active) != 0;
+        public IReadOnlySet<string> ProtectedWorldLockPaths => _protectedWorldLockPaths;
 
         public void Recheck()
         {
@@ -378,6 +384,7 @@ public static class InstanceUseGuard
                 SafePath.EnsureNoReparsePoints(Path.GetDirectoryName(fullPath)!, fullPath);
                 _handles.Add(new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.None));
                 _protectedPaths.Add(fullPath);
+                _protectedWorldLockPaths.Add(fullPath);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -442,6 +449,8 @@ public static class InstanceUseGuard
         internal void ProtectCommittedFile(string path) => _lease.ProtectCommittedFile(path);
 
         internal string? HashManagedFile(string path) => _lease.HashManagedFile(path);
+
+        internal IReadOnlySet<string> ProtectedWorldLockPaths => _lease.ProtectedWorldLockPaths;
 
         public void Dispose()
         {

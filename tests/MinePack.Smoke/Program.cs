@@ -63,6 +63,7 @@ internal static class Smoke
             await VerifyDownloadBoundariesAsync(tempRoot);
             VerifyPinnedRelease();
             VerifyInstalledInstanceCatalogAndPreferences(tempRoot);
+            await PrismLauncherChecks.RunAsync(tempRoot);
             VerifyInstallProgressProjection();
             using (InstanceUseGuard.UseProcessInspectionForTesting(
                        Array.Empty<(int ProcessId, string ProcessName)>(), _ => string.Empty))
@@ -74,6 +75,8 @@ internal static class Smoke
                 VerifyManifestValidation(tempRoot);
                 await VerifyUninstallPreflightAsync(tempRoot);
                 await VerifyInstallRepairAndUninstallAsync(tempRoot);
+                await VerifyPrismInstanceLifecycleAsync(tempRoot);
+                await InstanceManagementChecks.RunAsync(tempRoot);
                 await VerifyOperationLoggingBestEffortAsync(tempRoot);
                 await VerifyOperationLogTargetRebindAsync(tempRoot);
                 await VerifyManagedFileTransactionsAsync(tempRoot);
@@ -862,6 +865,21 @@ internal static class Smoke
         var plusRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == TestPackRelease.PackVersion);
         var frontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == Vanilla2PlusRelease.PackVersion);
         var previousFrontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == "0.19.6");
+        Equal("MinePack-26.2-VanillaPlus-0.18.1", InstanceDirectoryNaming.CreateBaseName(plusRelease),
+            "new VanillaPlus folder name includes pinned Minecraft and pack versions");
+        Equal("MinePack-26.2-Frontier-0.19.7", InstanceDirectoryNaming.Allocate(instancesRoot, frontierRelease),
+            "new Frontier folder name is preferred when available");
+        Directory.CreateDirectory(Path.Combine(instancesRoot, InstanceDirectoryNaming.CreateBaseName(frontierRelease)));
+        Equal("MinePack-26.2-Frontier-0.19.7-02", InstanceDirectoryNaming.Allocate(instancesRoot, frontierRelease),
+            "new instance collision receives the first stable ordinal suffix");
+        True(InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.7", frontierRelease) &&
+             InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.7-02", frontierRelease) &&
+             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.7-01", frontierRelease) &&
+             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.6", frontierRelease) &&
+             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-VanillaPlus-0.19.7", frontierRelease),
+            "new folder parsing accepts only the exact pinned pack name/version and valid suffixes");
+        var frontierNewName = WriteCatalogManifest(instancesRoot, frontierRelease, AppContext.BaseDirectory,
+            InstanceDirectoryNaming.CreateBaseName(frontierRelease));
         var plusInstance = WriteCatalogManifest(instancesRoot, plusRelease, AppContext.BaseDirectory);
         var reinstallName = frontierRelease.InstanceDirectoryPrefix + "-reinstall-" + Guid.NewGuid().ToString("N");
         var frontierInstance = WriteCatalogManifest(instancesRoot, frontierRelease, AppContext.BaseDirectory, reinstallName);
@@ -889,6 +907,8 @@ internal static class Smoke
             "current Vanilla Plus manifest and pinned archive grant trusted instance status");
         True(entries.Single(entry => entry.Path == frontierInstance).IsTrusted,
             "known reinstall GUID suffix remains a trusted instance directory");
+        True(entries.Single(entry => entry.Path == frontierNewName).IsTrusted,
+            "new exact short folder name still requires and passes the pinned manifest/archive checks");
         True(entries.Single(entry => entry.Path == previousFrontierInstance).IsTrusted &&
              previousFrontierRelease.ArchiveSha512 == Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
             "immutable Frontier 0.19.6 remains a trusted catalog target after the current release changes");
@@ -1276,6 +1296,16 @@ internal static class Smoke
         True(testPaths.SetEquals(["options.txt", "config/BBEConfig.json", irisPath]), "Vanilla Plus creates only its applicable initial defaults");
         Equal(TestPackRelease.InitialOptions, System.Text.Encoding.UTF8.GetString(testDefaults.Single(file => file.Path == "options.txt").Contents),
             "Vanilla Plus preserves curated resource pack order and options");
+        foreach (var (pack, defaults) in new[] { (testPack, testDefaults), (frontierPack, frontierDefaults) })
+        {
+            var options = System.Text.Encoding.UTF8.GetString(defaults.Single(file => file.Path == "options.txt").Contents);
+            Equal(1, options.Split("enableVsync:false", StringSplitOptions.None).Length - 1,
+                $"{pack.Name} initial options disable VSync exactly once");
+            True(!options.Contains("enableVsync:true", StringComparison.Ordinal),
+                $"{pack.Name} initial options do not enable VSync");
+            True(options.StartsWith("version:4903" + Environment.NewLine, StringComparison.Ordinal),
+                $"{pack.Name} initial options keep the required version line first");
+        }
         using var bbe = JsonDocument.Parse(testDefaults.Single(file => file.Path == "config/BBEConfig.json").Contents);
         True(bbe.RootElement.GetProperty("bbe.config.storage.main").EnumerateArray().All(item => !item.GetProperty("value").GetBoolean()),
             "Better Block Entities defaults disable the existing chest and shulker optimizations");
@@ -1322,6 +1352,18 @@ internal static class Smoke
             "Repair leaves every existing initial file alone, including empty and malformed content");
         foreach (var (path, contents) in existing)
             True(File.ReadAllBytes(FixturePath(existingRoot, path)).SequenceEqual(contents), $"existing player config bytes stay unchanged: {path}");
+
+        foreach (var options in new[] { "version:4903\nenableVsync:true\n", "version:4903\n" })
+        {
+            var root = Path.Combine(tempRoot, "initial-config-existing-options-" + HashBytes(Bytes(options))[..8]);
+            InitialConfiguration.WriteToRoot(root, frontierDefaults);
+            var path = FixturePath(root, "options.txt");
+            var original = Bytes(options);
+            File.WriteAllBytes(path, original);
+            Equal(0, InitialConfiguration.RestoreMissing(root, existingStage, frontierDefaults).Count,
+                "Repair does not migrate or recreate an existing options.txt");
+            True(File.ReadAllBytes(path).SequenceEqual(original), "Repair preserves existing options.txt bytes exactly");
+        }
 
         using var validator = new InstallService();
         foreach (var (pack, archivePath) in new[] { (testPack, testPackPath), (frontierPack, frontierPackPath) })
@@ -1427,14 +1469,24 @@ internal static class Smoke
             var english = ReadResourceFile(Path.Combine(resourceDirectory, "Strings.resx"));
             var russian = ReadResourceFile(Path.Combine(resourceDirectory, "Strings.ru.resx"));
             var chinese = ReadResourceFile(Path.Combine(resourceDirectory, "Strings.zh-CN.resx"));
+            var invariantLauncherLabels = new HashSet<string>(StringComparer.Ordinal)
+            {
+                "UiLauncherOptionOfficial", "UiLauncherOptionPrism",
+                "OfficialInstanceTargetDisplay", "PrismInstanceTargetDisplay"
+            };
             True(english.Keys.Order().SequenceEqual(russian.Keys.Order()), "English and Russian resource keys match");
             True(english.Keys.Order().SequenceEqual(chinese.Keys.Order()), "English and Simplified Chinese resource keys match");
             foreach (var key in english.Keys)
             {
                 True(Placeholders(english[key]).SequenceEqual(Placeholders(russian[key])), $"resource placeholders match for {key}");
                 True(Placeholders(english[key]).SequenceEqual(Placeholders(chinese[key])), $"Chinese resource placeholders match for {key}");
-                True(chinese[key] != english[key] && chinese[key].Any(character => character is >= '\u3400' and <= '\u9FFF'),
-                    $"Chinese resource is translated and does not fall back to English for {key}");
+                if (invariantLauncherLabels.Contains(key))
+                    Equal(english[key], chinese[key], $"launcher label spelling is invariant for {key}");
+                else if (!chinese[key].Any(char.IsLetter))
+                    Equal(english[key], chinese[key], $"format-only resource is culture-neutral for {key}");
+                else
+                    True(chinese[key] != english[key] && chinese[key].Any(character => character is >= '\u3400' and <= '\u9FFF'),
+                        $"Chinese resource is translated and does not fall back to English for {key}");
             }
 
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en");
@@ -2090,6 +2142,383 @@ internal static class Smoke
         Pass("failed marker commit leaves no orphan and retry succeeds");
         var markerUninstall = await installer.UninstallAsync(markerRoot, markerInstance, markerPack, HashFile(markerPack));
         True(markerUninstall.Success, "marker fixture cleanup succeeds");
+    }
+
+    private static async Task VerifyPrismInstanceLifecycleAsync(string tempRoot)
+    {
+        var root = Path.Combine(tempRoot, "Prism lifecycle данные");
+        var dataRoot = Path.Combine(root, "Prism data");
+        var instancesRoot = Path.Combine(root, "separate volume instances");
+        var stateRoot = Path.Combine(root, "installer state");
+        var executableDirectory = Path.Combine(root, "Prism Launcher app");
+        Directory.CreateDirectory(dataRoot);
+        Directory.CreateDirectory(instancesRoot);
+        Directory.CreateDirectory(executableDirectory);
+        File.WriteAllText(Path.Combine(dataRoot, "prismlauncher.cfg"),
+            $"[General]\r\nInstanceDir = \"{instancesRoot}\"\r\n");
+        var executable = Path.Combine(executableDirectory, "prismlauncher.exe");
+        File.WriteAllBytes(executable, [0x4D, 0x5A]);
+        var fingerprint = InstallationLayout.ComputePrismFingerprint(dataRoot, instancesRoot);
+        var prismTarget = new PrismLauncherTarget(executable, dataRoot, instancesRoot, fingerprint, "smoke fixture");
+        var bytes = Bytes("prism lifecycle payload");
+        var packPath = Path.Combine(root, "lifecycle.mrpack");
+        CreatePack(packPath, "0.1.0", [new TestFile("mods/lifecycle.jar", bytes)],
+            minecraftVersion: TestPackRelease.MinecraftVersion,
+            fabricLoaderVersion: TestPackRelease.FabricLoaderVersion);
+        var packHash = HashFile(packPath);
+        var pack = PackArchive.Open(packPath, packHash);
+        var release = new KnownPackRelease("Frontier", "0.1.0", TestPackRelease.MinecraftVersion,
+            TestPackRelease.FabricLoaderVersion, "fixture.mrpack", packHash);
+        var instanceName = release.InstanceDirectoryPrefix;
+        var layout = InstallationLayout.PrismForTesting(prismTarget, instanceName, stateRoot, release);
+        var downloads = 0;
+        using var installer = new InstallService(new DownloadEngine(new DelegateHandler(_ =>
+        {
+            Interlocked.Increment(ref downloads);
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(bytes) };
+        })));
+
+        var installed = await installer.InstallAsync(packPath, packHash, layout);
+        True(installed.Success, $"Prism fixture installs through the common pipeline ({installed.Code}: {installed.Message})");
+        File.Copy(packPath, Path.Combine(root, "fixture.mrpack"));
+        var prismCatalog = InstalledInstanceCatalog.Enumerate(layout, root);
+        True(prismCatalog.Count == 1 && prismCatalog[0].IsTrusted &&
+             Path.GetFullPath(prismCatalog[0].Path).Equals(Path.GetFullPath(layout.GameDirectory), StringComparison.OrdinalIgnoreCase) &&
+             prismCatalog[0].Layout is not null,
+            "Prism catalog lists only the trusted nested game directory with its verified layout");
+        var foreignWrapper = Path.Combine(instancesRoot, "foreign-prism-instance");
+        Directory.CreateDirectory(foreignWrapper);
+        File.WriteAllText(Path.Combine(foreignWrapper, "instance.cfg"), "[General]\nname=MinePack for 26.2\n");
+        True(InstalledInstanceCatalog.Enumerate(layout, root).Count == 1,
+            "Prism catalog does not claim an unrelated instance from its visible name");
+        var foreignLayout = layout.ForInstance(foreignWrapper);
+        var foreignEntry = new InstalledInstanceEntry(foreignLayout.GameDirectory, Path.GetFileName(foreignWrapper),
+            InstalledInstanceState.Residue, null, null) { Layout = foreignLayout };
+        try
+        {
+            _ = InstanceRemovalService.PrepareCleanupForTesting(foreignEntry, instancesRoot, root,
+                Path.Combine(root, "missing official launcher"));
+            throw new InvalidOperationException("Expected foreign Prism wrapper cleanup to be refused.");
+        }
+        catch (InstallerException ex) when (ex.Code == "INSTANCE_CLEANUP_UNAVAILABLE") { }
+        Equal(layout.GameDirectory, installed.GameDirectory, "Prism install returns the nested game directory");
+        True(File.Exists(Path.Combine(layout.InstanceDirectory, "instance.cfg")), "Prism instance.cfg is published with wrapper");
+        True(File.Exists(Path.Combine(layout.InstanceDirectory, "mmc-pack.json")), "Prism component pins are published with wrapper");
+        True(PrismLauncherService.HasOwnedBinding(layout), "Prism wrapper and independent local ownership record bind the install");
+        Equal(layout.GameDirectory, installer.GetActiveInstancePath(layout), "schema 2 active marker resolves nested Prism game directory through the selected layout");
+        var pendingSiblingName = instanceName + "-reinstall-" + Guid.NewGuid().ToString("N");
+        var pendingSibling = layout.ForInstance(Path.Combine(instancesRoot, pendingSiblingName));
+        Directory.CreateDirectory(pendingSibling.GameDirectory);
+        PrismLauncherService.PrepareFreshInstance(pendingSibling.InstanceDirectory, pendingSibling, pack);
+        PrismLauncherService.WriteLocalOwnershipRecord(pendingSibling, pack);
+        _ = ManagedFileTransaction.BeginRepair(pendingSibling, pack);
+        try
+        {
+            ManagedFileTransaction.EnsureNoPendingForOtherOwnedInstances(layout);
+            throw new InvalidOperationException("Expected another owned Prism journal to block the shared active marker.");
+        }
+        catch (InstallerException ex) when (ex.Code == "TRANSACTION_RECOVERY_REQUIRED") { }
+        finally
+        {
+            Directory.Delete(pendingSibling.InstanceDirectory, recursive: true);
+            File.Delete(Path.Combine(stateRoot, "ownership", pendingSiblingName + ".json"));
+        }
+        Equal(layout.GameDirectory, installer.GetActiveInstancePath(layout),
+            "cross-instance pending Prism journal is rejected without changing the shared active marker");
+        var cfg = File.ReadAllText(Path.Combine(layout.InstanceDirectory, "instance.cfg"));
+        True(cfg.Contains("name=MinePack for 26.2", StringComparison.Ordinal), "Prism display name uses the shared exact versioned name");
+        using (var components = JsonDocument.Parse(File.ReadAllText(Path.Combine(layout.InstanceDirectory, "mmc-pack.json"))))
+            Equal(TestPackRelease.MinecraftVersion,
+                components.RootElement.GetProperty("components")[0].GetProperty("version").GetString(),
+                "Prism metadata pins the Minecraft component");
+
+        var sourceWorld = Path.Combine(root, "world source", "saves", "imported-world");
+        Directory.CreateDirectory(sourceWorld);
+        File.WriteAllText(Path.Combine(sourceWorld, "level.dat"), "import into Prism game directory");
+        File.WriteAllBytes(Path.Combine(sourceWorld, "session.lock"), Bytes("prism source lock"));
+        var imported = await WorldImportService.ImportAsync(Path.Combine(root, "world source"), layout);
+        Equal(1, imported.Imported, "Prism world import uses the selected nested game directory");
+        Equal("import into Prism game directory", File.ReadAllText(Path.Combine(layout.GameDirectory,
+            "saves", "imported-world", "level.dat")), "Prism world import writes under minecraft/saves");
+
+        var revokedWorld = Path.Combine(root, "revoked world source", "saves", "ownership-drop-world");
+        Directory.CreateDirectory(revokedWorld);
+        File.WriteAllText(Path.Combine(revokedWorld, "level.dat"), "ownership changed during import");
+        File.WriteAllBytes(Path.Combine(revokedWorld, "session.lock"), Bytes("revoked source lock"));
+        WorldImportFailureException? ownershipFailure = null;
+        using (WorldImportService.UseCheckpointForTesting(checkpoint =>
+               {
+                   if (checkpoint == "after-world-file-copy:ownership-drop-world")
+                       PrismLauncherService.RemoveLocalOwnershipRecord(layout, pack);
+               }))
+        {
+            try { await WorldImportService.ImportAsync(Path.Combine(root, "revoked world source"), layout); }
+            catch (WorldImportFailureException ex) when (ex.Code == "PRISM_INSTANCE_OWNERSHIP_CONFLICT")
+            { ownershipFailure = ex; }
+        }
+        True(ownershipFailure is not null, "Prism binding is rechecked after world staging awaits");
+        True(!Directory.Exists(Path.Combine(layout.GameDirectory, "saves", "ownership-drop-world")),
+            "world is not published when its Prism ownership binding changes during copy");
+        True(!Directory.EnumerateDirectories(Path.Combine(layout.GameDirectory, "saves"), ".minepack-import-*").Any(),
+            "ownership failure removes only the unpublished import staging directory");
+        PrismLauncherService.WriteLocalOwnershipRecord(layout, pack);
+        True(PrismLauncherService.HasOwnedBinding(layout), "fixture restores its independent Prism ownership record");
+
+        var foreignManifestGame = Path.Combine(foreignWrapper, "minecraft");
+        Directory.CreateDirectory(foreignManifestGame);
+        File.Copy(Path.Combine(layout.GameDirectory, InstallationManifest.FileName),
+            Path.Combine(foreignManifestGame, InstallationManifest.FileName));
+        var foreignImportLayout = layout.ForInstance(foreignWrapper);
+        try
+        {
+            await WorldImportService.ImportAsync(Path.Combine(root, "world source"), foreignImportLayout);
+            throw new InvalidOperationException("Expected Prism world import without an independent ownership binding to fail.");
+        }
+        catch (InstallerException ex) when (ex.Code == "PRISM_INSTANCE_OWNERSHIP_CONFLICT") { }
+        True(!Directory.Exists(Path.Combine(foreignManifestGame, "saves")),
+            "Prism world import rejects a copied manifest before writing into an unowned wrapper");
+
+        var managed = Path.Combine(layout.GameDirectory, "mods", "lifecycle.jar");
+        var options = Path.Combine(layout.GameDirectory, "options.txt");
+        var world = Path.Combine(layout.GameDirectory, "saves", "sentinel", "level.dat");
+        var prismConfig = Path.Combine(layout.InstanceDirectory, "instance.cfg");
+        var prismComponents = Path.Combine(layout.InstanceDirectory, "mmc-pack.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(world)!);
+        File.WriteAllText(world, "preserve prism world");
+        var userOptions = Bytes("version:4903\nenableVsync:true\ncustom:preserve\n");
+        File.WriteAllBytes(options, userOptions);
+
+        var userConfig = Bytes("[General]\r\nConfigVersion=1.2\r\nInstanceType=OneSix\r\nname=Manual local title\r\nnotes=keep these notes\r\nJavaPath=C:\\Java\\custom\\bin\\javaw.exe\r\nMaxMemAlloc=8192\r\n");
+        File.WriteAllBytes(prismConfig, userConfig);
+        var userComponentNode = JsonNode.Parse(File.ReadAllText(prismComponents))!.AsObject();
+        userComponentNode["customSetting"] = "keep component note";
+        userComponentNode["components"]![0]!["cachedVersion"] = "old cached display version";
+        userComponentNode["components"]![0]!["customField"] = "keep component field";
+        File.WriteAllText(prismComponents, userComponentNode.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        var userComponents = File.ReadAllBytes(prismComponents);
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "after-prism-metadata-repair-commit:instance.cfg")
+                       throw new IOException("Prism metadata repair interruption");
+               }))
+        {
+            var interruptedRepair = await installer.RepairAsync(layout, packPath, packHash);
+            True(!interruptedRepair.Success, "Prism Repair reports a metadata commit interruption");
+        }
+        True(File.ReadAllBytes(prismConfig).SequenceEqual(userConfig),
+            "Prism metadata rollback restores the exact previous instance.cfg bytes");
+        True(File.ReadAllBytes(prismComponents).SequenceEqual(userComponents),
+            "Prism metadata rollback leaves untouched component metadata byte-for-byte");
+
+        File.WriteAllText(managed, "corrupt Prism managed file");
+        var repaired = await installer.RepairAsync(layout, packPath, packHash);
+        True(repaired.Success, $"Prism Repair succeeds ({repaired.Code}: {repaired.Message})");
+        Equal(HashBytes(bytes), HashFile(managed), "Prism Repair restores only managed bytes");
+        True(File.ReadAllBytes(options).SequenceEqual(userOptions), "Prism Repair preserves a user's existing VSync option byte-for-byte");
+        Equal("preserve prism world", File.ReadAllText(world), "Prism Repair preserves user worlds");
+        var normalizedConfig = File.ReadAllText(prismConfig);
+        True(normalizedConfig.Contains("name=MinePack for 26.2", StringComparison.Ordinal) &&
+             normalizedConfig.Contains("notes=keep these notes", StringComparison.Ordinal) &&
+             normalizedConfig.Contains("JavaPath=C:\\Java\\custom\\bin\\javaw.exe", StringComparison.Ordinal) &&
+             normalizedConfig.Contains("MaxMemAlloc=8192", StringComparison.Ordinal),
+            "Prism Repair normalizes only its owned profile name and preserves Java, memory, and notes fields");
+        using (var normalizedComponents = JsonDocument.Parse(File.ReadAllBytes(prismComponents)))
+        {
+            var rootNode = normalizedComponents.RootElement;
+            Equal("keep component note", rootNode.GetProperty("customSetting").GetString(),
+                "Prism Repair preserves unknown component manifest fields");
+            Equal("keep component field", rootNode.GetProperty("components")[0].GetProperty("customField").GetString(),
+                "Prism Repair preserves unknown component fields");
+            Equal(TestPackRelease.MinecraftVersion,
+                rootNode.GetProperty("components")[0].GetProperty("cachedVersion").GetString(),
+                "Prism Repair normalizes cached display version without changing the pinned component version");
+        }
+
+        var normalizedConfigBytes = File.ReadAllBytes(prismConfig);
+        var pinnedComponentsBytes = File.ReadAllBytes(prismComponents);
+        var userNamedConfig = System.Text.Encoding.UTF8.GetString(normalizedConfigBytes)
+            .Replace("name=MinePack for 26.2", "name=Manual local title", StringComparison.Ordinal);
+        var repairReplacementConfig = Bytes(userNamedConfig.Replace(
+            "name=Manual local title", "name=MinePack for 26.2", StringComparison.Ordinal));
+        File.WriteAllText(prismConfig, userNamedConfig);
+        var concurrentRepairEdit = Bytes("[General]\r\nInstanceType=OneSix\r\nname=External edit before metadata replace\r\n");
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "before-prism-metadata-repair-commit:instance.cfg")
+                       File.WriteAllBytes(prismConfig, concurrentRepairEdit);
+               }))
+        {
+            var racedRepair = await installer.RepairAsync(layout, packPath, packHash);
+            True(!racedRepair.Success && File.ReadAllBytes(prismConfig).SequenceEqual(concurrentRepairEdit),
+                "Prism Repair refuses an external metadata edit made immediately before replacement");
+        }
+        File.WriteAllText(prismConfig, userNamedConfig);
+        var recoveredRepairRace = await installer.RepairAsync(layout, packPath, packHash);
+        True(recoveredRepairRace.Success && File.ReadAllBytes(prismConfig).SequenceEqual(repairReplacementConfig),
+            "Prism Repair recovers after the exact original metadata bytes are restored");
+
+        File.WriteAllText(prismConfig, userNamedConfig);
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name is "after-prism-metadata-repair-commit:instance.cfg" or
+                       "before-prism-metadata-restore-write:instance.cfg")
+                       throw new IOException("Prism metadata rollback interruption before atomic restore");
+               }))
+        {
+            var interruptedRestore = await installer.RepairAsync(layout, packPath, packHash);
+            True(!interruptedRestore.Success, "Prism Repair leaves a recoverable journal when metadata rollback is interrupted");
+        }
+        var concurrentConfig = Bytes("[General]\r\nInstanceType=OneSix\r\nname=External edit during recovery\r\n");
+        File.WriteAllBytes(prismConfig, concurrentConfig);
+        var rejectedConcurrentEdit = await installer.RepairAsync(layout, packPath, packHash);
+        True(!rejectedConcurrentEdit.Success && rejectedConcurrentEdit.Code == "TRANSACTION_RECOVERY_REQUIRED" &&
+             File.ReadAllBytes(prismConfig).SequenceEqual(concurrentConfig),
+            "Prism metadata recovery refuses to overwrite a concurrent edit after RestoreIntent");
+        File.WriteAllBytes(prismConfig, repairReplacementConfig);
+        var resumedMetadataRepair = await installer.RepairAsync(layout, packPath, packHash);
+        True(resumedMetadataRepair.Success && File.ReadAllText(prismConfig).Contains("name=MinePack for 26.2", StringComparison.Ordinal),
+            "Prism metadata recovery resumes from the exact committed bytes and normalizes the owned name");
+
+        var foreignComponents = JsonNode.Parse(pinnedComponentsBytes)!.AsObject();
+        foreignComponents["components"]![0]!["version"] = "26.2.1";
+        File.WriteAllText(prismComponents, foreignComponents.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        var foreignMetadataBytes = File.ReadAllBytes(prismComponents);
+        var rejectedForeignComponents = await installer.RepairAsync(layout, packPath, packHash);
+        True(!rejectedForeignComponents.Success && rejectedForeignComponents.Code == "PRISM_INSTANCE_OWNERSHIP_CONFLICT",
+            "Prism Repair fails closed when Minecraft component pin was changed by another tool");
+        True(File.ReadAllBytes(prismConfig).SequenceEqual(normalizedConfigBytes) &&
+             File.ReadAllBytes(prismComponents).SequenceEqual(foreignMetadataBytes) &&
+             HashFile(managed).Equals(HashBytes(bytes), StringComparison.OrdinalIgnoreCase),
+            "foreign Prism component pin rejection occurs before writing instance or game files");
+        File.WriteAllBytes(prismComponents, pinnedComponentsBytes);
+
+        File.Delete(prismConfig);
+        File.Delete(prismComponents);
+        var restoredMetadata = await installer.RepairAsync(layout, packPath, packHash);
+        True(restoredMetadata.Success && File.Exists(prismConfig) && File.Exists(prismComponents),
+            "Prism Repair restores missing launcher metadata from the independent ownership proof");
+        True(File.ReadAllBytes(options).SequenceEqual(userOptions), "restoring Prism metadata leaves user options unchanged");
+
+        var reinstalled = await installer.InstallAsync(packPath, packHash, layout);
+        True(reinstalled.Success, $"reinstall of the same owned Prism instance repairs in place ({reinstalled.Code})");
+        True(File.ReadAllBytes(options).SequenceEqual(userOptions), "same-release Prism install preserves existing options");
+        var retainedConfig = File.ReadAllBytes(prismConfig);
+        var retainedComponents = File.ReadAllBytes(prismComponents);
+        var concurrentUninstallEdit = Bytes("[General]\r\nInstanceType=OneSix\r\nname=External edit before metadata removal\r\n");
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "before-prism-metadata-uninstall-move:instance.cfg")
+                       File.WriteAllBytes(prismConfig, concurrentUninstallEdit);
+               }))
+        {
+            var racedUninstall = await installer.UninstallAsync(layout, packPath, packHash);
+            True(!racedUninstall.Success && File.ReadAllBytes(prismConfig).SequenceEqual(concurrentUninstallEdit),
+                "Prism Uninstall refuses an external metadata edit immediately before quarantine");
+        }
+        File.WriteAllBytes(prismConfig, retainedConfig);
+        var recoveredUninstallRace = await installer.RepairAsync(layout, packPath, packHash);
+        True(recoveredUninstallRace.Success && File.ReadAllBytes(prismConfig).SequenceEqual(retainedConfig),
+            "Prism Uninstall rollback recovers after exact original metadata bytes are restored");
+
+        using (ManagedFileTransaction.UseCheckpointsForTesting(name =>
+               {
+                   if (name == "after-prism-metadata-uninstall-move:instance.cfg")
+                       throw new IOException("Prism metadata uninstall interruption");
+               }))
+        {
+            var interruptedUninstall = await installer.UninstallAsync(layout, packPath, packHash);
+            True(!interruptedUninstall.Success, "Prism Uninstall reports an interrupted metadata removal");
+        }
+        True(File.ReadAllBytes(prismConfig).SequenceEqual(retainedConfig) &&
+             File.ReadAllBytes(prismComponents).SequenceEqual(retainedComponents) &&
+             File.Exists(Path.Combine(layout.GameDirectory, InstallationManifest.FileName)) &&
+             PrismLauncherService.HasOwnedBinding(layout),
+            "Prism Uninstall rollback restores metadata, manifest, and ownership binding");
+
+        var uninstall = await installer.UninstallAsync(layout, packPath, packHash);
+        True(uninstall.Success, $"Prism Uninstall succeeds ({uninstall.Code}: {uninstall.Message})");
+        True(!File.Exists(prismConfig) && !File.Exists(prismComponents) &&
+             File.ReadAllBytes(Path.Combine(layout.InstanceDirectory, PrismLauncherService.UninstalledConfigName)).SequenceEqual(retainedConfig) &&
+             File.ReadAllBytes(Path.Combine(layout.InstanceDirectory, PrismLauncherService.UninstalledComponentManifestName)).SequenceEqual(retainedComponents),
+            "Prism Uninstall removes standard launch metadata and retains its exact bytes in owned residue");
+        True(File.Exists(options) && File.ReadAllBytes(options).SequenceEqual(userOptions) &&
+             File.ReadAllText(world) == "preserve prism world" && !File.Exists(managed),
+            "Prism Uninstall preserves user options and worlds while removing managed game files");
+        var residueCatalog = InstalledInstanceCatalog.Enumerate(layout, root);
+        True(residueCatalog.Count == 1 && residueCatalog[0].State == InstalledInstanceState.Residue && !residueCatalog[0].IsTrusted,
+            "uninstalled Prism wrapper is catalogued as non-launchable residue");
+
+        var residueReinstall = await installer.InstallAsync(packPath, packHash, layout);
+        True(residueReinstall.Success && residueReinstall.GameDirectory is not null &&
+             !Path.GetFullPath(residueReinstall.GameDirectory).Equals(Path.GetFullPath(layout.GameDirectory), StringComparison.OrdinalIgnoreCase),
+            $"reinstall from retained Prism residue creates a new instance ID ({residueReinstall.Code})");
+        True(File.ReadAllBytes(options).SequenceEqual(userOptions) && File.ReadAllText(world) == "preserve prism world",
+            "reinstall from Prism residue leaves the previous user data intact");
+        var prismWorld = Path.Combine(layout.GameDirectory, "saves", "fixture-world");
+        Directory.CreateDirectory(prismWorld);
+        File.WriteAllText(Path.Combine(prismWorld, "session.lock"), "fixture session lock");
+        File.WriteAllText(Path.Combine(prismWorld, "level.dat"), "preserve residue world");
+        var prismProfileRoot = Path.Combine(root, "synthetic official profiles");
+        Directory.CreateDirectory(prismProfileRoot);
+        var prismProfilePath = Path.Combine(prismProfileRoot, "launcher_profiles.json");
+        File.WriteAllText(prismProfilePath, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            profiles = new { manual = new { gameDir = layout.GameDirectory } }
+        }));
+        try
+        {
+            _ = InstanceRemovalService.PrepareCleanupForTesting(residueCatalog[0], layout.InstancesRoot, root, prismProfileRoot);
+            throw new InvalidOperationException("Expected an official profile pointing to Prism's nested game directory to block cleanup.");
+        }
+        catch (InstallerException ex) when (ex.Code == "INSTANCE_CLEANUP_PROFILE_REFERENCE") { }
+        File.WriteAllText(prismProfilePath, "{\"profiles\":{}}\n");
+
+        var prismPending = layout.InstanceDirectory + ".minepack-transaction";
+        Directory.CreateDirectory(prismPending);
+        File.WriteAllText(Path.Combine(prismPending, "journal.json"), "{}");
+        try
+        {
+            _ = InstanceRemovalService.PrepareCleanupForTesting(residueCatalog[0], layout.InstancesRoot, root,
+                Path.Combine(root, "no official launcher installed"));
+            throw new InvalidOperationException("Expected pending Prism recovery to block cleanup.");
+        }
+        catch (InstallerException ex) when (ex.Code == "TRANSACTION_RECOVERY_REQUIRED") { }
+        Directory.Delete(prismPending, recursive: true);
+
+        var activeMarkerPath = Path.Combine(stateRoot, ".minepack-active.json");
+        var activeMarkerBytes = File.ReadAllBytes(activeMarkerPath);
+        File.WriteAllText(activeMarkerPath, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            SchemaVersion = 2,
+            InstanceDirectory = Path.GetFileName(layout.InstanceDirectory),
+            LayoutFingerprint = layout.Fingerprint
+        }));
+        try
+        {
+            _ = InstanceRemovalService.PrepareCleanupForTesting(residueCatalog[0], layout.InstancesRoot, root,
+                Path.Combine(root, "no official launcher installed"));
+            throw new InvalidOperationException("Expected a Prism marker targeting the residue to block cleanup.");
+        }
+        catch (InstallerException ex) when (ex.Code == "INSTANCE_CLEANUP_UNAVAILABLE") { }
+        File.WriteAllBytes(activeMarkerPath, activeMarkerBytes);
+
+        var prismResidueRequest = InstanceRemovalService.PrepareCleanupForTesting(residueCatalog[0],
+            layout.InstancesRoot, root, Path.Combine(root, "no official launcher installed"));
+        var prismRecycleRoot = Path.Combine(root, "task recycle fixture");
+        Directory.CreateDirectory(prismRecycleRoot);
+        var prismMovedWrapper = Path.Combine(prismRecycleRoot, Path.GetFileName(layout.InstanceDirectory));
+        var prismCleanup = await InstanceRemovalService.RemoveAsync(prismResidueRequest, path =>
+        {
+            Directory.Move(path, prismMovedWrapper);
+            return Task.CompletedTask;
+        });
+        True(!Directory.Exists(layout.InstanceDirectory) && Directory.Exists(prismMovedWrapper) &&
+             File.ReadAllText(Path.Combine(prismMovedWrapper, "minecraft", "saves", "fixture-world", "level.dat")) ==
+             "preserve residue world" && !prismCleanup.OwnershipRecordRetained,
+            "Prism-only residue with session.lock can be moved to a task-local recycle fixture without official profiles");
+        True(Directory.Exists(residueReinstall.GameDirectory), "Prism cleanup leaves the other installed instance intact");
+        Equal(3, downloads, "managed downloads cover initial install, deliberate corruption repair, and a fresh residue reinstall");
+        Pass("Prism Install/Repair/Uninstall lifecycle, metadata rollback/recovery, residue, and user-data preservation use isolated fixtures");
     }
 
     private static async Task VerifyOperationLoggingBestEffortAsync(string tempRoot)
@@ -3643,7 +4072,8 @@ internal static class Smoke
         True(root.GetProperty("profiles").GetProperty("vanilla").GetProperty("customField").GetInt32() == 17,
             "unowned Launcher profile fields are preserved");
         var own = root.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey);
-        Equal("MinePack", own.GetProperty("name").GetString(), "new Launcher profile has MinePack display name");
+        Equal(LauncherProfile.ProfileName(TestPackRelease.MinecraftVersion), own.GetProperty("name").GetString(),
+            "new Launcher profile has the shared versioned display name");
         Equal(Path.GetFullPath(Path.Combine(Path.GetTempPath(), "minepack-game")), own.GetProperty("gameDir").GetString(), "fixture profile gameDir");
         var removed = LauncherProfile.RemoveOwnedProfile(candidate, candidateGameDir);
         using var removedJson = JsonDocument.Parse(removed);
@@ -3748,19 +4178,41 @@ internal static class Smoke
             Equal(Path.Combine(tempRoot, "new-instance"), parsed.RootElement.GetProperty("profiles")
                 .GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString(),
                 "Launcher-stripped marker can be recovered from a pinned MinePack manifest");
-            Equal("MinePack", parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+            Equal(LauncherProfile.ProfileName(TestPackRelease.MinecraftVersion), parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
                 .GetProperty("name").GetString(), "old profile is renamed in place");
             Equal(1, parsed.RootElement.GetProperty("profiles").EnumerateObject().Count(),
                 "renaming does not create a second profile");
         }
-        var newNamed = LauncherProfile.BuildFixtureCandidate(ProfileWithoutMarker(oldInstance, "MinePack"),
+        var markerlessNewName = ProfileWithoutMarker(oldInstance, LauncherProfile.ProfileName(TestPackRelease.MinecraftVersion));
+        var newNamed = LauncherProfile.BuildFixtureCandidate(markerlessNewName,
             Path.Combine(tempRoot, "new-instance"), TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion);
         using (var parsed = JsonDocument.Parse(newNamed))
-            Equal("MinePack", parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+            Equal(LauncherProfile.ProfileName(TestPackRelease.MinecraftVersion), parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
                 .GetProperty("name").GetString(), "new markerless name is recognized with pinned manifest");
-        using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveOwnedProfile(markerless, oldInstance)))
+        using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveOwnedProfile(markerlessNewName, oldInstance)))
             True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
-                "markerless MinePack profile can be removed while its manifest exists");
+                "markerless versioned profile can be removed while its manifest exists");
+
+        var legacy26_3 = InstalledInstanceCatalog.KnownReleases.Single(release => release.PackVersion == "0.2.0");
+        var legacy26_3Instance = Path.Combine(tempRoot, "legacy-26.3-instance", "instances", legacy26_3.InstanceDirectoryPrefix);
+        new InstallationManifest
+        {
+            PackVersion = legacy26_3.PackVersion,
+            MinecraftVersion = legacy26_3.MinecraftVersion,
+            FabricLoaderVersion = legacy26_3.FabricLoaderVersion,
+            PackArchiveSha512 = legacy26_3.ArchiveSha512
+        }.SaveAtomic(legacy26_3Instance);
+        var legacy26_3Profile = ProfileWithoutMarker(legacy26_3Instance, LauncherProfile.ProfileName("26.3"),
+            $"fabric-loader-{legacy26_3.FabricLoaderVersion}-26.3");
+        var reconfigured26_3 = LauncherProfile.BuildFixtureCandidate(legacy26_3Profile,
+            Path.Combine(tempRoot, "legacy-26.3-reconfigured"), "26.3", legacy26_3.FabricLoaderVersion);
+        using (var parsed = JsonDocument.Parse(reconfigured26_3))
+            Equal(LauncherProfile.ProfileName("26.3"), parsed.RootElement.GetProperty("profiles")
+                .GetProperty(LauncherProfile.ProfileKey).GetProperty("name").GetString(),
+                "markerless legacy release keeps the exact versioned profile name");
+        using (var parsed = JsonDocument.Parse(LauncherProfile.RemoveOwnedProfile(legacy26_3Profile, legacy26_3Instance)))
+            True(!parsed.RootElement.GetProperty("profiles").TryGetProperty(LauncherProfile.ProfileKey, out _),
+                "markerless versioned legacy profile can be removed using its pinned manifest");
 
         var reinstallInstance = CreateReinstallFixture(Guid.NewGuid().ToString("N"));
         var reinstallRoot = new JsonObject
@@ -3778,7 +4230,7 @@ internal static class Smoke
         using (var parsed = JsonDocument.Parse(restoredReinstall))
         {
             var restoredProfile = parsed.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey);
-            Equal("MinePack", restoredProfile.GetProperty("name").GetString(),
+            Equal(LauncherProfile.ProfileName(TestPackRelease.MinecraftVersion), restoredProfile.GetProperty("name").GetString(),
                 "markerless reinstall profile is restored in place");
             Equal(Path.GetFullPath(Path.Combine(tempRoot, "reinstall-replacement")), restoredProfile.GetProperty("gameDir").GetString(),
                 "reinstall profile restore selects the requested instance");
@@ -3819,6 +4271,10 @@ internal static class Smoke
             manifestVersion: "9.9.9"), "MinePack"), "unknown-version reinstall");
         RejectMarkerlessProfile(ProfileWithoutMarker(reinstallInstance, "MinePack", "fabric-loader-0.19.5-26.3"),
             "wrong-lastVersionId reinstall");
+        RejectMarkerlessProfile(ProfileWithoutMarker(oldInstance, LauncherProfile.ProfileName("26.3")),
+            "wrong-version display name");
+        RejectMarkerlessProfile(ProfileWithoutMarker(oldInstance, LauncherProfile.ProfileName("26.2") + " custom"),
+            "display name with suffix");
         RejectMarkerlessProfile(ProfileWithoutMarker(reinstallInstance, "Someone else's profile"), "foreign-name reinstall");
         var foreignMarkerReinstall = JsonSerializer.Serialize(new
         {
@@ -4192,6 +4648,13 @@ internal static class Smoke
         }
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_IDENTITY_UNKNOWN") { }
         True(unknownPlatform.Events.Count == 0, "unidentified process with an unavailable path blocks changes without being closed");
+        try
+        {
+            new MinecraftLauncherController(unknownPlatform).EnsureClosed(win32Target);
+            throw new InvalidOperationException("Expected the selected official target guard to reject an unidentified launcher process.");
+        }
+        catch (InstallerException ex) when (ex.Code == "LAUNCHER_IDENTITY_UNKNOWN") { }
+        True(unknownPlatform.Events.Count == 0, "selected official target guard preserves the unidentified-process fail-closed check");
 
         try
         {
@@ -4610,7 +5073,7 @@ internal static class Smoke
     }
 
     private static string CreatePack(string path, string version, IReadOnlyList<TestFile> files,
-        IReadOnlyList<TestOverride>? overrides = null)
+        IReadOnlyList<TestOverride>? overrides = null, string minecraftVersion = "26.3", string fabricLoaderVersion = "0.19.5")
     {
         overrides ??= [];
         var indexFiles = files.Select(file =>
@@ -4633,7 +5096,7 @@ internal static class Smoke
             name = "Smoke Fixture",
             summary = "Temporary smoke-test pack",
             files = indexFiles,
-            dependencies = new Dictionary<string, string> { ["minecraft"] = "26.3", ["fabric-loader"] = "0.19.5" }
+            dependencies = new Dictionary<string, string> { ["minecraft"] = minecraftVersion, ["fabric-loader"] = fabricLoaderVersion }
         };
 
         using var stream = File.Create(path);

@@ -6,6 +6,7 @@ public static class Vanilla2PlusRelease
     public const string ArtifactRelativePath = "releases/vanilla-2-plus/" + ArtifactFileName;
     public const string ArtifactSha512 = "11555813B812AC8469F82C10C91A2530D065BD53A71B2EF57E05718FA18F12B88175A6F2DFBDF65FF72C86BE44E83C2FB9D96DC17DC38AAC5B6EEBE5EF95AB2E";
     public const string PackVersion = "0.19.7";
+    public const string MinecraftVersion = TestPackRelease.MinecraftVersion;
     public const string PreviousCandidateArtifactFileName = "vanilla-2-plus-0.19.6.mrpack";
     public const string PreviousCandidateArtifactSha512 = "5FEC73C5E023C251D35E20A32C181C0679669972D8945642D36725FFE575969473CA2F7AB75699D4E7ED91CB78AE57628570189A7548FE3898968BD663467D2B";
     public const string DoorsArtifactFileName = "vanilla-2-plus-0.19.5.mrpack";

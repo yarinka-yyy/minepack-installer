@@ -49,7 +49,7 @@
     <OutputType>WinExe</OutputType>
     <ApplicationIcon>Assets\MinePackIcon.ico</ApplicationIcon>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>1.5.0</Version>
+    <Version>1.6.0</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

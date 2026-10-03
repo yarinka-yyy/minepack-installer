@@ -8,6 +8,8 @@ public static class LauncherProfile
     public const string ProfileKey = "minepack-test-pack";
     private const string MarkerName = "minepackInstallerId";
 
+    public static string ProfileName(string minecraftVersion) => $"MinePack for {minecraftVersion}";
+
     public static string BuildFixtureCandidate(string existingJson, string gameDirectory, string minecraftVersion, string loaderVersion)
     {
         JsonObject root;
@@ -29,7 +31,7 @@ public static class LauncherProfile
 
         var profile = (JsonObject?)profiles[ProfileKey] ?? new JsonObject();
         profile[MarkerName] = ProfileKey;
-        profile["name"] = "MinePack";
+        profile["name"] = ProfileName(minecraftVersion);
         profile["type"] = "custom";
         profile["lastVersionId"] = $"fabric-loader-{loaderVersion}-{minecraftVersion}";
         profile["gameDir"] = Path.GetFullPath(gameDirectory);
@@ -78,7 +80,7 @@ public static class LauncherProfile
 
         static string? Text(JsonNode? node) =>
             node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
-        if (Text(profile["name"]) is not ("MinePack Test Pack" or "MinePack") || Text(profile["type"]) != "custom" ||
+        if (Text(profile["type"]) != "custom" ||
             Text(profile["gameDir"]) is not { } gameDir)
             return false;
 
@@ -105,7 +107,10 @@ public static class LauncherProfile
                 manifest = InstallationManifest.Load(path);
             }
             if (!InstalledInstanceCatalog.TryGetRelease(manifest.PackVersion, out var knownRelease)) return false;
-            return manifest.PackArchiveSha512.Equals(knownRelease.ArchiveSha512, StringComparison.OrdinalIgnoreCase) &&
+            var name = Text(profile["name"]);
+            var knownName = name is "MinePack Test Pack" or "MinePack" || name == ProfileName(knownRelease.MinecraftVersion);
+            return knownName &&
+                   manifest.PackArchiveSha512.Equals(knownRelease.ArchiveSha512, StringComparison.OrdinalIgnoreCase) &&
                    manifest.MinecraftVersion == knownRelease.MinecraftVersion &&
                    manifest.FabricLoaderVersion == knownRelease.FabricLoaderVersion &&
                    Text(profile["lastVersionId"]) == $"fabric-loader-{manifest.FabricLoaderVersion}-{manifest.MinecraftVersion}" &&

@@ -5,8 +5,8 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="UiSubtitle" xml:space="preserve"><value>Minecraft mods in one click</value></data>
-  <data name="UiDescription" xml:space="preserve"><value>MinePack downloads mods and components and creates a separate profile in Minecraft Launcher. Your worlds remain separate.</value></data>
-  <data name="UiRequirements" xml:space="preserve"><value>Requires the official Minecraft Launcher and a Minecraft: Java Edition account.</value></data>
+  <data name="UiDescription" xml:space="preserve"><value>MinePack downloads mods and components and creates an isolated instance in the selected launcher. Your worlds remain separate.</value></data>
+  <data name="UiRequirements" xml:space="preserve"><value>Use Minecraft Launcher or Prism Launcher with a Minecraft: Java Edition account.</value></data>
   <data name="UiMinecraftVersion" xml:space="preserve"><value>For Minecraft 26.2</value></data>
   <data name="UiBuildInfo" xml:space="preserve"><value>Minecraft 26.2 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
   <data name="UiPackVersion" xml:space="preserve"><value>Pack version {0}</value></data>
@@ -20,6 +20,7 @@
   <data name="UiBrowse" xml:space="preserve"><value>Browse...</value></data>
   <data name="UiInstall" xml:space="preserve"><value>Install pack</value></data>
   <data name="UiCancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="UiContinue" xml:space="preserve"><value>Continue</value></data>
   <data name="UiReady" xml:space="preserve"><value>Ready to install</value></data>
   <data name="UiWaiting" xml:space="preserve"><value>Waiting</value></data>
   <data name="UiInstallPrompt" xml:space="preserve"><value>Click “Install pack” to begin.</value></data>
@@ -28,7 +29,22 @@
   <data name="UiImportWorlds" xml:space="preserve"><value>Import worlds</value></data>
   <data name="UiRestoreLauncher" xml:space="preserve"><value>Restore Launcher profile</value></data>
   <data name="UiUninstall" xml:space="preserve"><value>Uninstall pack</value></data>
-  <data name="UiLauncherHint" xml:space="preserve"><value>If the profile does not appear after the files are downloaded, click “Restore Launcher profile.”</value></data>
+  <data name="UiLauncherHint" xml:space="preserve"><value>If the instance does not appear, use “Check and repair” to restore its launcher files.</value></data>
+  <data name="UiLauncherChoiceTitle" xml:space="preserve"><value>Choose where to install</value></data>
+  <data name="UiLauncherChoiceHelper" xml:space="preserve"><value>Choose the launcher that should receive this isolated MinePack instance.</value></data>
+  <data name="UiLauncherOptionOfficial" xml:space="preserve"><value>Minecraft Launcher</value></data>
+  <data name="UiLauncherOptionPrism" xml:space="preserve"><value>Prism Launcher</value></data>
+  <data name="UiLauncherTargetLabel" xml:space="preserve"><value>Launcher installation</value></data>
+  <data name="UiLauncherLocatePrism" xml:space="preserve"><value>Locate Prism Launcher</value></data>
+  <data name="UiLauncherRescan" xml:space="preserve"><value>Rescan</value></data>
+  <data name="UiLauncherChoiceUnknown" xml:space="preserve"><value>A launcher or one of its installation folders could not be verified. Locate Prism Launcher or rescan before installing.</value></data>
+  <data name="UiLauncherTargetPath" xml:space="preserve"><value>{0}&#10;{1}</value></data>
+  <data name="PrismStartRequestedStatus" xml:space="preserve"><value>Prism Launcher was opened. Select “{0}” and start the instance.</value></data>
+  <data name="PrismStartFailedStatus" xml:space="preserve"><value>The instance is ready, but Prism Launcher could not be opened. Open it manually and select “{0}”.</value></data>
+  <data name="PrismLaunchInstruction" xml:space="preserve"><value>Open Prism Launcher, select “{0}”, and launch the instance.</value></data>
+  <data name="PrismInstanceTargetDisplay" xml:space="preserve"><value>Prism Launcher · {0}</value></data>
+  <data name="PrismRepairCompleteStatus" xml:space="preserve"><value>Prism instance repaired. Its saved settings and worlds were preserved.</value></data>
+  <data name="OfficialInstanceTargetDisplay" xml:space="preserve"><value>Minecraft Launcher · {0}</value></data>
   <data name="UiDetails" xml:space="preserve"><value>Details</value></data>
   <data name="UiOpenFolder" xml:space="preserve"><value>Open folder</value></data>
   <data name="UiOpenLog" xml:space="preserve"><value>Open log</value></data>
@@ -37,6 +53,41 @@
   <data name="UiInstallFolderDialog" xml:space="preserve"><value>Select the MinePack data folder</value></data>
   <data name="UiUninstallConfirmMessage" xml:space="preserve"><value>Remove installed MinePack files? Worlds, screenshots, and your other files will be kept.</value></data>
   <data name="UiUninstallConfirmTitle" xml:space="preserve"><value>Uninstall MinePack</value></data>
+  <data name="UiDeletePack" xml:space="preserve"><value>Delete pack</value></data>
+  <data name="UiDeletePackTitle" xml:space="preserve"><value>Choose an installation to delete</value></data>
+  <data name="UiDeletePackHelper" xml:space="preserve"><value>Select one installation. Uninstall removes managed pack files and keeps user data. Delete remaining data is a separate confirmed action that moves eligible residue to the Recycle Bin.</value></data>
+  <data name="UiDeleteRemainingData" xml:space="preserve"><value>Delete remaining data</value></data>
+  <data name="UiNoInstancesToDelete" xml:space="preserve"><value>No MinePack installations were found in the verified launcher folders.</value></data>
+  <data name="UiDeleteEntryDetails" xml:space="preserve"><value>{0} · {1} · {2}&#10;{3}&#10;{4}</value></data>
+  <data name="UiUnknownInstance" xml:space="preserve"><value>Unknown MinePack folder</value></data>
+  <data name="UiInstanceOrdinal" xml:space="preserve"><value>Instance {0}</value></data>
+  <data name="UiDeleteCleanupEligible" xml:space="preserve"><value>Eligible for confirmed Recycle Bin cleanup. The folder is residue, not a trusted installation.</value></data>
+  <data name="UiDeleteCleanupUnavailable" xml:space="preserve"><value>Remaining data cannot be safely removed from this entry. Its launcher ownership or path could not be verified.</value></data>
+  <data name="UiDeleteRemainingConfirmTitle" xml:space="preserve"><value>Move remaining MinePack data to the Recycle Bin?</value></data>
+  <data name="UiDeleteRemainingConfirmMessage" xml:space="preserve"><value>All files in this folder will be moved to the Recycle Bin, including worlds if present. The installer will not fall back to permanent deletion.</value></data>
+  <data name="UiDeleteRemainingConfirmTarget" xml:space="preserve"><value>{0} · {1}&#10;&#10;Found: {2}&#10;Folder: {3}</value></data>
+  <data name="UiDeleteRemainingComplete" xml:space="preserve"><value>Remaining data was moved to the Recycle Bin.</value></data>
+  <data name="UiDeleteOwnershipRecordRetained" xml:space="preserve"><value>The folder reached the Recycle Bin, but its Prism ownership record was not removed. Leave it for review.</value></data>
+  <data name="UiDeleteRemainingFailed" xml:space="preserve"><value>Windows did not confirm that the whole folder reached the Recycle Bin. Check the folder and Recycle Bin before retrying.</value></data>
+  <data name="UiDeleteCleanupChecking" xml:space="preserve"><value>Checking whether this folder can be moved safely…</value></data>
+  <data name="UiCleanupCategorySaves" xml:space="preserve"><value>worlds</value></data>
+  <data name="UiCleanupCategorySettings" xml:space="preserve"><value>settings</value></data>
+  <data name="UiCleanupCategoryScreenshots" xml:space="preserve"><value>screenshots</value></data>
+  <data name="UiCleanupCategoryResourcePacks" xml:space="preserve"><value>resource packs</value></data>
+  <data name="UiCleanupCategoryShaderPacks" xml:space="preserve"><value>shader packs</value></data>
+  <data name="UiCleanupCategoryLogs" xml:space="preserve"><value>logs</value></data>
+  <data name="UiCleanupCategoryNone" xml:space="preserve"><value>no common user-data folders detected; all folder contents are included</value></data>
+  <data name="InstanceCleanupUnavailable" xml:space="preserve"><value>This folder does not meet the safety checks for residue cleanup.</value></data>
+  <data name="InstanceCleanupLocked" xml:space="preserve"><value>A file in this folder is locked or cannot be opened safely. Close programs using it and try again.</value></data>
+  <data name="InstanceCleanupActive" xml:space="preserve"><value>This folder is still the active installation. Switch to another installation before removing it.</value></data>
+  <data name="InstanceCleanupChanged" xml:space="preserve"><value>The folder or its launcher references changed while the confirmation was open. Review it again before retrying.</value></data>
+  <data name="InstanceCleanupProfileUnknown" xml:space="preserve"><value>The Minecraft Launcher profile files could not be safely checked.</value></data>
+  <data name="InstanceCleanupProfileReference" xml:space="preserve"><value>A Minecraft Launcher profile still points to this folder.</value></data>
+  <data name="InstanceCleanupTooLarge" xml:space="preserve"><value>This folder contains too many entries to verify safely.</value></data>
+  <data name="InstanceCleanupDriveUnavailable" xml:space="preserve"><value>Recycle Bin cleanup is available only for a verified local fixed drive.</value></data>
+  <data name="InstanceCleanupRecycleFailed" xml:space="preserve"><value>Windows did not confirm that the selected folder was moved to the Recycle Bin.</value></data>
+  <data name="UiChooseActiveLauncher" xml:space="preserve"><value>Choose which launcher's active MinePack installation to use for this action.</value></data>
+  <data name="UiNoActiveInstallation" xml:space="preserve"><value>No trusted active MinePack installation was found. Install the selected pack, or restore its launcher profile when exactly one matching trusted installation exists.</value></data>
   <data name="CatalogPerformance" xml:space="preserve"><value>Performance &amp; Render Distance</value></data>
   <data name="CatalogGraphics" xml:space="preserve"><value>Graphics &amp; Animations</value></data>
   <data name="CatalogTools" xml:space="preserve"><value>Tools &amp; Quality of Life</value></data>
@@ -230,6 +281,13 @@
   <data name="LauncherIdentityUnknown" xml:space="preserve"><value>A process that may be Minecraft Launcher is running, but its official identity could not be verified. MinePack left it running and did not start installation.</value></data>
   <data name="LauncherTargetsAmbiguous" xml:space="preserve"><value>More than one official Minecraft Launcher installation is registered. MinePack could not choose safely, so installation did not start.</value></data>
   <data name="LauncherDiscoveryFailed" xml:space="preserve"><value>Windows could not read the registered apps list, so MinePack could not safely check Minecraft Launcher.</value></data>
+  <data name="PrismConfigurationUnknown" xml:space="preserve"><value>Prism Launcher settings could not be read safely. Choose its data folder or scan again.</value></data>
+  <data name="PrismDataRootUnknown" xml:space="preserve"><value>Prism Launcher data folder could not be determined safely. Locate the launcher or data folder, then scan again.</value></data>
+  <data name="PrismIdentityChanged" xml:space="preserve"><value>Prism Launcher identity or folders could not be verified. The operation was stopped; scan again.</value></data>
+  <data name="PrismLauncherRunning" xml:space="preserve"><value>Prism Launcher is still running. Close it before continuing.</value></data>
+  <data name="PrismLauncherCloseTimeout" xml:space="preserve"><value>Prism Launcher did not close in time. Close it and retry.</value></data>
+  <data name="PrismLauncherCloseFailed" xml:space="preserve"><value>MinePack could not ask Prism Launcher to close. Close it manually and retry.</value></data>
+  <data name="PrismLauncherIdentityUnknown" xml:space="preserve"><value>A Prism Launcher process could not be matched to the selected data folder. It was left running. Close it manually and retry.</value></data>
   <data name="FabricArchiveUnexpected" xml:space="preserve"><value>The official Fabric package has an unexpected structure.</value></data>
   <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>The versions in the Fabric package do not match the pinned release.</value></data>
   <data name="LauncherProfileChanged" xml:space="preserve"><value>The Launcher profile changed during installation. Close Launcher and try again.</value></data>
@@ -254,15 +312,15 @@
   <data name="SelectedInstanceUntrusted" xml:space="preserve"><value>The selected installation does not match a trusted pinned release.</value></data>
   <data name="SelectedPackUnavailable" xml:space="preserve"><value>The pinned archive for this installation is unavailable. It was not changed.</value></data>
   <data name="UiInstalledInstances" xml:space="preserve"><value>Installed versions</value></data>
-  <data name="UiInstanceActive" xml:space="preserve"><value>active</value></data>
-  <data name="UiInstanceInactive" xml:space="preserve"><value>inactive</value></data>
+  <data name="UiInstanceActive" xml:space="preserve"><value>Installed · selected for launch</value></data>
+  <data name="UiInstanceInactive" xml:space="preserve"><value>Installed · not selected for launch</value></data>
   <data name="UiInstanceTrusted" xml:space="preserve"><value>verified</value></data>
-  <data name="UiInstancePackageMissing" xml:space="preserve"><value>pinned package missing — read-only</value></data>
-  <data name="UiInstanceResidue" xml:space="preserve"><value>saved user data — open only</value></data>
+  <data name="UiInstancePackageMissing" xml:space="preserve"><value>Installed · pinned package missing — read-only</value></data>
+  <data name="UiInstanceResidue" xml:space="preserve"><value>Data remains · inactive folder</value></data>
   <data name="UiInstanceUnknown" xml:space="preserve"><value>unknown release — read-only</value></data>
   <data name="UiInstanceInvalid" xml:space="preserve"><value>invalid manifest — read-only</value></data>
   <data name="UiInstanceUnsafe" xml:space="preserve"><value>unsafe path — unavailable</value></data>
-  <data name="UiNoTrustedInstances" xml:space="preserve"><value>No verified installation is selected. Saved user data remains available for opening.</value></data>
+  <data name="UiNoTrustedInstances" xml:space="preserve"><value>Select a verified installation for repair, activation, or world import. Residue can be reviewed in Delete pack.</value></data>
   <data name="UiSelectedInstanceStatus" xml:space="preserve"><value>Selected: {0} ({2})&#10;{1}</value></data>
   <data name="UiRootChangedSelectInstance" xml:space="preserve"><value>The installation folder changed. Select a version in this folder.</value></data>
   <data name="UiRootNeedsValidation" xml:space="preserve"><value>Validate the folder before using its installations.</value></data>
@@ -292,4 +350,5 @@
   <data name="ActiveMarkerWriteFailed" xml:space="preserve"><value>The active installation marker could not be updated. The previous Launcher profile was restored.</value></data>
   <data name="UiEmptyRootMarkerRecoveryConfirm" xml:space="preserve"><value>No trusted installation was found in this root. The damaged marker will be backed up and cleared before a new isolated installation starts. The backup remains available if installation fails.&#10;&#10;Root: {0}</value></data>
   <data name="LauncherProfileWriteFailed" xml:space="preserve"><value>The Launcher profile could not be updated. The previous active marker was preserved.</value></data>
+  <data name="InstanceNameExhausted" xml:space="preserve"><value>No unused MinePack instance folder name is available in this launcher.</value></data>
 </root>

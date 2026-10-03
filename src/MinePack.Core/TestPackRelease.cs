@@ -54,6 +54,7 @@ public static class TestPackRelease
 
     public static string BuildInitialOptions(IEnumerable<string> resourcePacks) =>
         "version:4903" + Environment.NewLine +
+        "enableVsync:false" + Environment.NewLine +
         "resourcePacks:" + JsonSerializer.Serialize(new[] { "vanilla" }
             .Concat(resourcePacks.Select(name => "file/" + name)).Append("punchy:punchy")) + Environment.NewLine +
         "incompatibleResourcePacks:[]" + Environment.NewLine +

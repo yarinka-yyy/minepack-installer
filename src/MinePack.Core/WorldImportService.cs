@@ -30,9 +30,24 @@ public static class WorldImportService
         return new CallbackScope(() => CheckpointForTesting.Value = previous);
     }
 
-    public static async Task<WorldImportResult> ImportAsync(string sourceFolder, string instancePath,
+    public static Task<WorldImportResult> ImportAsync(string sourceFolder, string instancePath,
+        IProgress<string>? progress = null, CancellationToken cancellationToken = default,
+        OperationLog? operationLog = null) =>
+        ImportOperationAsync(sourceFolder, instancePath, null, progress, cancellationToken, operationLog);
+
+    public static Task<WorldImportResult> ImportAsync(string sourceFolder, InstallationLayout layout,
         IProgress<string>? progress = null, CancellationToken cancellationToken = default,
         OperationLog? operationLog = null)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        if (!layout.IsPrism) throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("UnsafePath"));
+        layout.Validate();
+        return ImportOperationAsync(sourceFolder, layout.GameDirectory, layout, progress, cancellationToken, operationLog);
+    }
+
+    private static async Task<WorldImportResult> ImportOperationAsync(string sourceFolder, string instancePath,
+        InstallationLayout? layout, IProgress<string>? progress, CancellationToken cancellationToken,
+        OperationLog? operationLog)
     {
         var ownsLog = operationLog is null;
         operationLog ??= new OperationLog("world_import", null, instancePath);
@@ -40,7 +55,7 @@ public static class WorldImportService
         try
         {
             var result = await OperationGuard.RunAsync(() => ImportCoreAsync(sourceFolder, instancePath, progress,
-                cancellationToken, operationLog), cancellationToken).ConfigureAwait(false);
+                cancellationToken, operationLog, layout), cancellationToken).ConfigureAwait(false);
             operationLog.Write("import", "completed", "world_import_summary", new
             {
                 result.Imported, result.SkippedExisting, result.SkippedMissingLock, result.SkippedLockedOrUnverified
@@ -75,7 +90,8 @@ public static class WorldImportService
     }
 
     private static async Task<WorldImportResult> ImportCoreAsync(string sourceFolder, string instancePath,
-        IProgress<string>? progress, CancellationToken cancellationToken, OperationLog operationLog)
+        IProgress<string>? progress, CancellationToken cancellationToken, OperationLog operationLog,
+        InstallationLayout? layout)
     {
         var source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(sourceFolder));
         if (!source.EndsWith(Path.DirectorySeparatorChar + "saves", StringComparison.OrdinalIgnoreCase) &&
@@ -88,23 +104,26 @@ public static class WorldImportService
         if (instance.Equals(vanilla, StringComparison.OrdinalIgnoreCase) ||
             instance.StartsWith(vanilla + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             throw new InstallerException("WORLDS_TARGET_UNSAFE", LocalizedText.Get("WorldTargetVanilla"));
-        ManagedFileTransaction.EnsureNoPendingForInstance(instance);
+        if (layout is not null) EnsureOwnedPrismLayout(layout);
+        if (layout is null) ManagedFileTransaction.EnsureNoPendingForInstance(instance);
+        else ManagedFileTransaction.EnsureNoPendingForInstance(layout);
         var manifest = InstallationManifest.Load(instance);
         try
         {
             operationLog.SetRelease(manifest.PackVersion, manifest.MinecraftVersion, manifest.FabricLoaderVersion,
                 manifest.PackArchiveSha512);
-            var instancesRoot = Path.GetDirectoryName(instance);
-            var installRoot = instancesRoot is null ? null : Path.GetDirectoryName(instancesRoot);
+            var instancesRoot = layout?.InstancesRoot ?? Path.GetDirectoryName(instance);
+            var installRoot = layout?.StateRoot ?? (instancesRoot is null ? null : Path.GetDirectoryName(instancesRoot));
             if (installRoot is not null && instancesRoot is not null)
             {
-                var validatedRoot = InstallService.ValidateInstallRoot(installRoot);
+                var validatedRoot = layout is null ? InstallService.ValidateInstallRoot(installRoot) : Path.GetFullPath(installRoot);
                 if (validatedRoot.Equals(installRoot, StringComparison.OrdinalIgnoreCase) &&
-                    Path.GetFileName(instancesRoot).Equals("instances", StringComparison.OrdinalIgnoreCase) &&
+                    (layout?.IsPrism == true || Path.GetFileName(instancesRoot).Equals("instances", StringComparison.OrdinalIgnoreCase)) &&
                     Directory.Exists(installRoot) && Directory.Exists(instancesRoot))
                 {
-                    SafePath.EnsureNoReparsePoints(installRoot, instancesRoot);
-                    SafePath.EnsureNoReparsePoints(installRoot, instance);
+                    if (layout is null) SafePath.EnsureNoReparsePoints(installRoot, instancesRoot);
+                    else layout.Validate();
+                    SafePath.EnsureNoReparsePoints(instancesRoot, instance);
                     operationLog.BindValidatedRoot(installRoot, instance);
                 }
             }
@@ -117,6 +136,7 @@ public static class WorldImportService
             throw new InstallerException("WORLDS_SAME_FOLDER", LocalizedText.Get("WorldFoldersOverlap"));
         SafePath.EnsureNoReparsePoints(source, source);
         SafePath.EnsureNoReparsePoints(instance, destination);
+        if (layout is not null) EnsureOwnedPrismLayout(layout);
         using var instanceUse = InstanceUseGuard.Acquire(instance);
         instanceUse.Recheck();
         Directory.CreateDirectory(destination);
@@ -136,6 +156,7 @@ public static class WorldImportService
                 if (!File.Exists(Path.Combine(world, "level.dat"))) continue;
                 var name = Path.GetFileName(world);
                 var target = Path.Combine(destination, name);
+                if (layout is not null) EnsureOwnedPrismLayout(layout);
                 SafePath.EnsureNoReparsePoints(destination, target);
                 if (Directory.Exists(target) || File.Exists(target))
                 {
@@ -193,6 +214,7 @@ public static class WorldImportService
                             await sourceWorldLock.CopyToAsync(outputStream, cancellationToken);
                         }
                         cancellationToken.ThrowIfCancellationRequested();
+                        if (layout is not null) EnsureOwnedPrismLayout(layout);
                         if (Directory.Exists(target) || File.Exists(target)) { skippedExisting++; continue; }
                         Directory.Move(staging, target);
                         imported++;
@@ -235,6 +257,14 @@ public static class WorldImportService
                 PartialResult(), ex);
         }
         return PartialResult();
+    }
+
+    private static void EnsureOwnedPrismLayout(InstallationLayout layout)
+    {
+        layout.Validate();
+        PrismLauncherService.RecheckTarget(layout);
+        if (!PrismLauncherService.HasOwnedBinding(layout))
+            throw new InstallerException("PRISM_INSTANCE_OWNERSHIP_CONFLICT", LocalizedText.Get("PrismIdentityChanged"));
     }
 
     private static FileStream? OpenSourceWorldLock(string world)

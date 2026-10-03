@@ -5,8 +5,8 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="UiSubtitle" xml:space="preserve"><value>一键安装 Minecraft 模组</value></data>
-  <data name="UiDescription" xml:space="preserve"><value>MinePack 会下载模组和所需组件，并在 Minecraft Launcher 中创建独立的游戏配置。各个游戏存档彼此分开。</value></data>
-  <data name="UiRequirements" xml:space="preserve"><value>需要官方 Minecraft Launcher 和 Minecraft: Java Edition 账号。</value></data>
+  <data name="UiDescription" xml:space="preserve"><value>MinePack 会下载模组和所需组件，并在所选启动器中创建独立实例。各个游戏存档彼此分开。</value></data>
+  <data name="UiRequirements" xml:space="preserve"><value>需要 Minecraft Launcher 或 Prism Launcher，以及 Minecraft: Java Edition 账号。</value></data>
   <data name="UiMinecraftVersion" xml:space="preserve"><value>适用于 Minecraft 26.2</value></data>
   <data name="UiBuildInfo" xml:space="preserve"><value>Minecraft 26.2 · Fabric 加载器 0.19.5 · Fabric API 0.161.0+26.2</value></data>
   <data name="UiPackVersion" xml:space="preserve"><value>整合包版本 {0}</value></data>
@@ -20,6 +20,7 @@
   <data name="UiBrowse" xml:space="preserve"><value>浏览…</value></data>
   <data name="UiInstall" xml:space="preserve"><value>安装整合包</value></data>
   <data name="UiCancel" xml:space="preserve"><value>取消</value></data>
+  <data name="UiContinue" xml:space="preserve"><value>继续</value></data>
   <data name="UiReady" xml:space="preserve"><value>准备就绪，可以安装</value></data>
   <data name="UiWaiting" xml:space="preserve"><value>等待中</value></data>
   <data name="UiInstallPrompt" xml:space="preserve"><value>点击“安装整合包”开始。</value></data>
@@ -28,7 +29,22 @@
   <data name="UiImportWorlds" xml:space="preserve"><value>导入存档</value></data>
   <data name="UiRestoreLauncher" xml:space="preserve"><value>恢复启动器配置</value></data>
   <data name="UiUninstall" xml:space="preserve"><value>卸载整合包</value></data>
-  <data name="UiLauncherHint" xml:space="preserve"><value>如果文件下载完成后仍看不到该配置，请点击“恢复启动器配置”。</value></data>
+  <data name="UiLauncherHint" xml:space="preserve"><value>如果实例未显示，请使用“检查并修复”恢复其启动器文件。</value></data>
+  <data name="UiLauncherChoiceTitle" xml:space="preserve"><value>选择安装位置</value></data>
+  <data name="UiLauncherChoiceHelper" xml:space="preserve"><value>选择要创建独立 MinePack 实例的启动器。</value></data>
+  <data name="UiLauncherOptionOfficial" xml:space="preserve"><value>Minecraft Launcher</value></data>
+  <data name="UiLauncherOptionPrism" xml:space="preserve"><value>Prism Launcher</value></data>
+  <data name="UiLauncherTargetLabel" xml:space="preserve"><value>启动器安装</value></data>
+  <data name="UiLauncherLocatePrism" xml:space="preserve"><value>定位 Prism Launcher</value></data>
+  <data name="UiLauncherRescan" xml:space="preserve"><value>重新扫描</value></data>
+  <data name="UiLauncherChoiceUnknown" xml:space="preserve"><value>无法验证启动器或其安装文件夹。请定位 Prism Launcher 或重新扫描后再安装。</value></data>
+  <data name="UiLauncherTargetPath" xml:space="preserve"><value>{0}&#10;{1}</value></data>
+  <data name="PrismStartRequestedStatus" xml:space="preserve"><value>已打开 Prism Launcher。请选择“{0}”并启动实例。</value></data>
+  <data name="PrismStartFailedStatus" xml:space="preserve"><value>实例已就绪，但无法打开 Prism Launcher。请手动打开并选择“{0}”。</value></data>
+  <data name="PrismLaunchInstruction" xml:space="preserve"><value>打开 Prism Launcher，选择“{0}”并启动实例。</value></data>
+  <data name="PrismInstanceTargetDisplay" xml:space="preserve"><value>Prism Launcher · {0}</value></data>
+  <data name="PrismRepairCompleteStatus" xml:space="preserve"><value>Prism 实例已修复，原有设置和世界已保留。</value></data>
+  <data name="OfficialInstanceTargetDisplay" xml:space="preserve"><value>Minecraft Launcher · {0}</value></data>
   <data name="UiDetails" xml:space="preserve"><value>详细信息</value></data>
   <data name="UiOpenFolder" xml:space="preserve"><value>打开文件夹</value></data>
   <data name="UiOpenLog" xml:space="preserve"><value>打开日志</value></data>
@@ -37,6 +53,41 @@
   <data name="UiInstallFolderDialog" xml:space="preserve"><value>选择 MinePack 数据文件夹</value></data>
   <data name="UiUninstallConfirmMessage" xml:space="preserve"><value>将删除 MinePack 管理的文件。存档、截图和其他个人文件会保留。</value></data>
   <data name="UiUninstallConfirmTitle" xml:space="preserve"><value>卸载 MinePack</value></data>
+  <data name="UiDeletePack" xml:space="preserve"><value>删除整合包</value></data>
+  <data name="UiDeletePackTitle" xml:space="preserve"><value>选择要删除的安装</value></data>
+  <data name="UiDeletePackHelper" xml:space="preserve"><value>选择一个安装。卸载只删除整合包管理的文件并保留用户数据。清理剩余数据是单独确认的操作，会将符合条件的残留移动到回收站。</value></data>
+  <data name="UiDeleteRemainingData" xml:space="preserve"><value>删除剩余数据</value></data>
+  <data name="UiNoInstancesToDelete" xml:space="preserve"><value>在已验证的启动器文件夹中未找到 MinePack 安装。</value></data>
+  <data name="UiDeleteEntryDetails" xml:space="preserve"><value>{0} · {1} · {2}&#10;{3}&#10;{4}</value></data>
+  <data name="UiUnknownInstance" xml:space="preserve"><value>未知的 MinePack 文件夹</value></data>
+  <data name="UiInstanceOrdinal" xml:space="preserve"><value>实例 {0}</value></data>
+  <data name="UiDeleteCleanupEligible" xml:space="preserve"><value>确认后可通过回收站清理。此文件夹是残留数据，并非已验证安装。</value></data>
+  <data name="UiDeleteCleanupUnavailable" xml:space="preserve"><value>无法安全删除剩余数据，因为无法验证启动器归属或路径。</value></data>
+  <data name="UiDeleteRemainingConfirmTitle" xml:space="preserve"><value>将 MinePack 剩余数据移至回收站？</value></data>
+  <data name="UiDeleteRemainingConfirmMessage" xml:space="preserve"><value>此文件夹中的所有文件（包括其中的世界存档）都将移至回收站。安装器不会改为永久删除。</value></data>
+  <data name="UiDeleteRemainingConfirmTarget" xml:space="preserve"><value>{0} · {1}&#10;&#10;已找到：{2}&#10;文件夹：{3}</value></data>
+  <data name="UiDeleteRemainingComplete" xml:space="preserve"><value>剩余数据已移至回收站。</value></data>
+  <data name="UiDeleteOwnershipRecordRetained" xml:space="preserve"><value>文件夹已移至回收站，但 Prism 所有权记录未删除。请保留该记录以供检查。</value></data>
+  <data name="UiDeleteRemainingFailed" xml:space="preserve"><value>Windows 未确认整个文件夹已移至回收站。重试前请检查原文件夹和回收站。</value></data>
+  <data name="UiDeleteCleanupChecking" xml:space="preserve"><value>正在检查此文件夹能否安全移至回收站…</value></data>
+  <data name="UiCleanupCategorySaves" xml:space="preserve"><value>世界存档</value></data>
+  <data name="UiCleanupCategorySettings" xml:space="preserve"><value>设置</value></data>
+  <data name="UiCleanupCategoryScreenshots" xml:space="preserve"><value>截图</value></data>
+  <data name="UiCleanupCategoryResourcePacks" xml:space="preserve"><value>资源包</value></data>
+  <data name="UiCleanupCategoryShaderPacks" xml:space="preserve"><value>光影包</value></data>
+  <data name="UiCleanupCategoryLogs" xml:space="preserve"><value>日志</value></data>
+  <data name="UiCleanupCategoryNone" xml:space="preserve"><value>未发现常见个人数据目录；整个文件夹内容都会移至回收站</value></data>
+  <data name="InstanceCleanupUnavailable" xml:space="preserve"><value>此文件夹未通过残留数据安全清理检查。</value></data>
+  <data name="InstanceCleanupLocked" xml:space="preserve"><value>此文件夹中的文件已被占用或无法安全打开。请关闭正在使用它的程序后重试。</value></data>
+  <data name="InstanceCleanupActive" xml:space="preserve"><value>此文件夹仍是当前活动安装。请先切换到其他安装。</value></data>
+  <data name="InstanceCleanupChanged" xml:space="preserve"><value>确认期间文件夹内容或启动器引用已更改。重试前请重新检查。</value></data>
+  <data name="InstanceCleanupProfileUnknown" xml:space="preserve"><value>无法安全检查 Minecraft Launcher 配置文件。</value></data>
+  <data name="InstanceCleanupProfileReference" xml:space="preserve"><value>仍有 Minecraft Launcher 配置文件指向此文件夹。</value></data>
+  <data name="InstanceCleanupTooLarge" xml:space="preserve"><value>此文件夹包含过多项目，无法安全验证。</value></data>
+  <data name="InstanceCleanupDriveUnavailable" xml:space="preserve"><value>仅可在已验证的本地固定磁盘上使用回收站清理。</value></data>
+  <data name="InstanceCleanupRecycleFailed" xml:space="preserve"><value>Windows 未确认所选文件夹已移至回收站。</value></data>
+  <data name="UiChooseActiveLauncher" xml:space="preserve"><value>选择要用于此操作的启动器及其活动 MinePack 安装。</value></data>
+  <data name="UiNoActiveInstallation" xml:space="preserve"><value>未找到已验证的活动 MinePack 安装。请安装当前选择的整合包；若该类型恰好只有一个已验证安装，也可恢复其启动器配置。</value></data>
   <data name="CatalogPerformance" xml:space="preserve"><value>性能与区块渲染距离</value></data>
   <data name="CatalogGraphics" xml:space="preserve"><value>画面与动画</value></data>
   <data name="CatalogTools" xml:space="preserve"><value>工具与便利功能</value></data>
@@ -230,6 +281,13 @@
   <data name="LauncherIdentityUnknown" xml:space="preserve"><value>检测到可能是 Minecraft Launcher 的进程，但无法验证其官方身份。MinePack 未关闭该进程，也未开始安装。</value></data>
   <data name="LauncherTargetsAmbiguous" xml:space="preserve"><value>检测到多个已注册的官方 Minecraft Launcher，无法安全选择，因此安装尚未开始。</value></data>
   <data name="LauncherDiscoveryFailed" xml:space="preserve"><value>Windows 无法读取已注册应用列表，因此无法安全检查 Minecraft Launcher。</value></data>
+  <data name="PrismConfigurationUnknown" xml:space="preserve"><value>无法安全读取 Prism Launcher 设置。请选择其数据文件夹或重新扫描。</value></data>
+  <data name="PrismDataRootUnknown" xml:space="preserve"><value>无法安全确定 Prism Launcher 数据文件夹。请定位启动器或数据文件夹后重新扫描。</value></data>
+  <data name="PrismIdentityChanged" xml:space="preserve"><value>无法验证 Prism Launcher 或其文件夹。操作已停止，请重新扫描。</value></data>
+  <data name="PrismLauncherRunning" xml:space="preserve"><value>Prism Launcher 仍在运行。请先关闭它。</value></data>
+  <data name="PrismLauncherCloseTimeout" xml:space="preserve"><value>Prism Launcher 未能及时关闭。请关闭它后重试。</value></data>
+  <data name="PrismLauncherCloseFailed" xml:space="preserve"><value>MinePack 无法请求关闭 Prism Launcher。请手动关闭后重试。</value></data>
+  <data name="PrismLauncherIdentityUnknown" xml:space="preserve"><value>无法将 Prism Launcher 进程与所选数据目录匹配。该进程保持运行，请手动关闭后重试。</value></data>
   <data name="FabricArchiveUnexpected" xml:space="preserve"><value>官方 Fabric 压缩包的结构异常。</value></data>
   <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>Fabric 压缩包中的版本与固定版本不符。</value></data>
   <data name="LauncherProfileChanged" xml:space="preserve"><value>安装期间启动器配置发生了变化。请关闭 Minecraft Launcher 后重试。</value></data>
@@ -254,15 +312,15 @@
   <data name="SelectedInstanceUntrusted" xml:space="preserve"><value>所选安装与受信任的固定版本不匹配。</value></data>
   <data name="SelectedPackUnavailable" xml:space="preserve"><value>此安装对应的固定压缩包不可用，安装未更改。</value></data>
   <data name="UiInstalledInstances" xml:space="preserve"><value>已安装版本</value></data>
-  <data name="UiInstanceActive" xml:space="preserve"><value>活动</value></data>
-  <data name="UiInstanceInactive" xml:space="preserve"><value>未活动</value></data>
+  <data name="UiInstanceActive" xml:space="preserve"><value>已安装 · 已选为启动版本</value></data>
+  <data name="UiInstanceInactive" xml:space="preserve"><value>已安装 · 未选为启动版本</value></data>
   <data name="UiInstanceTrusted" xml:space="preserve"><value>已验证</value></data>
-  <data name="UiInstancePackageMissing" xml:space="preserve"><value>缺少固定压缩包 — 只读</value></data>
-  <data name="UiInstanceResidue" xml:space="preserve"><value>已保存的用户数据 — 仅可打开</value></data>
+  <data name="UiInstancePackageMissing" xml:space="preserve"><value>已安装 · 缺少固定压缩包 — 只读</value></data>
+  <data name="UiInstanceResidue" xml:space="preserve"><value>仍有数据 · 非活动文件夹</value></data>
   <data name="UiInstanceUnknown" xml:space="preserve"><value>未知版本 — 只读</value></data>
   <data name="UiInstanceInvalid" xml:space="preserve"><value>清单无效 — 只读</value></data>
   <data name="UiInstanceUnsafe" xml:space="preserve"><value>路径不安全 — 不可用</value></data>
-  <data name="UiNoTrustedInstances" xml:space="preserve"><value>尚未选择经过验证的安装。已保存的用户数据仍可打开。</value></data>
+  <data name="UiNoTrustedInstances" xml:space="preserve"><value>修复、激活或导入世界时，请选择已验证的安装。可在“删除整合包”中查看残留数据。</value></data>
   <data name="UiSelectedInstanceStatus" xml:space="preserve"><value>所选：{0}（{2}）&#10;{1}</value></data>
   <data name="UiRootChangedSelectInstance" xml:space="preserve"><value>安装文件夹已更改。请选择该文件夹中的版本。</value></data>
   <data name="UiRootNeedsValidation" xml:space="preserve"><value>使用此文件夹中的安装前，请先验证该文件夹。</value></data>
@@ -292,4 +350,5 @@
   <data name="ActiveMarkerWriteFailed" xml:space="preserve"><value>无法更新活动安装标记。原启动器配置已恢复。</value></data>
   <data name="UiEmptyRootMarkerRecoveryConfirm" xml:space="preserve"><value>此根目录中没有已验证的安装。损坏的标记将在开始新的隔离安装前备份并清除。如果安装失败，备份仍会保留。&#10;&#10;根目录：{0}</value></data>
   <data name="LauncherProfileWriteFailed" xml:space="preserve"><value>无法更新启动器配置。原活动安装标记已保留。</value></data>
+  <data name="InstanceNameExhausted" xml:space="preserve"><value>此启动器中没有可用的 MinePack 实例文件夹名称。</value></data>
 </root>

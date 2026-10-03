@@ -5,8 +5,8 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
   <data name="UiSubtitle" xml:space="preserve"><value>Моды для Minecraft — в один клик</value></data>
-  <data name="UiDescription" xml:space="preserve"><value>MinePack скачает моды и компоненты, создаст отдельный профиль в Minecraft Launcher. Ваши миры останутся отдельно.</value></data>
-  <data name="UiRequirements" xml:space="preserve"><value>Нужны официальный Minecraft Launcher и аккаунт Minecraft: Java Edition.</value></data>
+  <data name="UiDescription" xml:space="preserve"><value>MinePack скачает моды и компоненты и создаст отдельный экземпляр в выбранном лаунчере. Ваши миры останутся отдельно.</value></data>
+  <data name="UiRequirements" xml:space="preserve"><value>Нужен Minecraft Launcher или Prism Launcher и аккаунт Minecraft: Java Edition.</value></data>
   <data name="UiMinecraftVersion" xml:space="preserve"><value>Для версии 26.2</value></data>
   <data name="UiBuildInfo" xml:space="preserve"><value>Minecraft 26.2 · Fabric Loader 0.19.5 · Fabric API 0.161.0+26.2</value></data>
   <data name="UiPackVersion" xml:space="preserve"><value>Версия сборки {0}</value></data>
@@ -20,6 +20,7 @@
   <data name="UiBrowse" xml:space="preserve"><value>Обзор...</value></data>
   <data name="UiInstall" xml:space="preserve"><value>Установить сборку</value></data>
   <data name="UiCancel" xml:space="preserve"><value>Отмена</value></data>
+  <data name="UiContinue" xml:space="preserve"><value>Продолжить</value></data>
   <data name="UiReady" xml:space="preserve"><value>Готово к установке</value></data>
   <data name="UiWaiting" xml:space="preserve"><value>Ожидание</value></data>
   <data name="UiInstallPrompt" xml:space="preserve"><value>Нажмите «Установить сборку» — остальное сделаем сами.</value></data>
@@ -28,7 +29,22 @@
   <data name="UiImportWorlds" xml:space="preserve"><value>Импортировать миры</value></data>
   <data name="UiRestoreLauncher" xml:space="preserve"><value>Восстановить профиль Launcher</value></data>
   <data name="UiUninstall" xml:space="preserve"><value>Удалить сборку</value></data>
-  <data name="UiLauncherHint" xml:space="preserve"><value>Профиль не появился, хотя файлы скачаны? Нажмите «Восстановить профиль Launcher».</value></data>
+  <data name="UiLauncherHint" xml:space="preserve"><value>Если экземпляр не появился, нажмите «Проверить и исправить», чтобы восстановить файлы лаунчера.</value></data>
+  <data name="UiLauncherChoiceTitle" xml:space="preserve"><value>Выберите лаунчер для установки</value></data>
+  <data name="UiLauncherChoiceHelper" xml:space="preserve"><value>Выберите лаунчер, в котором будет создан отдельный экземпляр MinePack.</value></data>
+  <data name="UiLauncherOptionOfficial" xml:space="preserve"><value>Minecraft Launcher</value></data>
+  <data name="UiLauncherOptionPrism" xml:space="preserve"><value>Prism Launcher</value></data>
+  <data name="UiLauncherTargetLabel" xml:space="preserve"><value>Установка лаунчера</value></data>
+  <data name="UiLauncherLocatePrism" xml:space="preserve"><value>Найти Prism Launcher</value></data>
+  <data name="UiLauncherRescan" xml:space="preserve"><value>Найти снова</value></data>
+  <data name="UiLauncherChoiceUnknown" xml:space="preserve"><value>Не удалось подтвердить лаунчер или одну из его папок. Укажите Prism Launcher или выполните поиск снова.</value></data>
+  <data name="UiLauncherTargetPath" xml:space="preserve"><value>{0}&#10;{1}</value></data>
+  <data name="PrismStartRequestedStatus" xml:space="preserve"><value>Prism Launcher открыт. Выберите «{0}» и запустите экземпляр.</value></data>
+  <data name="PrismStartFailedStatus" xml:space="preserve"><value>Экземпляр готов, но не удалось открыть Prism Launcher. Откройте его вручную и выберите «{0}».</value></data>
+  <data name="PrismLaunchInstruction" xml:space="preserve"><value>Откройте Prism Launcher, выберите «{0}» и запустите экземпляр.</value></data>
+  <data name="PrismInstanceTargetDisplay" xml:space="preserve"><value>Prism Launcher · {0}</value></data>
+  <data name="PrismRepairCompleteStatus" xml:space="preserve"><value>Экземпляр Prism восстановлен. Его настройки и миры сохранены.</value></data>
+  <data name="OfficialInstanceTargetDisplay" xml:space="preserve"><value>Minecraft Launcher · {0}</value></data>
   <data name="UiDetails" xml:space="preserve"><value>Подробнее</value></data>
   <data name="UiOpenFolder" xml:space="preserve"><value>Открыть папку</value></data>
   <data name="UiOpenLog" xml:space="preserve"><value>Открыть журнал</value></data>
@@ -37,6 +53,41 @@
   <data name="UiInstallFolderDialog" xml:space="preserve"><value>Выберите корневую папку данных MinePack</value></data>
   <data name="UiUninstallConfirmMessage" xml:space="preserve"><value>Удалить установленные файлы MinePack? Миры, снимки экрана и ваши другие файлы останутся на месте.</value></data>
   <data name="UiUninstallConfirmTitle" xml:space="preserve"><value>Удалить MinePack</value></data>
+  <data name="UiDeletePack" xml:space="preserve"><value>Удалить сборку</value></data>
+  <data name="UiDeletePackTitle" xml:space="preserve"><value>Выберите установку для удаления</value></data>
+  <data name="UiDeletePackHelper" xml:space="preserve"><value>Выберите одну установку. Обычное удаление убирает управляемые файлы сборки и сохраняет пользовательские данные. Очистка оставшихся данных — отдельное действие с подтверждением и переносом в корзину.</value></data>
+  <data name="UiDeleteRemainingData" xml:space="preserve"><value>Удалить оставшиеся данные</value></data>
+  <data name="UiNoInstancesToDelete" xml:space="preserve"><value>В проверенных папках лаунчеров установок MinePack не найдено.</value></data>
+  <data name="UiDeleteEntryDetails" xml:space="preserve"><value>{0} · {1} · {2}&#10;{3}&#10;{4}</value></data>
+  <data name="UiUnknownInstance" xml:space="preserve"><value>Неизвестная папка MinePack</value></data>
+  <data name="UiInstanceOrdinal" xml:space="preserve"><value>Экземпляр {0}</value></data>
+  <data name="UiDeleteCleanupEligible" xml:space="preserve"><value>Можно очистить после подтверждения через корзину. Это остаточная папка, а не проверенная установка.</value></data>
+  <data name="UiDeleteCleanupUnavailable" xml:space="preserve"><value>Оставшиеся данные нельзя безопасно удалить: не удалось проверить принадлежность лаунчеру или путь.</value></data>
+  <data name="UiDeleteRemainingConfirmTitle" xml:space="preserve"><value>Переместить оставшиеся данные MinePack в корзину?</value></data>
+  <data name="UiDeleteRemainingConfirmMessage" xml:space="preserve"><value>Все файлы этой папки, включая миры, если они есть, будут перемещены в корзину. Установщик не перейдёт к безвозвратному удалению.</value></data>
+  <data name="UiDeleteRemainingConfirmTarget" xml:space="preserve"><value>{0} · {1}&#10;&#10;Найдено: {2}&#10;Папка: {3}</value></data>
+  <data name="UiDeleteRemainingComplete" xml:space="preserve"><value>Оставшиеся данные перемещены в корзину.</value></data>
+  <data name="UiDeleteOwnershipRecordRetained" xml:space="preserve"><value>Папка перемещена в корзину, но запись о Prism ownership не удалена. Оставьте её для проверки.</value></data>
+  <data name="UiDeleteRemainingFailed" xml:space="preserve"><value>Windows не подтвердила перенос всей папки в корзину. Проверьте папку и корзину перед повторной попыткой.</value></data>
+  <data name="UiDeleteCleanupChecking" xml:space="preserve"><value>Проверяем, можно ли безопасно переместить эту папку…</value></data>
+  <data name="UiCleanupCategorySaves" xml:space="preserve"><value>миры</value></data>
+  <data name="UiCleanupCategorySettings" xml:space="preserve"><value>настройки</value></data>
+  <data name="UiCleanupCategoryScreenshots" xml:space="preserve"><value>скриншоты</value></data>
+  <data name="UiCleanupCategoryResourcePacks" xml:space="preserve"><value>ресурс-паки</value></data>
+  <data name="UiCleanupCategoryShaderPacks" xml:space="preserve"><value>шейдеры</value></data>
+  <data name="UiCleanupCategoryLogs" xml:space="preserve"><value>логи</value></data>
+  <data name="UiCleanupCategoryNone" xml:space="preserve"><value>типичные папки с личными данными не обнаружены; в корзину попадёт всё содержимое</value></data>
+  <data name="InstanceCleanupUnavailable" xml:space="preserve"><value>Эта папка не прошла проверки для безопасной очистки остатков.</value></data>
+  <data name="InstanceCleanupLocked" xml:space="preserve"><value>Файл в этой папке занят или его нельзя безопасно открыть. Закройте использующие его программы и повторите попытку.</value></data>
+  <data name="InstanceCleanupActive" xml:space="preserve"><value>Эта папка всё ещё является активной установкой. Сначала переключитесь на другую установку.</value></data>
+  <data name="InstanceCleanupChanged" xml:space="preserve"><value>Содержимое папки или ссылки лаунчера изменились во время подтверждения. Проверьте её ещё раз перед повторной попыткой.</value></data>
+  <data name="InstanceCleanupProfileUnknown" xml:space="preserve"><value>Не удалось безопасно проверить файлы профилей Minecraft Launcher.</value></data>
+  <data name="InstanceCleanupProfileReference" xml:space="preserve"><value>Профиль Minecraft Launcher всё ещё ссылается на эту папку.</value></data>
+  <data name="InstanceCleanupTooLarge" xml:space="preserve"><value>В папке слишком много элементов для безопасной проверки.</value></data>
+  <data name="InstanceCleanupDriveUnavailable" xml:space="preserve"><value>Очистка в корзину доступна только на проверенном локальном фиксированном диске.</value></data>
+  <data name="InstanceCleanupRecycleFailed" xml:space="preserve"><value>Windows не подтвердила перенос выбранной папки в корзину.</value></data>
+  <data name="UiChooseActiveLauncher" xml:space="preserve"><value>Выберите лаунчер, активную установку MinePack которого использовать.</value></data>
+  <data name="UiNoActiveInstallation" xml:space="preserve"><value>Нет проверенной активной установки MinePack. Установите выбранную сборку или восстановите профиль лаунчера, если для неё найдена ровно одна проверенная установка.</value></data>
   <data name="CatalogPerformance" xml:space="preserve"><value>Производительность и дальность</value></data>
   <data name="CatalogGraphics" xml:space="preserve"><value>Графика и анимации</value></data>
   <data name="CatalogTools" xml:space="preserve"><value>Инструменты и удобство</value></data>
@@ -230,6 +281,13 @@
   <data name="LauncherIdentityUnknown" xml:space="preserve"><value>Возможно, запущен Minecraft Launcher, но подтвердить его официальное происхождение не удалось. MinePack оставил программу открытой и не начал установку.</value></data>
   <data name="LauncherTargetsAmbiguous" xml:space="preserve"><value>Зарегистрировано несколько официальных установок Minecraft Launcher. MinePack не смог безопасно выбрать одну, поэтому установка не началась.</value></data>
   <data name="LauncherDiscoveryFailed" xml:space="preserve"><value>Windows не удалось прочитать список зарегистрированных приложений и безопасно проверить Minecraft Launcher.</value></data>
+  <data name="PrismConfigurationUnknown" xml:space="preserve"><value>Не удалось безопасно прочитать настройки Prism Launcher. Выберите папку данных лаунчера или выполните поиск снова.</value></data>
+  <data name="PrismDataRootUnknown" xml:space="preserve"><value>Не удалось безопасно определить папку данных Prism Launcher. Укажите папку лаунчера или данных и выполните поиск снова.</value></data>
+  <data name="PrismIdentityChanged" xml:space="preserve"><value>Не удалось подтвердить Prism Launcher или его папки. Операция остановлена; выполните поиск снова.</value></data>
+  <data name="PrismLauncherRunning" xml:space="preserve"><value>Prism Launcher ещё запущен. Закройте его перед продолжением.</value></data>
+  <data name="PrismLauncherCloseTimeout" xml:space="preserve"><value>Prism Launcher не закрылся за отведённое время. Закройте его и повторите попытку.</value></data>
+  <data name="PrismLauncherCloseFailed" xml:space="preserve"><value>Не удалось отправить Prism Launcher запрос на закрытие. Закройте его вручную и повторите попытку.</value></data>
+  <data name="PrismLauncherIdentityUnknown" xml:space="preserve"><value>Не удалось сопоставить процесс Prism Launcher с выбранной папкой данных. Процесс оставлен открытым. Закройте его вручную и повторите попытку.</value></data>
   <data name="FabricArchiveUnexpected" xml:space="preserve"><value>Официальный пакет Fabric имеет неожиданную структуру.</value></data>
   <data name="FabricArchiveVersionMismatch" xml:space="preserve"><value>Версии в пакете Fabric не соответствуют тестовому релизу.</value></data>
   <data name="LauncherProfileChanged" xml:space="preserve"><value>Профиль Launcher изменился во время установки. Повторите попытку после закрытия Launcher.</value></data>
@@ -254,15 +312,15 @@
   <data name="SelectedInstanceUntrusted" xml:space="preserve"><value>Выбранная установка не совпадает с доверенным закреплённым релизом.</value></data>
   <data name="SelectedPackUnavailable" xml:space="preserve"><value>Закреплённый архив этой установки недоступен. Установка не изменена.</value></data>
   <data name="UiInstalledInstances" xml:space="preserve"><value>Установленные версии</value></data>
-  <data name="UiInstanceActive" xml:space="preserve"><value>активная</value></data>
-  <data name="UiInstanceInactive" xml:space="preserve"><value>неактивная</value></data>
+  <data name="UiInstanceActive" xml:space="preserve"><value>Установлена · выбрана для запуска</value></data>
+  <data name="UiInstanceInactive" xml:space="preserve"><value>Установлена · не выбрана для запуска</value></data>
   <data name="UiInstanceTrusted" xml:space="preserve"><value>проверена</value></data>
-  <data name="UiInstancePackageMissing" xml:space="preserve"><value>закреплённый архив отсутствует — только просмотр</value></data>
-  <data name="UiInstanceResidue" xml:space="preserve"><value>сохранённые данные — только открыть</value></data>
+  <data name="UiInstancePackageMissing" xml:space="preserve"><value>Установлена · закреплённый архив отсутствует — только просмотр</value></data>
+  <data name="UiInstanceResidue" xml:space="preserve"><value>Остались данные · неактивная папка</value></data>
   <data name="UiInstanceUnknown" xml:space="preserve"><value>неизвестный релиз — только просмотр</value></data>
   <data name="UiInstanceInvalid" xml:space="preserve"><value>некорректный manifest — только просмотр</value></data>
   <data name="UiInstanceUnsafe" xml:space="preserve"><value>небезопасный путь — недоступно</value></data>
-  <data name="UiNoTrustedInstances" xml:space="preserve"><value>Проверенная установка не выбрана. Сохранённые пользовательские данные можно только открыть.</value></data>
+  <data name="UiNoTrustedInstances" xml:space="preserve"><value>Для восстановления, активации или импорта миров выберите проверенную установку. Остатки можно проверить в разделе «Удалить сборку».</value></data>
   <data name="UiSelectedInstanceStatus" xml:space="preserve"><value>Выбрано: {0} ({2})&#10;{1}</value></data>
   <data name="UiRootChangedSelectInstance" xml:space="preserve"><value>Папка установки изменилась. Выберите версию из этой папки.</value></data>
   <data name="UiRootNeedsValidation" xml:space="preserve"><value>Перед использованием установок проверьте эту папку.</value></data>
@@ -292,4 +350,5 @@
   <data name="ActiveMarkerWriteFailed" xml:space="preserve"><value>Не удалось обновить маркер активной установки. Прежний профиль Launcher восстановлен.</value></data>
   <data name="UiEmptyRootMarkerRecoveryConfirm" xml:space="preserve"><value>В этой папке нет подтверждённых установок. Повреждённый маркер будет сохранён в резервную копию и очищен до начала новой изолированной установки. Копия останется, если установка завершится ошибкой.&#10;&#10;Папка: {0}</value></data>
   <data name="LauncherProfileWriteFailed" xml:space="preserve"><value>Не удалось обновить профиль Launcher. Прежний маркер активной установки сохранён.</value></data>
+  <data name="InstanceNameExhausted" xml:space="preserve"><value>В этой программе запуска нет свободного имени папки MinePack.</value></data>
 </root>

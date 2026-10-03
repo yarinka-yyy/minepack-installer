@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MinePack.Core;
 
@@ -29,6 +30,17 @@ public sealed class InstallService : IDisposable
         return marker.State == ActiveMarkerState.Valid ? marker.InstancePath : null;
     }
 
+    public string? GetActiveInstancePath(InstallationLayout layout)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        layout.Validate();
+        var pending = ManagedFileTransaction.OpenPending(layout, _activeOperationLog);
+        if (pending is not null)
+            throw new InstallerException("TRANSACTION_RECOVERY_REQUIRED", LocalizedText.Get("TransactionRecoveryRequired", pending.Folder));
+        var marker = ReadActiveMarker(layout);
+        return marker.State == ActiveMarkerState.Valid ? marker.InstancePath : null;
+    }
+
     public ActiveMarkerInspection InspectActiveMarker(string installRoot)
     {
         var root = Path.TrimEndingDirectorySeparator(ValidateInstallRoot(installRoot));
@@ -36,6 +48,17 @@ public sealed class InstallService : IDisposable
         if (pending is not null)
             throw new InstallerException("TRANSACTION_RECOVERY_REQUIRED", LocalizedText.Get("TransactionRecoveryRequired", pending));
         var marker = ReadActiveMarker(root);
+        return new ActiveMarkerInspection(marker.State, marker.InstancePath, marker.SchemaVersion);
+    }
+
+    public ActiveMarkerInspection InspectActiveMarker(InstallationLayout layout)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        layout.Validate();
+        var pending = ManagedFileTransaction.OpenPending(layout, _activeOperationLog);
+        if (pending is not null)
+            throw new InstallerException("TRANSACTION_RECOVERY_REQUIRED", LocalizedText.Get("TransactionRecoveryRequired", pending.Folder));
+        var marker = ReadActiveMarker(layout);
         return new ActiveMarkerInspection(marker.State, marker.InstancePath, marker.SchemaVersion);
     }
 
@@ -52,6 +75,13 @@ public sealed class InstallService : IDisposable
         return pending is null ? null : (pending.InstancePath, pending.PackVersion);
     }
 
+    public (string InstancePath, string PackVersion)? GetPendingOperation(InstallationLayout layout)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        var pending = ManagedFileTransaction.OpenPending(layout, _activeOperationLog);
+        return pending is null ? null : (pending.InstancePath, pending.PackVersion);
+    }
+
     public Task<InstallResult> InstallAsync(string packPath, string expectedPackSha512, string installRoot,
         IProgress<InstallProgress>? progress = null, CancellationToken cancellationToken = default,
         FabricLauncherService? launcher = null, OperationLog? operationLog = null,
@@ -63,12 +93,42 @@ public sealed class InstallService : IDisposable
                 cancellationToken, launcher, allowActiveMarkerRecovery), cancellationToken, "INSTALL_FAILED", "InstallFailed", operationLog, ownsLog);
     }
 
+    public Task<InstallResult> InstallAsync(string packPath, string expectedPackSha512, PrismLauncherTarget target,
+        IProgress<InstallProgress>? progress = null, CancellationToken cancellationToken = default,
+        OperationLog? operationLog = null)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        var validatedTarget = InstallationLayout.Prism(target, "minepack-target-validation");
+        var ownsLog = operationLog is null;
+        var root = validatedTarget.StateRoot;
+        operationLog ??= new OperationLog("install", null, root);
+        return GuardInstallResultAsync(() => InstallCoreAsync(packPath, expectedPackSha512, root, progress,
+                cancellationToken, null, false, target), cancellationToken, "INSTALL_FAILED", "InstallFailed", operationLog, ownsLog);
+    }
+
+    public Task<InstallResult> InstallAsync(string packPath, string expectedPackSha512, InstallationLayout layout,
+        IProgress<InstallProgress>? progress = null, CancellationToken cancellationToken = default,
+        OperationLog? operationLog = null)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        var ownsLog = operationLog is null;
+        operationLog ??= new OperationLog("install", null, layout.StateRoot);
+        return GuardInstallResultAsync(() => InstallCoreAsync(packPath, expectedPackSha512, layout.StateRoot, progress,
+                cancellationToken, null, false, null, layout), cancellationToken,
+            "INSTALL_FAILED", "InstallFailed", operationLog, ownsLog);
+    }
+
     private async Task<InstallResult> InstallCoreAsync(string packPath, string expectedPackSha512, string installRoot,
         IProgress<InstallProgress>? progress = null, CancellationToken cancellationToken = default,
-        FabricLauncherService? launcher = null, bool allowActiveMarkerRecovery = false)
+        FabricLauncherService? launcher = null, bool allowActiveMarkerRecovery = false,
+        PrismLauncherTarget? prismTarget = null, InstallationLayout? prismLayoutOverride = null)
     {
         string? instancePath = null;
         string? stagingRoot = null;
+        string? stagingWrapper = null;
+        InstallationLayout? layout = null;
+        PackArchive? prismPackForCleanup = null;
+        var prismLocalBindingWritten = false;
         InstanceUseGuard.Scope? instanceUse = null;
         var movedToFinal = false;
         var installCommitted = false;
@@ -77,14 +137,97 @@ public sealed class InstallService : IDisposable
         try
         {
             var pack = PackArchive.Open(packPath, expectedPackSha512);
+            prismPackForCleanup = prismTarget is null && prismLayoutOverride is null ? null : pack;
             var root = ValidateInstallRoot(installRoot);
+            if (prismTarget is not null)
+            {
+                var release = TryGetPinnedRelease(pack)
+                    ?? throw new InstallerException("RELEASE_UNKNOWN", LocalizedText.Get("PinnedArchiveUnavailable"));
+                var lookup = InstallationLayout.Prism(prismTarget, InstanceDirectoryNaming.CreateBaseName(release));
+                layout = FindReusablePrismLayout(lookup, release) ??
+                         InstallationLayout.Prism(prismTarget, InstanceDirectoryNaming.Allocate(lookup.InstancesRoot, release));
+                root = ValidateInstallRoot(layout.StateRoot);
+            }
+            else if (prismLayoutOverride is not null)
+            {
+                if (!prismLayoutOverride.IsPrism) throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("UnsafePath"));
+                layout = prismLayoutOverride;
+                layout.Validate();
+                if (!layout.TryGetPinnedRelease(pack.VersionId, out var prismRelease) ||
+                    !prismRelease.ArchiveSha512.Equals(pack.ArchiveSha512, StringComparison.OrdinalIgnoreCase) ||
+                    !PrismLauncherService.IsExpectedInstanceDirectory(layout, prismRelease))
+                    throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("UnsafePath"));
+                root = ValidateInstallRoot(layout.StateRoot);
+            }
+            if (layout is not null)
+            {
+                PrismLauncherService.RecheckTarget(layout);
+                ManagedFileTransaction.EnsureNoPendingForOtherOwnedInstances(layout);
+                var recoveryPending = ManagedFileTransaction.OpenPending(layout, _activeOperationLog);
+                if (recoveryPending is not null)
+                {
+                    var pendingManifest = recoveryPending.LoadTrustedManifest(pack);
+                    StartLog(root, pack, layout.GameDirectory);
+                    using var pendingUse = InstanceUseGuard.Acquire(layout.GameDirectory,
+                        pendingManifest.Files.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path)).Select(file => file.Path));
+                    recoveryPending.Recover(root, pack, pendingManifest, pendingUse, launcher);
+                }
+            }
+            if (layout is not null && (Directory.Exists(layout.InstanceDirectory) || File.Exists(layout.InstanceDirectory)))
+            {
+                if (File.Exists(layout.InstanceDirectory))
+                    throw new InstallerException("PRISM_INSTANCE_OWNERSHIP_CONFLICT", LocalizedText.Get("PrismIdentityChanged"));
+                if (PrismLauncherService.HasOwnedBinding(layout))
+                {
+                    var existingManifest = InstallationManifest.Load(layout.GameDirectory);
+                    if (!PrismLauncherService.IsOwned(layout, pack, existingManifest))
+                        throw new InstallerException("PRISM_INSTANCE_OWNERSHIP_CONFLICT", LocalizedText.Get("PrismIdentityChanged"));
+                    var repair = await RepairCoreAsync(layout.GameDirectory, packPath, expectedPackSha512, progress,
+                        cancellationToken, launcher, layout).ConfigureAwait(false);
+                    if (!repair.Success) return repair;
+                    layout.Validate();
+                    var repairedManifest = InstallationManifest.Load(layout.GameDirectory);
+                    if (!PrismLauncherService.IsOwned(layout, pack, repairedManifest))
+                        throw new InstallerException("PRISM_INSTANCE_OWNERSHIP_CONFLICT", LocalizedText.Get("PrismIdentityChanged"));
+                    using var recheckedUse = InstanceUseGuard.Acquire(layout.GameDirectory,
+                        repairedManifest.Files.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path)).Select(file => file.Path));
+                    recheckedUse.Recheck();
+                    var marker = ReadActiveMarker(layout);
+                    EnsureActiveMarkerCanChange(marker, allowActiveMarkerRecovery, layout);
+                    var selectedName = Path.GetFileName(layout.InstanceDirectory);
+                    markerBackupPath = WriteActive(layout, selectedName, allowActiveMarkerRecovery, marker);
+                    installCommitted = true;
+                    return repair with
+                    {
+                        Message = LocalizedText.Get("PackFilesInstalled"),
+                        GameDirectory = layout.GameDirectory,
+                        LogPath = CurrentLogPath
+                    };
+                }
+                if (!PrismLauncherService.TryGetOwnedResidueRelease(layout, out var residueRelease) ||
+                    !residueRelease.ArchiveSha512.Equals(pack.ArchiveSha512, StringComparison.OrdinalIgnoreCase))
+                    throw new InstallerException("PRISM_INSTANCE_OWNERSHIP_CONFLICT", LocalizedText.Get("PrismIdentityChanged"));
+                var pinnedResidueRelease = TryGetPinnedRelease(pack, layout)
+                    ?? throw new InstallerException("RELEASE_UNKNOWN", LocalizedText.Get("PinnedArchiveUnavailable"));
+                layout = layout.ForInstance(SafePath.Resolve(layout.InstancesRoot,
+                    InstanceDirectoryNaming.Allocate(layout.InstancesRoot, pinnedResidueRelease)));
+            }
             SetOperationRelease(pack);
-            var instancesRoot = Path.Combine(root, "instances");
-            SafePath.EnsureNoReparsePoints(root, instancesRoot);
-            var instanceName = $"test-pack-{pack.VersionId}-{pack.ArchiveSha512[..12].ToLowerInvariant()}";
-            instancePath = SafePath.Resolve(instancesRoot, instanceName);
+            var instancesRoot = layout?.InstancesRoot ?? Path.Combine(root, "instances");
+            if (layout is null) SafePath.EnsureNoReparsePoints(root, instancesRoot);
+            else layout.Validate();
+            var pinnedRelease = TryGetPinnedRelease(pack, layout);
+            var instanceName = layout is null
+                ? pinnedRelease is null
+                    ? $"test-pack-{pack.VersionId}-{pack.ArchiveSha512[..12].ToLowerInvariant()}"
+                    : FindReusableOfficialInstanceName(root, pinnedRelease) ??
+                      InstanceDirectoryNaming.Allocate(instancesRoot, pinnedRelease)
+                : Path.GetFileName(layout.InstanceDirectory);
+            instancePath = layout?.GameDirectory ?? SafePath.Resolve(instancesRoot, instanceName);
             RebindCurrentLog(root, pack, instancePath);
-            var pending = ManagedFileTransaction.OpenPending(instancePath, _activeOperationLog);
+            var pending = layout is null
+                ? ManagedFileTransaction.OpenPending(instancePath, _activeOperationLog)
+                : ManagedFileTransaction.OpenPending(layout, _activeOperationLog);
             if (pending is not null)
             {
                 var pendingManifest = pending.LoadTrustedManifest(pack);
@@ -93,8 +236,9 @@ public sealed class InstallService : IDisposable
                     pendingManifest.Files.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path)).Select(file => file.Path));
                 pending.Recover(root, pack, pendingManifest, pendingUse, launcher);
             }
-            ManagedFileTransaction.EnsureNoPendingUnderRoot(root, instancePath);
-            var activeMarker = ReadActiveMarker(root);
+            if (layout is null) ManagedFileTransaction.EnsureNoPendingUnderRoot(root, instancePath);
+            else ManagedFileTransaction.EnsureNoPendingForInstance(layout);
+            var activeMarker = layout is null ? ReadActiveMarker(root) : ReadActiveMarker(layout);
             EnsureActiveMarkerCanChange(activeMarker, allowActiveMarkerRecovery);
             if (allowActiveMarkerRecovery && activeMarker.State is (ActiveMarkerState.Malformed or ActiveMarkerState.MissingTarget) &&
                 activeMarker.Bytes is not null && !Directory.Exists(instancePath) &&
@@ -156,7 +300,9 @@ public sealed class InstallService : IDisposable
                     return markerBackupPath is null ? restored : restored with
                     { Message = restored.Message + " " + LocalizedText.Get("ActiveMarkerBackupSaved", markerBackupPath) };
                 }
-                instanceName += "-reinstall-" + Guid.NewGuid().ToString("N");
+                instanceName = pinnedRelease is null
+                    ? instanceName + "-reinstall-" + Guid.NewGuid().ToString("N")
+                    : InstanceDirectoryNaming.Allocate(instancesRoot, pinnedRelease);
                 instancePath = SafePath.Resolve(instancesRoot, instanceName);
             }
 
@@ -165,10 +311,23 @@ public sealed class InstallService : IDisposable
             StartLog(root, pack, instancePath);
             Log("install_started", new { packPath = Path.GetFileName(packPath) });
             Log("pack_validated", new { pack.VersionId, pack.MinecraftVersion, pack.FabricLoaderVersion, pack.ArchiveSha512 });
-            Directory.CreateDirectory(instancesRoot);
-            stagingRoot = Path.Combine(root, "staging", instanceName + "-" + Guid.NewGuid().ToString("N"));
-            SafePath.EnsureNoReparsePoints(root, stagingRoot);
-            Directory.CreateDirectory(stagingRoot);
+            if (layout is null)
+            {
+                Directory.CreateDirectory(instancesRoot);
+                stagingRoot = Path.Combine(root, "staging", instanceName + "-" + Guid.NewGuid().ToString("N"));
+                SafePath.EnsureNoReparsePoints(root, stagingRoot);
+                Directory.CreateDirectory(stagingRoot);
+            }
+            else
+            {
+                Directory.CreateDirectory(instancesRoot);
+                layout.Validate();
+                stagingWrapper = Path.Combine(instancesRoot, ".minepack-staging-" + Guid.NewGuid().ToString("N"));
+                SafePath.EnsureNoReparsePoints(instancesRoot, stagingWrapper);
+                Directory.CreateDirectory(stagingWrapper);
+                stagingRoot = Path.Combine(stagingWrapper, "minecraft");
+                Directory.CreateDirectory(stagingRoot);
+            }
             var managed = new ConcurrentBag<ManagedFile>();
             var total = pack.Files.Count + pack.Overrides.Count;
             var completed = 0;
@@ -213,19 +372,42 @@ public sealed class InstallService : IDisposable
             var initialConfigurations = InitialConfiguration.Create(pack, stagingRoot);
             InitialConfiguration.WriteToRoot(stagingRoot, initialConfigurations);
             manifest.SaveAtomic(stagingRoot);
+            if (layout is not null)
+            {
+                PrismLauncherService.PrepareFreshInstance(stagingWrapper!, layout, pack);
+                PrismLauncherService.WriteLocalOwnershipRecord(layout, pack);
+                prismLocalBindingWritten = true;
+            }
             Log("staging_verified", new { files = manifest.Files.Count, stagingRoot });
 
             cancellationToken.ThrowIfCancellationRequested();
             instanceUse.Recheck();
-            Directory.CreateDirectory(Path.GetDirectoryName(instancePath)!);
-            Directory.Move(stagingRoot, instancePath);
+            if (layout is null)
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(instancePath)!);
+                Directory.Move(stagingRoot, instancePath);
+            }
+            else
+            {
+                if (Directory.Exists(layout.InstanceDirectory) || File.Exists(layout.InstanceDirectory))
+                    throw new InstallerException("PRISM_INSTANCE_OWNERSHIP_CONFLICT", LocalizedText.Get("PrismIdentityChanged"));
+                PrismLauncherService.RecheckTarget(layout);
+                ManagedFileTransaction.EnsureNoPendingForOtherOwnedInstances(layout);
+                Directory.Move(stagingWrapper!, layout.InstanceDirectory);
+            }
             movedToFinal = true;
             foreach (var file in manifest.Files)
                 instanceUse.ProtectCommittedFile(SafePath.Resolve(instancePath, file.Path));
-            var relativeInstancePath = Path.GetRelativePath(root, instancePath).Replace(Path.DirectorySeparatorChar, '/');
             cancellationToken.ThrowIfCancellationRequested();
             instanceUse.Recheck();
-            markerBackupPath = WriteActive(root, relativeInstancePath, allowActiveMarkerRecovery);
+            if (layout is { IsPrism: true })
+            {
+                PrismLauncherService.RecheckTarget(layout);
+                ManagedFileTransaction.EnsureNoPendingForOtherOwnedInstances(layout);
+            }
+            markerBackupPath = layout is null
+                ? WriteActive(root, Path.GetRelativePath(root, instancePath).Replace(Path.DirectorySeparatorChar, '/'), allowActiveMarkerRecovery)
+                : WriteActive(layout, instanceName, allowActiveMarkerRecovery);
             installCommitted = true;
             try { Log("install_committed", new { instancePath }); }
             catch { }
@@ -257,9 +439,20 @@ public sealed class InstallService : IDisposable
         finally
         {
             instanceUse?.Dispose();
-            if (movedToFinal && !installCommitted && instancePath is not null)
+            if (movedToFinal && !installCommitted && instancePath is not null && layout is null)
                 TryDeleteDirectory(Path.GetDirectoryName(instancePath)!, instancePath);
-            if (stagingRoot is not null) TryDeleteDirectory(root: Path.GetDirectoryName(Path.GetDirectoryName(stagingRoot)!)!, path: stagingRoot);
+            if (stagingWrapper is not null)
+                TryDeleteDirectory(layout?.InstancesRoot ?? Path.GetDirectoryName(stagingWrapper)!, stagingWrapper);
+            else if (stagingRoot is not null)
+                TryDeleteDirectory(root: Path.GetDirectoryName(Path.GetDirectoryName(stagingRoot)!)!, path: stagingRoot);
+            if (layout is not null && prismLocalBindingWritten && !movedToFinal &&
+                !Directory.Exists(layout.InstanceDirectory) && !File.Exists(layout.InstanceDirectory) && prismPackForCleanup is not null)
+            {
+                try { PrismLauncherService.RemoveLocalOwnershipRecord(layout, prismPackForCleanup); }
+                catch (InstallerException) { }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
         }
     }
 
@@ -273,15 +466,27 @@ public sealed class InstallService : IDisposable
                 cancellationToken, launcher), cancellationToken, "REPAIR_FAILED", "RepairFailed", operationLog, ownsLog);
     }
 
+    public Task<InstallResult> RepairAsync(InstallationLayout layout, string packPath, string expectedPackSha512,
+        IProgress<InstallProgress>? progress = null, CancellationToken cancellationToken = default,
+        OperationLog? operationLog = null)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        var ownsLog = operationLog is null;
+        operationLog ??= new OperationLog("repair", null, layout.StateRoot);
+        return GuardInstallResultAsync(() => RepairCoreAsync(layout.GameDirectory, packPath, expectedPackSha512,
+                progress, cancellationToken, null, layout), cancellationToken,
+            "REPAIR_FAILED", "RepairFailed", operationLog, ownsLog);
+    }
+
     private async Task<InstallResult> RepairCoreAsync(string instancePath, string packPath, string expectedPackSha512,
         IProgress<InstallProgress>? progress = null, CancellationToken cancellationToken = default,
-        FabricLauncherService? launcher = null)
+        FabricLauncherService? launcher = null, InstallationLayout? layout = null)
     {
         ManagedFileTransaction? transaction = null;
         InstanceUseGuard.Scope? instanceUse = null;
-        var fullInstance = Path.TrimEndingDirectorySeparator(Path.GetFullPath(instancePath));
-        var instancesRoot = Path.GetDirectoryName(fullInstance)!;
-        var root = Path.GetDirectoryName(instancesRoot)!;
+        var fullInstance = Path.TrimEndingDirectorySeparator(Path.GetFullPath(layout?.GameDirectory ?? instancePath));
+        var instancesRoot = layout?.InstancesRoot ?? Path.GetDirectoryName(fullInstance)!;
+        var root = layout?.StateRoot ?? Path.GetDirectoryName(instancesRoot)!;
         InstallationManifest? manifest = null;
         PackArchive? pack = null;
         var repaired = 0;
@@ -290,16 +495,29 @@ public sealed class InstallService : IDisposable
         try
         {
             EnsureNotVanilla(fullInstance);
-            if (!Path.GetFileName(instancesRoot).Equals("instances", StringComparison.OrdinalIgnoreCase) ||
-                !Directory.Exists(root) || !Directory.Exists(instancesRoot) || !Directory.Exists(fullInstance))
+            if (layout is null && !Path.GetFileName(instancesRoot).Equals("instances", StringComparison.OrdinalIgnoreCase) ||
+                !Directory.Exists(instancesRoot) || !Directory.Exists(fullInstance) ||
+                layout is null && !Directory.Exists(root))
                 throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("UninstallInstanceNotFound"));
-            root = ValidateInstallRoot(root);
-            SafePath.EnsureNoReparsePoints(root, fullInstance);
-            ManagedFileTransaction.EnsureNoPendingUnderRoot(root, fullInstance);
+            if (layout is null)
+            {
+                root = ValidateInstallRoot(root);
+                SafePath.EnsureNoReparsePoints(root, fullInstance);
+                ManagedFileTransaction.EnsureNoPendingUnderRoot(root, fullInstance);
+            }
+            else
+            {
+                if (!layout.IsPrism) throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("UnsafePath"));
+                layout.Validate();
+                PrismLauncherService.RecheckTarget(layout);
+                ManagedFileTransaction.EnsureNoPendingForOtherOwnedInstances(layout);
+            }
             pack = PackArchive.Open(packPath, expectedPackSha512);
             RebindCurrentLog(root, pack, fullInstance);
 
-            var pending = ManagedFileTransaction.OpenPending(fullInstance, _activeOperationLog);
+            var pending = layout is null
+                ? ManagedFileTransaction.OpenPending(fullInstance, _activeOperationLog)
+                : ManagedFileTransaction.OpenPending(layout, _activeOperationLog);
             if (pending is not null)
             {
                 manifest = pending.LoadTrustedManifest(pack);
@@ -310,15 +528,20 @@ public sealed class InstallService : IDisposable
                 instanceUse.Dispose();
                 instanceUse = null;
             }
+            if (layout is not null) ManagedFileTransaction.EnsureNoPendingForInstance(layout);
 
             manifest = InstallationManifest.Load(fullInstance);
             ValidateMatchesRelease(manifest, pack);
+            if (layout is not null && !PrismLauncherService.IsOwned(layout, pack, manifest))
+                throw new InstallerException("PRISM_INSTANCE_OWNERSHIP_CONFLICT", LocalizedText.Get("PrismIdentityChanged"));
             SetOperationRelease(pack);
             var managedFiles = manifest.Files.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path)).ToList();
             instanceUse = InstanceUseGuard.Acquire(fullInstance, managedFiles.Select(file => file.Path));
             instanceUse.Recheck();
             StartLog(root, pack, fullInstance);
-            transaction = ManagedFileTransaction.BeginRepair(root, fullInstance, pack, _activeOperationLog);
+            transaction = layout is null
+                ? ManagedFileTransaction.BeginRepair(root, fullInstance, pack, _activeOperationLog)
+                : ManagedFileTransaction.BeginRepair(layout, pack, _activeOperationLog);
             var stagingRoot = transaction.StagingRoot;
             var overrideFiles = await pack.ExtractOverridesAsync(stagingRoot, cancellationToken);
             var initialConfigurations = InitialConfiguration.Create(pack, stagingRoot);
@@ -383,11 +606,14 @@ public sealed class InstallService : IDisposable
                 restoredDefaults.Add(file.Path);
             }
 
+            if (layout is { IsPrism: true }) transaction.SnapshotPrismRepairMetadata(pack);
+
             cancellationToken.ThrowIfCancellationRequested();
             instanceUse.Recheck();
             transaction.MarkPrepared();
             transaction.EnsureCommitSpace();
             transaction.CommitFiles(instanceUse);
+            transaction.CommitPrismMetadata();
             transaction.MarkCompleted();
             var cleanupResidue = transaction.CleanupAfterCommit(launcher, pack, manifest, instanceUse);
             if (cleanupResidue is not null)
@@ -433,6 +659,13 @@ public sealed class InstallService : IDisposable
 
     public InstallationManifest ValidateUninstallTarget(string installRoot, string instancePath, string packPath,
         string expectedPackSha512) => ValidateUninstallTargetCore(installRoot, instancePath, packPath, expectedPackSha512).Manifest;
+
+    public InstallationManifest ValidateUninstallTarget(InstallationLayout layout, string packPath,
+        string expectedPackSha512)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        return ValidateUninstallTargetCore(layout.StateRoot, layout.GameDirectory, packPath, expectedPackSha512, layout).Manifest;
+    }
 
     public async Task<string?> ActivateExistingInstanceAsync(string installRoot, string instancePath, string packPath,
         string expectedPackSha512, FabricLauncherService launcher, bool allowActiveMarkerRecovery = false,
@@ -497,28 +730,51 @@ public sealed class InstallService : IDisposable
                 launcher), CancellationToken.None, "UNINSTALL_FAILED", "UninstallFailed", operationLog, ownsLog);
     }
 
+    public Task<InstallResult> UninstallAsync(InstallationLayout layout, string packPath, string expectedPackSha512,
+        OperationLog? operationLog = null)
+    {
+        ArgumentNullException.ThrowIfNull(layout);
+        var ownsLog = operationLog is null;
+        operationLog ??= new OperationLog("uninstall", null, layout.StateRoot);
+        return GuardInstallResultAsync(() => UninstallCoreAsync(layout.StateRoot, layout.GameDirectory,
+                packPath, expectedPackSha512, null, layout), CancellationToken.None,
+            "UNINSTALL_FAILED", "UninstallFailed", operationLog, ownsLog);
+    }
+
     private async Task<InstallResult> UninstallCoreAsync(string installRoot, string instancePath, string packPath,
-        string expectedPackSha512, FabricLauncherService? launcher)
+        string expectedPackSha512, FabricLauncherService? launcher, InstallationLayout? layout = null)
     {
         ManagedFileTransaction? transaction = null;
         InstanceUseGuard.Scope? instanceUse = null;
         PackArchive? pack = null;
         InstallationManifest? manifest = null;
         string? root = null;
-        var fullInstance = Path.TrimEndingDirectorySeparator(Path.GetFullPath(instancePath));
+        var fullInstance = Path.TrimEndingDirectorySeparator(Path.GetFullPath(layout?.GameDirectory ?? instancePath));
         try
         {
-            root = ValidateInstallRoot(installRoot);
-            var instancesRoot = Path.Combine(root, "instances");
-            if (!Directory.Exists(root) || !Directory.Exists(instancesRoot) || !Directory.Exists(fullInstance) ||
-                !Path.GetDirectoryName(fullInstance)!.Equals(instancesRoot, StringComparison.OrdinalIgnoreCase))
+            root = ValidateInstallRoot(layout?.StateRoot ?? installRoot);
+            var instancesRoot = layout?.InstancesRoot ?? Path.Combine(root, "instances");
+            if (layout is null && (!Directory.Exists(root) || !Path.GetDirectoryName(fullInstance)!.Equals(instancesRoot, StringComparison.OrdinalIgnoreCase)) ||
+                !Directory.Exists(instancesRoot) || !Directory.Exists(fullInstance))
                 throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("UninstallInstanceNotFound"));
-            SafePath.EnsureNoReparsePoints(root, root);
-            SafePath.EnsureNoReparsePoints(root, instancesRoot);
-            SafePath.EnsureNoReparsePoints(root, fullInstance);
+            if (layout is null)
+            {
+                SafePath.EnsureNoReparsePoints(root, root);
+                SafePath.EnsureNoReparsePoints(root, instancesRoot);
+                SafePath.EnsureNoReparsePoints(root, fullInstance);
+            }
+            else
+            {
+                if (!layout.IsPrism) throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("UnsafePath"));
+                layout.Validate();
+                PrismLauncherService.RecheckTarget(layout);
+                ManagedFileTransaction.EnsureNoPendingForOtherOwnedInstances(layout);
+            }
             pack = PackArchive.Open(packPath, expectedPackSha512);
             SetOperationRelease(pack);
-            var pending = ManagedFileTransaction.OpenPending(fullInstance, _activeOperationLog);
+            var pending = layout is null
+                ? ManagedFileTransaction.OpenPending(fullInstance, _activeOperationLog)
+                : ManagedFileTransaction.OpenPending(layout, _activeOperationLog);
             if (pending is not null)
             {
                 manifest = pending.LoadTrustedManifest(pack);
@@ -529,16 +785,20 @@ public sealed class InstallService : IDisposable
                 instanceUse.Dispose();
                 instanceUse = null;
             }
+            if (layout is { IsPrism: true }) ManagedFileTransaction.EnsureNoPendingForOtherOwnedInstances(layout);
 
-            var target = ValidateUninstallTargetCore(root, fullInstance, packPath, expectedPackSha512);
+            var target = ValidateUninstallTargetCore(root, fullInstance, packPath, expectedPackSha512, layout);
             manifest = target.Manifest;
             var managedFiles = manifest.Files.Where(file => !InitialConfiguration.IsInitialUserConfig(pack, file.Path)).ToList();
             instanceUse = InstanceUseGuard.Acquire(target.InstancePath, managedFiles.Select(file => file.Path));
             instanceUse.Recheck();
             StartLog(target.Root, pack, target.InstancePath);
             LogSafe("release_metadata_verified", new { managedFiles = managedFiles.Count });
-            transaction = ManagedFileTransaction.BeginUninstall(target.Root, target.InstancePath, pack, _activeOperationLog);
+            transaction = layout is null
+                ? ManagedFileTransaction.BeginUninstall(target.Root, target.InstancePath, pack, _activeOperationLog)
+                : ManagedFileTransaction.BeginUninstall(layout, pack, _activeOperationLog);
             transaction.SnapshotUninstallMetadata(target.Root);
+            if (layout is { IsPrism: true }) transaction.SnapshotPrismUninstallMetadata();
 
             var receipt = launcher?.PrepareOwnProfileRemoval(target.InstancePath, transaction.Id, pack, manifest);
             if (receipt is not null)
@@ -559,6 +819,7 @@ public sealed class InstallService : IDisposable
             transaction.MarkPrepared();
             instanceUse.Recheck();
             transaction.EnsureCommitSpace();
+            if (layout is { IsPrism: true }) transaction.CommitPrismMetadata();
             transaction.CommitFiles(instanceUse);
             transaction.MarkProfileCommitIntent();
             if (receipt is not null) launcher!.CommitOwnProfileRemoval(target.InstancePath, receipt, pack, manifest);
@@ -658,23 +919,35 @@ public sealed class InstallService : IDisposable
     }
 
     private (string Root, string InstancePath, InstallationManifest Manifest)
-        ValidateUninstallTargetCore(string installRoot, string instancePath, string packPath, string expectedPackSha512)
+        ValidateUninstallTargetCore(string installRoot, string instancePath, string packPath, string expectedPackSha512,
+            InstallationLayout? layout = null)
     {
-        var root = ValidateInstallRoot(installRoot);
-        var fullInstance = Path.TrimEndingDirectorySeparator(Path.GetFullPath(instancePath));
-        ManagedFileTransaction.EnsureNoPendingUnderRoot(root);
-        var instancesRoot = Path.Combine(root, "instances");
-        if (!Directory.Exists(root) ||
-            !string.Equals(Path.GetDirectoryName(fullInstance), instancesRoot, StringComparison.OrdinalIgnoreCase) ||
+        var root = ValidateInstallRoot(layout?.StateRoot ?? installRoot);
+        var fullInstance = Path.TrimEndingDirectorySeparator(Path.GetFullPath(layout?.GameDirectory ?? instancePath));
+        var instancesRoot = layout?.InstancesRoot ?? Path.Combine(root, "instances");
+        if (layout is null) ManagedFileTransaction.EnsureNoPendingUnderRoot(root);
+        else ManagedFileTransaction.EnsureNoPendingForInstance(layout);
+        if (layout is null && (!Directory.Exists(root) ||
+            !string.Equals(Path.GetDirectoryName(fullInstance), instancesRoot, StringComparison.OrdinalIgnoreCase)) ||
             !Directory.Exists(instancesRoot) || !Directory.Exists(fullInstance))
             throw new InstallerException("INSTANCE_NOT_FOUND", LocalizedText.Get("UninstallInstanceNotFound"));
 
-        SafePath.EnsureNoReparsePoints(root, root);
-        SafePath.EnsureNoReparsePoints(root, instancesRoot);
-        SafePath.EnsureNoReparsePoints(root, fullInstance);
+        if (layout is null)
+        {
+            SafePath.EnsureNoReparsePoints(root, root);
+            SafePath.EnsureNoReparsePoints(root, instancesRoot);
+            SafePath.EnsureNoReparsePoints(root, fullInstance);
+        }
+        else
+        {
+            if (!layout.IsPrism) throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("UnsafePath"));
+            layout.Validate();
+        }
         var manifest = InstallationManifest.Load(fullInstance);
         var pack = PackArchive.Open(packPath, expectedPackSha512);
         ValidateMatchesRelease(manifest, pack);
+        if (layout is not null && !PrismLauncherService.IsOwned(layout, pack, manifest))
+            throw new InstallerException("PRISM_INSTANCE_OWNERSHIP_CONFLICT", LocalizedText.Get("PrismIdentityChanged"));
         foreach (var file in manifest.Files)
         {
             if (InitialConfiguration.IsInitialUserConfig(pack, file.Path)) continue;
@@ -721,6 +994,55 @@ public sealed class InstallService : IDisposable
 
     private string? CurrentLogPath => _activeOperationLog?.CurrentLogPath;
 
+    private static KnownPackRelease? TryGetPinnedRelease(PackArchive pack, InstallationLayout? layout = null)
+    {
+        KnownPackRelease? release;
+        if (layout is not null)
+        {
+            if (!layout.TryGetPinnedRelease(pack.VersionId, out var layoutRelease)) return null;
+            release = layoutRelease;
+        }
+        else if (InstalledInstanceCatalog.TryGetRelease(pack.VersionId, out var catalogRelease))
+            release = catalogRelease;
+        else return null;
+        if (release is null) return null;
+        if (release.ArchiveSha512.Equals(pack.ArchiveSha512, StringComparison.OrdinalIgnoreCase) &&
+            release.MinecraftVersion.Equals(pack.MinecraftVersion, StringComparison.Ordinal) &&
+            release.FabricLoaderVersion.Equals(pack.FabricLoaderVersion, StringComparison.Ordinal))
+            return release;
+        return null;
+    }
+
+    private static bool MatchesRelease(InstalledInstanceEntry entry, KnownPackRelease release) =>
+        entry.IsTrusted && entry.Release is { } found &&
+        found.PackVersion.Equals(release.PackVersion, StringComparison.Ordinal) &&
+        found.ArchiveSha512.Equals(release.ArchiveSha512, StringComparison.OrdinalIgnoreCase) &&
+        found.MinecraftVersion.Equals(release.MinecraftVersion, StringComparison.Ordinal) &&
+        found.FabricLoaderVersion.Equals(release.FabricLoaderVersion, StringComparison.Ordinal);
+
+    private static string? FindReusableOfficialInstanceName(string root, KnownPackRelease release)
+    {
+        var entries = InstalledInstanceCatalog.Enumerate(root, AppContext.BaseDirectory);
+        var candidates = entries.Where(entry => entry.Layout is null && MatchesRelease(entry, release)).ToArray();
+        var active = ReadActiveMarker(root);
+        var activeCandidate = candidates.FirstOrDefault(entry => active.State == ActiveMarkerState.Valid &&
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(entry.Path)).Equals(
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(active.InstancePath!)), StringComparison.OrdinalIgnoreCase));
+        return activeCandidate?.DirectoryName ?? (candidates.Length == 1 ? candidates[0].DirectoryName : null);
+    }
+
+    private static InstallationLayout? FindReusablePrismLayout(InstallationLayout lookup,
+        KnownPackRelease release)
+    {
+        var entries = InstalledInstanceCatalog.Enumerate(lookup, AppContext.BaseDirectory);
+        var candidates = entries.Where(entry => entry.Layout is { IsPrism: true } && MatchesRelease(entry, release)).ToArray();
+        var active = ReadActiveMarker(lookup);
+        var activeCandidate = candidates.FirstOrDefault(entry => active.State == ActiveMarkerState.Valid &&
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(entry.Path)).Equals(
+                Path.TrimEndingDirectorySeparator(Path.GetFullPath(active.InstancePath!)), StringComparison.OrdinalIgnoreCase));
+        return activeCandidate?.Layout ?? (candidates.Length == 1 ? candidates[0].Layout : null);
+    }
+
     private void SetOperationRelease(PackArchive pack) =>
         _activeOperationLog?.SetRelease(pack.VersionId, pack.MinecraftVersion, pack.FabricLoaderVersion, pack.ArchiveSha512);
 
@@ -750,15 +1072,29 @@ public sealed class InstallService : IDisposable
 
     internal static ActiveMarkerSnapshot ReadActiveMarker(string root)
     {
+        return ReadActiveMarkerCore(root, null);
+    }
+
+    internal static ActiveMarkerSnapshot ReadActiveMarker(InstallationLayout layout) =>
+        ReadActiveMarkerCore(layout.StateRoot, layout);
+
+    private static ActiveMarkerSnapshot ReadActiveMarkerCore(string root, InstallationLayout? layout)
+    {
         var fullRoot = Path.TrimEndingDirectorySeparator(Path.GetFullPath(root));
-        if (!Directory.Exists(fullRoot)) return new ActiveMarkerSnapshot(ActiveMarkerState.Absent, null, null, null);
+        if (TryGetAttributes(fullRoot) is not { } rootAttributes || (rootAttributes & FileAttributes.Directory) == 0)
+            return new ActiveMarkerSnapshot(ActiveMarkerState.Absent, null, null, null);
         try { SafePath.EnsureNoReparsePoints(fullRoot, fullRoot); }
         catch (InstallerException) { return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, null, null); }
 
         var marker = SafePath.Resolve(fullRoot, ".minepack-active.json");
+        FileAttributes? markerAttributes;
+        try { markerAttributes = TryGetAttributes(marker); }
+        catch (UnauthorizedAccessException) { return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, null, null); }
+        if (markerAttributes is null) return new ActiveMarkerSnapshot(ActiveMarkerState.Absent, null, null, null);
+        if ((markerAttributes.Value & FileAttributes.ReparsePoint) != 0)
+            return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, null, null);
         try { SafePath.EnsureNoReparsePoints(fullRoot, marker); }
         catch (InstallerException) { return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, null, null); }
-        if (!File.Exists(marker)) return new ActiveMarkerSnapshot(ActiveMarkerState.Absent, null, null, null);
 
         byte[] bytes;
         try
@@ -770,12 +1106,11 @@ public sealed class InstallService : IDisposable
             stream.ReadExactly(bytes);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, null, null);
-        }
+        { return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, null, null); }
 
         int? schemaVersion = null;
-        string? relativePath = null;
+        string? instanceDirectory = null;
+        string? fingerprint = null;
         try
         {
             using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions { MaxDepth = 16 });
@@ -785,47 +1120,87 @@ public sealed class InstallService : IDisposable
                 schema.ValueKind != JsonValueKind.Number || !schema.TryGetInt32(out var version))
                 return new ActiveMarkerSnapshot(ActiveMarkerState.Malformed, null, null, bytes);
             schemaVersion = version;
-            if (version != 1)
-                return new ActiveMarkerSnapshot(ActiveMarkerState.UnsupportedSchema, null, version, bytes);
-            if (node.EnumerateObject().Count() != 2 ||
-                !node.TryGetProperty(nameof(ActiveInstallation.InstanceDirectory), out var directory) ||
-                directory.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(directory.GetString()))
-                return new ActiveMarkerSnapshot(ActiveMarkerState.Malformed, null, version, bytes);
-            relativePath = directory.GetString();
+            if (version == 1)
+            {
+                if (layout?.IsPrism == true) return new ActiveMarkerSnapshot(ActiveMarkerState.UnsupportedSchema, null, version, bytes);
+                if (node.EnumerateObject().Count() != 2 ||
+                    !node.TryGetProperty(nameof(ActiveInstallation.InstanceDirectory), out var directory) ||
+                    directory.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(directory.GetString()))
+                    return new ActiveMarkerSnapshot(ActiveMarkerState.Malformed, null, version, bytes);
+                instanceDirectory = directory.GetString();
+            }
+            else if (version == 2)
+            {
+                if (layout is null || !layout.IsPrism)
+                    return new ActiveMarkerSnapshot(ActiveMarkerState.UnsupportedSchema, null, version, bytes);
+                if (node.EnumerateObject().Count() != 3 ||
+                    !node.TryGetProperty(nameof(ActiveInstallation.InstanceDirectory), out var directory) ||
+                    directory.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(directory.GetString()) ||
+                    !node.TryGetProperty(nameof(ActiveInstallation.LayoutFingerprint), out var hash) ||
+                    hash.ValueKind != JsonValueKind.String)
+                    return new ActiveMarkerSnapshot(ActiveMarkerState.Malformed, null, version, bytes);
+                instanceDirectory = directory.GetString();
+                fingerprint = hash.GetString();
+                if (!string.Equals(fingerprint, layout.Fingerprint, StringComparison.OrdinalIgnoreCase))
+                    return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, version, bytes);
+            }
+            else return new ActiveMarkerSnapshot(ActiveMarkerState.UnsupportedSchema, null, version, bytes);
         }
-        catch (JsonException)
-        {
-            return new ActiveMarkerSnapshot(ActiveMarkerState.Malformed, null, null, bytes);
-        }
+        catch (JsonException) { return new ActiveMarkerSnapshot(ActiveMarkerState.Malformed, null, null, bytes); }
 
         try
         {
-            var path = SafePath.Resolve(fullRoot, relativePath!);
+            if (layout?.IsPrism == true)
+            {
+                var name = instanceDirectory!;
+                _ = SafePath.ValidateRelative(name);
+                if (Path.GetFileName(name) != name || name.Contains('/') || name.Contains('\\'))
+                    return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, schemaVersion, bytes);
+                var targetLayout = layout.ForInstance(Path.Combine(layout.InstancesRoot, name));
+                targetLayout.Validate();
+                if (!Directory.Exists(targetLayout.InstanceDirectory) || !Directory.Exists(targetLayout.GameDirectory))
+                    return new ActiveMarkerSnapshot(ActiveMarkerState.MissingTarget, null, schemaVersion, bytes);
+                if (!PrismLauncherService.HasOwnedBinding(targetLayout))
+                    return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, schemaVersion, bytes);
+                var manifestPath = SafePath.Resolve(targetLayout.GameDirectory, InstallationManifest.FileName);
+                SafePath.EnsureNoReparsePoints(targetLayout.InstanceDirectory, manifestPath);
+                if (!File.Exists(manifestPath)) return new ActiveMarkerSnapshot(ActiveMarkerState.MissingTarget, null, schemaVersion, bytes);
+                return new ActiveMarkerSnapshot(ActiveMarkerState.Valid, targetLayout.GameDirectory, schemaVersion, bytes);
+            }
+
+            var officialPath = SafePath.Resolve(fullRoot, instanceDirectory!);
             var instancesRoot = Path.Combine(fullRoot, "instances");
-            if (!Path.GetDirectoryName(path)!.Equals(instancesRoot, StringComparison.OrdinalIgnoreCase))
+            if (!Path.GetDirectoryName(officialPath)!.Equals(instancesRoot, StringComparison.OrdinalIgnoreCase))
                 return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, schemaVersion, bytes);
             SafePath.EnsureNoReparsePoints(fullRoot, instancesRoot);
-            SafePath.EnsureNoReparsePoints(fullRoot, path);
-            var manifestPath = SafePath.Resolve(path, InstallationManifest.FileName);
-            SafePath.EnsureNoReparsePoints(path, manifestPath);
-            if (!Directory.Exists(path) || !File.Exists(manifestPath))
+            SafePath.EnsureNoReparsePoints(fullRoot, officialPath);
+            var officialManifestPath = SafePath.Resolve(officialPath, InstallationManifest.FileName);
+            SafePath.EnsureNoReparsePoints(officialPath, officialManifestPath);
+            if (!Directory.Exists(officialPath) || !File.Exists(officialManifestPath))
                 return new ActiveMarkerSnapshot(ActiveMarkerState.MissingTarget, null, schemaVersion, bytes);
-            return new ActiveMarkerSnapshot(ActiveMarkerState.Valid, path, schemaVersion, bytes);
+            return new ActiveMarkerSnapshot(ActiveMarkerState.Valid, officialPath, schemaVersion, bytes);
         }
         catch (InstallerException)
-        {
-            return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, schemaVersion, bytes);
-        }
+        { return new ActiveMarkerSnapshot(ActiveMarkerState.UnsafePath, null, schemaVersion, bytes); }
     }
 
-    private static void EnsureActiveMarkerCanChange(ActiveMarkerSnapshot marker, bool allowRecovery)
+    private static FileAttributes? TryGetAttributes(string path)
+    {
+        try { return File.GetAttributes(path); }
+        catch (FileNotFoundException) { return null; }
+        catch (DirectoryNotFoundException) { return null; }
+    }
+
+    private static void EnsureActiveMarkerCanChange(ActiveMarkerSnapshot marker, bool allowRecovery,
+        InstallationLayout? layout = null)
     {
         if (marker.State is ActiveMarkerState.Absent or ActiveMarkerState.Valid) return;
         if (marker.State == ActiveMarkerState.UnsupportedSchema)
             throw new InstallerException("ACTIVE_MARKER_UNSUPPORTED", LocalizedText.Get("ActiveMarkerUnsupported"));
         if (marker.State == ActiveMarkerState.UnsafePath)
             throw new InstallerException("ACTIVE_MARKER_UNSAFE", LocalizedText.Get("ActiveMarkerUnsafe"));
-        if (!allowRecovery || marker.Bytes is null || marker.SchemaVersion is not null and not 1)
+        if (!allowRecovery || marker.Bytes is null || marker.SchemaVersion is not null and not 1 and not 2 ||
+            marker.SchemaVersion == 2 && layout?.IsPrism != true)
             throw new InstallerException("ACTIVE_MARKER_RECOVERY_REQUIRED", LocalizedText.Get("ActiveMarkerRecoveryRequired"));
     }
 
@@ -834,11 +1209,29 @@ public sealed class InstallService : IDisposable
 
     private static string? WriteActive(string root, string relativeInstancePath, bool allowRecovery = false,
         ActiveMarkerSnapshot? expectedCurrent = null)
+        => WriteActiveCore(root, relativeInstancePath, null, allowRecovery, expectedCurrent);
+
+    internal static string? WriteActive(InstallationLayout layout, string instanceDirectoryName,
+        bool allowRecovery = false, ActiveMarkerSnapshot? expectedCurrent = null)
+    {
+        if (!layout.IsPrism) throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("UnsafePath"));
+        var relativeName = SafePath.ValidateRelative(instanceDirectoryName);
+        if (Path.GetFileName(relativeName) != relativeName || relativeName.Contains('/') || relativeName.Contains('\\'))
+            throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("UnsafePath"));
+        var targetLayout = layout.ForInstance(Path.Combine(layout.InstancesRoot, relativeName));
+        targetLayout.Validate();
+        if (!PrismLauncherService.HasOwnedBinding(targetLayout))
+            throw new InstallerException("PRISM_OWNERSHIP_INVALID", LocalizedText.Get("PrismIdentityChanged"));
+        return WriteActiveCore(layout.StateRoot, relativeName, layout, allowRecovery, expectedCurrent);
+    }
+
+    private static string? WriteActiveCore(string root, string relativeInstancePath, InstallationLayout? layout,
+        bool allowRecovery, ActiveMarkerSnapshot? expectedCurrent)
     {
         var marker = SafePath.Resolve(root, ".minepack-active.json");
         SafePath.EnsureNoReparsePoints(root, marker);
-        var current = ReadActiveMarker(root);
-        EnsureActiveMarkerCanChange(current, allowRecovery);
+        var current = layout is null ? ReadActiveMarker(root) : ReadActiveMarker(layout);
+        EnsureActiveMarkerCanChange(current, allowRecovery, layout);
         if (expectedCurrent is not null &&
             (current.State != expectedCurrent.State || current.SchemaVersion != expectedCurrent.SchemaVersion ||
              !(current.Bytes is null && expectedCurrent.Bytes is null || current.Bytes is not null &&
@@ -855,7 +1248,10 @@ public sealed class InstallService : IDisposable
         {
             using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                JsonSerializer.Serialize(stream, new ActiveInstallation(1, relativeInstancePath), JsonOptions);
+                var active = layout?.IsPrism == true
+                    ? new ActiveInstallation(2, relativeInstancePath, layout.Fingerprint)
+                    : new ActiveInstallation(1, relativeInstancePath);
+                JsonSerializer.Serialize(stream, active, JsonOptions);
                 stream.Flush(flushToDisk: true);
             }
             ManagedFileTransaction.Checkpoint("before-active-marker-replace");
@@ -980,7 +1376,8 @@ public sealed class InstallService : IDisposable
         _downloads.Dispose();
     }
 
-    private sealed record ActiveInstallation(int SchemaVersion, string InstanceDirectory);
+    private sealed record ActiveInstallation(int SchemaVersion, string InstanceDirectory,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? LayoutFingerprint = null);
 }
 
 public enum ActiveMarkerState

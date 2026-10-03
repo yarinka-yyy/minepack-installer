@@ -51,7 +51,7 @@ public sealed class FabricLauncherService : IDisposable
         var previous = _minecraftVersion == "26.3";
         _versionId = $"fabric-loader-{TestPackRelease.FabricLoaderVersion}-{_minecraftVersion}";
         _profileUrl = $"https://meta.fabricmc.net/v2/versions/loader/{_minecraftVersion}/{TestPackRelease.FabricLoaderVersion}/profile/zip";
-        _launcherRoot = launcherRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+        _launcherRoot = launcherRoot ?? DefaultLauncherRoot;
         _expectedSha512 = expectedSha512 ?? (previous ? PreviousProfileSha512 : ProfileSha512);
         _expectedClientJarSha512 = expectedClientJarSha512 ?? (previous ? PreviousMinecraftClientJarSha512 : MinecraftClientJarSha512);
         _expectedClientJarSize = expectedClientJarSize ?? (previous ? PreviousMinecraftClientJarSize : MinecraftClientJarSize);
@@ -60,6 +60,11 @@ public sealed class FabricLauncherService : IDisposable
         _profileBodyDeadline = profileBodyDeadline;
         _maxRetryAfter = maxRetryAfter;
     }
+
+    public static string DefaultLauncherRoot => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft");
+
+    public string LauncherRoot => _launcherRoot;
 
     public void CheckReady()
     {

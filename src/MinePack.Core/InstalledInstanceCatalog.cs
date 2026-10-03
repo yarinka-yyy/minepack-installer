@@ -33,6 +33,7 @@ public sealed record InstalledInstanceEntry(
     KnownPackRelease? Release,
     string? DiagnosticCode)
 {
+    public InstallationLayout? Layout { get; init; }
     public bool IsTrusted => State == InstalledInstanceState.Trusted && Release is not null;
     public bool IsOpenable => State is InstalledInstanceState.Trusted or InstalledInstanceState.Residue or
         InstalledInstanceState.PackageMissing or InstalledInstanceState.UnknownRelease or InstalledInstanceState.Invalid;
@@ -91,19 +92,7 @@ public static class InstalledInstanceCatalog
         var fullPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(instancePath));
         if (!Path.GetFileName(Path.GetDirectoryName(fullPath))!.Equals("instances", StringComparison.OrdinalIgnoreCase))
             return false;
-        var name = Path.GetFileName(fullPath);
-        if (name.Equals(release.InstanceDirectoryPrefix, StringComparison.OrdinalIgnoreCase)) return true;
-        var expectedPrefix = release.InstanceDirectoryPrefix;
-        if (!name.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase)) return false;
-        if (name.Length == expectedPrefix.Length) return true;
-        const string reinstallMarker = "-reinstall-";
-        if (name.Length < expectedPrefix.Length + reinstallMarker.Length ||
-            !name.AsSpan(expectedPrefix.Length, reinstallMarker.Length).SequenceEqual(reinstallMarker)) return false;
-        var suffix = name.AsSpan(expectedPrefix.Length + reinstallMarker.Length);
-        if (suffix.Length != 32) return false;
-        foreach (var character in suffix)
-            if (character is not (>= '0' and <= '9' or >= 'a' and <= 'f')) return false;
-        return true;
+        return InstanceDirectoryNaming.IsExpected(Path.GetFileName(fullPath), release);
     }
 
     public static IReadOnlyList<InstalledInstanceEntry> Enumerate(string installRoot, string applicationDirectory)
@@ -132,7 +121,8 @@ public static class InstalledInstanceCatalog
                 SafePath.EnsureNoReparsePoints(path, manifestPath);
                 if (!File.Exists(manifestPath))
                 {
-                    results.Add(new InstalledInstanceEntry(path, name, InstalledInstanceState.Residue, null, null));
+                    results.Add(new InstalledInstanceEntry(path, name, InstalledInstanceState.Residue,
+                        InstanceDirectoryNaming.TryGetReleaseFromName(name, out var namedRelease) ? namedRelease : null, null));
                     continue;
                 }
 
@@ -191,6 +181,81 @@ public static class InstalledInstanceCatalog
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
                 results.Add(new InstalledInstanceEntry(path, name, InstalledInstanceState.Invalid, null, "INSTANCE_READ_FAILED"));
+            }
+        }
+        return results;
+    }
+
+    public static IReadOnlyList<InstalledInstanceEntry> Enumerate(InstallationLayout prismLayout, string applicationDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(prismLayout);
+        if (!prismLayout.IsPrism)
+            throw new InstallerException("ROOT_UNSAFE", LocalizedText.Get("UnsafePath"));
+        prismLayout.Validate();
+        if (!Directory.Exists(prismLayout.InstancesRoot)) return [];
+
+        var appRoot = Path.GetFullPath(applicationDirectory);
+        SafePath.EnsureNoReparsePoints(prismLayout.InstancesRoot, prismLayout.InstancesRoot);
+        var results = new List<InstalledInstanceEntry>();
+        foreach (var wrapper in Directory.EnumerateDirectories(prismLayout.InstancesRoot))
+        {
+            var name = Path.GetFileName(wrapper);
+            try
+            {
+                if ((File.GetAttributes(wrapper) & FileAttributes.ReparsePoint) != 0) continue;
+                var layout = prismLayout.ForInstance(wrapper);
+                var wrapperMarker = Path.Combine(wrapper, PrismLauncherService.OwnershipMarkerName);
+                var localMarker = Path.Combine(prismLayout.StateRoot, "ownership", name + ".json");
+                if (!File.Exists(wrapperMarker) && !File.Exists(localMarker)) continue;
+                if (!PrismLauncherService.HasOwnedBinding(layout))
+                {
+                    if (PrismLauncherService.TryGetOwnedResidueRelease(layout, out var residueRelease))
+                    {
+                        results.Add(new InstalledInstanceEntry(layout.GameDirectory, name,
+                            InstalledInstanceState.Residue, residueRelease, null) { Layout = layout });
+                        continue;
+                    }
+                    results.Add(new InstalledInstanceEntry(layout.GameDirectory, name,
+                        InstalledInstanceState.Invalid, null, "PRISM_OWNERSHIP_INVALID") { Layout = layout });
+                    continue;
+                }
+
+                var manifest = InstallationManifest.Load(layout.GameDirectory);
+                if (!layout.TryGetPinnedRelease(manifest.PackVersion, out var release) ||
+                    !PrismLauncherService.IsExpectedInstanceDirectory(layout, release) ||
+                    !manifest.PackArchiveSha512.Equals(release.ArchiveSha512, StringComparison.OrdinalIgnoreCase) ||
+                    manifest.MinecraftVersion != release.MinecraftVersion ||
+                    manifest.FabricLoaderVersion != release.FabricLoaderVersion)
+                {
+                    results.Add(new InstalledInstanceEntry(layout.GameDirectory, name,
+                        InstalledInstanceState.Invalid, null, "RELEASE_MISMATCH") { Layout = layout });
+                    continue;
+                }
+
+                var archive = release.ArchivePath(appRoot);
+                SafePath.EnsureNoReparsePoints(appRoot, archive);
+                if (!File.Exists(archive))
+                {
+                    results.Add(new InstalledInstanceEntry(layout.GameDirectory, name,
+                        InstalledInstanceState.PackageMissing, release, "PACK_NOT_FOUND") { Layout = layout });
+                    continue;
+                }
+
+                var pack = PackArchive.Open(archive, release.ArchiveSha512);
+                InstallService.ValidateMatchesRelease(manifest, pack);
+                results.Add(new InstalledInstanceEntry(layout.GameDirectory, name,
+                    InstalledInstanceState.Trusted, release, null) { Layout = layout });
+            }
+            catch (InstallerException ex)
+            {
+                results.Add(new InstalledInstanceEntry(Path.Combine(wrapper, "minecraft"), name,
+                    ex.Code is "ROOT_UNSAFE" or "PATH_REPARSE_BLOCKED" or "PATH_BLOCKED"
+                        ? InstalledInstanceState.Unsafe : InstalledInstanceState.Invalid, null, ex.Code));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                results.Add(new InstalledInstanceEntry(Path.Combine(wrapper, "minecraft"), name,
+                    InstalledInstanceState.Invalid, null, "INSTANCE_READ_FAILED"));
             }
         }
         return results;

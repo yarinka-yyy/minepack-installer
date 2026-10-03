@@ -15,6 +15,7 @@ public partial class MainWindow : Window
 {
     private readonly InstallService _installer = new();
     private readonly MinecraftLauncherController _launcherController;
+    private readonly PrismLauncherController _prismLauncherController;
     private readonly FabricLauncherService _launcher;
     private CancellationTokenSource? _operationCancellation;
     private IInputElement? _uninstallReturnFocus;
@@ -23,16 +24,32 @@ public partial class MainWindow : Window
     private readonly string _installerVersion;
     private OperationLog? _currentOperationLog;
     private IReadOnlyList<InstanceChoice> _instanceChoices = [];
-    private string? _selectedInstancePath;
-    private bool _changingInstanceSelection;
+    private InstalledInstanceEntry? _operationTargetEntry;
+    private InstalledInstanceEntry? _deleteSelectedEntry;
+    private InstalledInstanceEntry? _pendingDeleteEntry;
+    private InstanceCleanupRequest? _pendingCleanupRequest;
+    private int _cleanupCheckGeneration;
+    private PendingDeleteAction _pendingDeleteAction;
     private ActiveMarkerInspection? _activeMarker;
     private string? _missingSavedRootPath;
+    private IReadOnlyList<MinecraftLauncherTarget> _officialTargets = [];
+    private bool _officialDiscoveryUnknown;
+    private IReadOnlyList<PrismLauncherTarget> _prismTargets = [];
+    private IReadOnlyList<InstalledInstanceEntry> _prismInstanceEntries = [];
+    private HashSet<string> _activePrismInstancePaths = new(StringComparer.OrdinalIgnoreCase);
+    private LauncherScanResult _prismScan = new(LauncherDiscoveryState.Unknown, [], "PRISM_DISCOVERY_PENDING");
+    private IReadOnlyList<PrismTargetHint> _savedPrismHints = [];
+    private IReadOnlyList<LauncherTargetChoice> _launcherTargetChoices = [];
+    private TaskCompletionSource<LauncherInstallSelection?>? _launcherChoiceCompletion;
+    private IInputElement? _launcherChoiceReturnFocus;
 
     public MainWindow()
     {
         InitializeComponent();
         _launcherController = new MinecraftLauncherController();
+        _prismLauncherController = new PrismLauncherController();
         _launcher = new FabricLauncherService(ensureLauncherClosed: _launcherController.EnsureClosed);
+        Loaded += MainWindow_Loaded;
         VanillaPlusOption.Checked += PackChoice_Changed;
         Vanilla2PlusOption.Checked += PackChoice_Changed;
         var assembly = typeof(MainWindow).Assembly;
@@ -42,6 +59,7 @@ public partial class MainWindow : Window
         InstallerVersionText.Text = LocalizedText.Get("UiInstallerVersion", _installerVersion);
         UpdatePackSelection();
         var preferences = InstallerPreferences.Load(InstallerPreferences.DefaultPath);
+        _savedPrismHints = preferences.PrismTargetHints;
         InstallRootBox.Text = preferences.LastValidatedRoot ?? InstallService.DefaultInstallRoot;
         if (preferences.LastValidatedRoot is not null && !Directory.Exists(preferences.LastValidatedRoot))
             _missingSavedRootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(preferences.LastValidatedRoot));
@@ -50,6 +68,268 @@ public partial class MainWindow : Window
         if (root is null && !preferences.IsCorrupt) StatusBox.Text = LocalizedText.Get("UiSavedRootUnavailable");
     }
 
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        await RefreshLauncherDiscoveryAsync();
+    }
+
+    private async Task<LauncherInventory> ScanLaunchersAsync()
+    {
+        return await Task.Run(() =>
+        {
+            IReadOnlyList<MinecraftLauncherTarget> official = [];
+            var officialUnknown = false;
+            try { official = _launcherController.FindTargets(); }
+            catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+            { officialUnknown = true; }
+            var prism = LauncherDiscovery.DiscoverPrism(_savedPrismHints);
+            var prismEntries = new List<InstalledInstanceEntry>();
+            var activePrismPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var target in prism.PrismTargets)
+            {
+                try
+                {
+                    var layout = InstallationLayout.Prism(target, "minepack-target-validation");
+                    var entries = InstalledInstanceCatalog.Enumerate(layout, AppContext.BaseDirectory);
+                    prismEntries.AddRange(entries);
+                    var activePath = _installer.GetActiveInstancePath(layout);
+                    if (activePath is not null) activePrismPaths.Add(Path.GetFullPath(activePath));
+                }
+                catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+                { }
+            }
+            return new LauncherInventory(official, prism, officialUnknown, prismEntries, activePrismPaths);
+        }).ConfigureAwait(true);
+    }
+
+    private async Task RefreshLauncherDiscoveryAsync()
+    {
+        try
+        {
+            var inventory = await ScanLaunchersAsync();
+            ApplyLauncherInventory(inventory);
+            _ = RefreshRootState(persist: false);
+        }
+        catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            _prismScan = new LauncherScanResult(LauncherDiscoveryState.Unknown, [], "PRISM_DISCOVERY_UNKNOWN");
+        }
+    }
+
+    private void ApplyLauncherInventory(LauncherInventory inventory)
+    {
+        _officialTargets = inventory.OfficialTargets.Distinct().ToArray();
+        _officialDiscoveryUnknown = inventory.OfficialUnknown;
+        _prismScan = inventory.PrismScan;
+        _prismTargets = inventory.PrismScan.PrismTargets;
+        _prismInstanceEntries = inventory.PrismInstanceEntries;
+        _activePrismInstancePaths = inventory.ActivePrismInstancePaths;
+    }
+
+    private async Task<LauncherInstallSelection?> ResolveLauncherInstallSelectionAsync()
+    {
+        var inventory = await ScanLaunchersAsync();
+        ApplyLauncherInventory(inventory);
+        var officialState = inventory.OfficialUnknown ? LauncherDiscoveryState.Unknown :
+            inventory.OfficialTargets.Count > 0 ? LauncherDiscoveryState.Found : LauncherDiscoveryState.Absent;
+        var decision = inventory.OfficialUnknown
+            ? new LauncherDecision(LauncherDecisionKind.LocateOrRetry)
+            : LauncherDiscovery.Decide(officialState, inventory.OfficialTargets.Count,
+                inventory.PrismScan.State, inventory.PrismScan.PrismTargets.Count);
+
+        if (decision.Kind == LauncherDecisionKind.Automatic)
+        {
+            var automatic = MakeAutomaticSelection(decision.LauncherKind!.Value, inventory);
+            if (automatic?.Kind == LauncherKind.Prism) SavePrismTargetHints();
+            return automatic;
+        }
+
+        var status = decision.Kind == LauncherDecisionKind.LocateOrRetry
+            ? LocalizedText.Get("UiLauncherChoiceUnknown") + Environment.NewLine +
+              (inventory.PrismScan.DiagnosticCode ?? (inventory.OfficialUnknown ? "OFFICIAL_DISCOVERY_UNKNOWN" : "LAUNCHER_NOT_FOUND"))
+            : string.Empty;
+        return await ShowLauncherChoiceAsync(inventory, decision.LauncherKind, status);
+    }
+
+    private static LauncherInstallSelection? MakeAutomaticSelection(LauncherKind kind, LauncherInventory inventory)
+    {
+        if (kind == LauncherKind.Official && inventory.OfficialTargets.Count == 1)
+            return new LauncherInstallSelection(kind, inventory.OfficialTargets[0], null);
+        if (kind == LauncherKind.Prism && inventory.PrismScan.State == LauncherDiscoveryState.Found &&
+            inventory.PrismScan.PrismTargets.Count == 1)
+            return new LauncherInstallSelection(kind, null, inventory.PrismScan.PrismTargets[0]);
+        return null;
+    }
+
+    private async Task<LauncherInstallSelection?> ShowLauncherChoiceAsync(LauncherInventory inventory,
+        LauncherKind? preferredKind, string status)
+    {
+        _launcherChoiceReturnFocus = Keyboard.FocusedElement;
+        _launcherChoiceCompletion = new TaskCompletionSource<LauncherInstallSelection?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        LauncherChoiceStatus.Text = status;
+        _settingLauncherChoices = true;
+        OfficialLauncherChoice.IsEnabled = !inventory.OfficialUnknown && inventory.OfficialTargets.Count > 0;
+        PrismLauncherChoice.IsEnabled = !inventory.OfficialUnknown && inventory.PrismScan.State == LauncherDiscoveryState.Found &&
+                                        inventory.PrismScan.PrismTargets.Count > 0;
+        OfficialLauncherChoice.IsChecked = preferredKind == LauncherKind.Official;
+        PrismLauncherChoice.IsChecked = preferredKind == LauncherKind.Prism;
+        _settingLauncherChoices = false;
+        UpdateLauncherTargetChoices();
+        LauncherChoiceOverlay.Visibility = Visibility.Visible;
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (OfficialLauncherChoice.IsEnabled && preferredKind != LauncherKind.Prism) OfficialLauncherChoice.Focus();
+            else if (PrismLauncherChoice.IsEnabled) PrismLauncherChoice.Focus();
+            else LocatePrismButton.Focus();
+        }));
+        var result = await _launcherChoiceCompletion.Task;
+        LauncherChoiceOverlay.Visibility = Visibility.Collapsed;
+        _launcherChoiceCompletion = null;
+        var returnFocus = _launcherChoiceReturnFocus;
+        _launcherChoiceReturnFocus = null;
+        if (returnFocus is not null) Keyboard.Focus(returnFocus);
+        if (result?.Kind == LauncherKind.Prism) SavePrismTargetHints();
+        return result;
+    }
+
+    private void UpdateLauncherTargetChoices()
+    {
+        var kind = OfficialLauncherChoice.IsChecked == true ? LauncherKind.Official :
+            PrismLauncherChoice.IsChecked == true ? LauncherKind.Prism : (LauncherKind?)null;
+        if (kind is null)
+        {
+            _launcherTargetChoices = [];
+        }
+        else if (kind == LauncherKind.Official)
+        {
+            _launcherTargetChoices = _officialTargets.Select(target => new LauncherTargetChoice(kind.Value,
+                LocalizedText.Get("UiLauncherTargetPath", LocalizedText.Get("UiLauncherOptionOfficial"), target.Identity),
+                target, null)).ToArray();
+        }
+        else
+        {
+            _launcherTargetChoices = _prismTargets.Select(target => new LauncherTargetChoice(kind.Value,
+                LocalizedText.Get("UiLauncherTargetPath", LocalizedText.Get("UiLauncherOptionPrism"), target.DataRoot),
+                null, target)).ToArray();
+        }
+
+        _settingLauncherChoices = true;
+        LauncherTargetComboBox.ItemsSource = _launcherTargetChoices;
+        var needsTargetChoice = _launcherTargetChoices.Count > 1;
+        LauncherTargetLabel.Visibility = needsTargetChoice ? Visibility.Visible : Visibility.Collapsed;
+        LauncherTargetComboBox.Visibility = needsTargetChoice ? Visibility.Visible : Visibility.Collapsed;
+        LauncherTargetComboBox.SelectedItem = _launcherTargetChoices.Count == 1 ? _launcherTargetChoices[0] : null;
+        LauncherChoiceContinueButton.IsEnabled = _launcherTargetChoices.Count == 1;
+        _settingLauncherChoices = false;
+    }
+
+    private void LauncherChoiceRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (!_settingLauncherChoices) UpdateLauncherTargetChoices();
+    }
+
+    private void LauncherTargetComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!_settingLauncherChoices)
+            LauncherChoiceContinueButton.IsEnabled = LauncherTargetComboBox.SelectedItem is LauncherTargetChoice;
+    }
+
+    private void LauncherChoiceContinue_Click(object sender, RoutedEventArgs e)
+    {
+        if (LauncherTargetComboBox.SelectedItem is not LauncherTargetChoice choice) return;
+        _launcherChoiceCompletion?.TrySetResult(choice.ToSelection());
+    }
+
+    private void LauncherChoiceCancel_Click(object sender, RoutedEventArgs e) =>
+        _launcherChoiceCompletion?.TrySetResult(null);
+
+    private void LauncherChoiceOverlay_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            _launcherChoiceCompletion?.TrySetResult(null);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && LauncherChoiceContinueButton.IsEnabled)
+        {
+            _launcherChoiceCompletion?.TrySetResult((LauncherTargetComboBox.SelectedItem as LauncherTargetChoice)?.ToSelection());
+            e.Handled = true;
+        }
+    }
+
+    private async void RescanLauncherButton_Click(object sender, RoutedEventArgs e)
+    {
+        LauncherChoiceStatus.Text = LocalizedText.Get("UiLauncherChoiceUnknown");
+        var inventory = await ScanLaunchersAsync();
+        ApplyLauncherInventory(inventory);
+        var status = inventory.PrismScan.State == LauncherDiscoveryState.Unknown || inventory.OfficialUnknown
+            ? LocalizedText.Get("UiLauncherChoiceUnknown") + Environment.NewLine +
+              (inventory.PrismScan.DiagnosticCode ?? "OFFICIAL_DISCOVERY_UNKNOWN") : string.Empty;
+        var preferred = OfficialLauncherChoice.IsChecked == true ? LauncherKind.Official :
+            PrismLauncherChoice.IsChecked == true ? LauncherKind.Prism : (LauncherKind?)null;
+        _settingLauncherChoices = true;
+        OfficialLauncherChoice.IsChecked = false;
+        PrismLauncherChoice.IsChecked = false;
+        _settingLauncherChoices = false;
+        LauncherChoiceStatus.Text = status;
+        OfficialLauncherChoice.IsEnabled = !inventory.OfficialUnknown && inventory.OfficialTargets.Count > 0;
+        PrismLauncherChoice.IsEnabled = !inventory.OfficialUnknown && inventory.PrismScan.State == LauncherDiscoveryState.Found &&
+                                        inventory.PrismScan.PrismTargets.Count > 0;
+        if (preferred == LauncherKind.Official && OfficialLauncherChoice.IsEnabled) OfficialLauncherChoice.IsChecked = true;
+        else if (preferred == LauncherKind.Prism && PrismLauncherChoice.IsEnabled) PrismLauncherChoice.IsChecked = true;
+        UpdateLauncherTargetChoices();
+    }
+
+    private async void LocatePrismButton_Click(object sender, RoutedEventArgs e)
+    {
+        var executablePicker = new OpenFileDialog
+        {
+            Title = LocalizedText.Get("UiLauncherLocatePrism"),
+            Filter = "Prism Launcher (prismlauncher.exe)|prismlauncher.exe",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (executablePicker.ShowDialog(this) != true) return;
+        var result = await Task.Run(() => LauncherDiscovery.LocatePrismExecutable(executablePicker.FileName));
+        if (result.State != LauncherDiscoveryState.Found && result.DiagnosticCode is "PRISM_CONFIG_UNKNOWN" or "PRISM_DATA_ROOT_UNKNOWN")
+        {
+            var folderPicker = new OpenFolderDialog { Title = LocalizedText.Get("PrismConfigurationUnknown") };
+            if (folderPicker.ShowDialog(this) != true) return;
+            result = await Task.Run(() => LauncherDiscovery.LocatePrismExecutable(executablePicker.FileName, folderPicker.FolderName));
+        }
+        _prismScan = result;
+        _prismTargets = result.PrismTargets;
+        var status = result.State == LauncherDiscoveryState.Found && !_officialDiscoveryUnknown
+            ? string.Empty : LocalizedText.Get("UiLauncherChoiceUnknown") + Environment.NewLine + (result.DiagnosticCode ?? "PRISM_DISCOVERY_UNKNOWN");
+        LauncherChoiceStatus.Text = status;
+        PrismLauncherChoice.IsEnabled = !_officialDiscoveryUnknown && result.State == LauncherDiscoveryState.Found && result.PrismTargets.Count > 0;
+        OfficialLauncherChoice.IsEnabled = !_officialDiscoveryUnknown && _officialTargets.Count > 0;
+        if (PrismLauncherChoice.IsEnabled)
+        {
+            _settingLauncherChoices = true;
+            PrismLauncherChoice.IsChecked = true;
+            OfficialLauncherChoice.IsChecked = false;
+            _settingLauncherChoices = false;
+        }
+        UpdateLauncherTargetChoices();
+    }
+
+    private void SavePrismTargetHints()
+    {
+        try
+        {
+            var root = InstallService.ValidateInstallRoot(InstallRootBox.Text);
+            InstallerPreferences.SaveLastValidatedRoot(InstallerPreferences.DefaultPath, root, _prismTargets);
+            _savedPrismHints = InstallerPreferences.Load(InstallerPreferences.DefaultPath).PrismTargetHints;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InstallerException)
+        {
+            StatusBox.Text = LocalizedText.Get("UiPreferencesNotSaved");
+        }
+    }
+
+    private bool _settingLauncherChoices;
+
     private static string ReleasePath(string relativePath) => Path.Combine(AppContext.BaseDirectory,
         relativePath.Replace('/', Path.DirectorySeparatorChar));
 
@@ -57,9 +337,11 @@ public partial class MainWindow : Window
 
     private string Vanilla2PlusPackPath => ReleasePath(Vanilla2PlusRelease.ArtifactRelativePath);
 
-    private (string Path, string Hash, string Version) SelectedPack => Vanilla2PlusOption.IsChecked == true
-        ? (Vanilla2PlusPackPath, Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.PackVersion)
-        : (VanillaPlusPackPath, TestPackRelease.ArtifactSha512, TestPackRelease.PackVersion);
+    private (string Path, string Hash, string Version, string MinecraftVersion) SelectedPack => Vanilla2PlusOption.IsChecked == true
+        ? (Vanilla2PlusPackPath, Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.PackVersion, Vanilla2PlusRelease.MinecraftVersion)
+        : (VanillaPlusPackPath, TestPackRelease.ArtifactSha512, TestPackRelease.PackVersion, TestPackRelease.MinecraftVersion);
+
+    private string SelectedPackName => Vanilla2PlusOption.IsChecked == true ? "Frontier" : "Vanilla Plus";
 
     private void PackChoice_Changed(object sender, RoutedEventArgs e) => UpdatePackSelection();
 
@@ -80,14 +362,8 @@ public partial class MainWindow : Window
 
     private async void ImportWorlds_Click(object sender, RoutedEventArgs e)
     {
-        var root = RefreshRootState(persist: true);
-        if (root is null) return;
-        var target = ResolveImportTarget(root);
-        if (target is null)
-        {
-            StatusBox.Text = LocalizedText.Get("UiSelectTrustedInstance");
-            return;
-        }
+        var target = await ResolveActiveOperationTargetAsync();
+        if (target is null) return;
         var vanillaSaves = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft", "saves");
         var picker = new OpenFolderDialog
         {
@@ -96,31 +372,187 @@ public partial class MainWindow : Window
             InitialDirectory = Directory.Exists(vanillaSaves) ? vanillaSaves : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
         };
         if (picker.ShowDialog(this) == true)
-            await RunOperationAsync(Operation.ImportWorlds, picker.FolderName);
+            await RunOperationAsync(Operation.ImportWorlds, picker.FolderName, target);
     }
 
     private void Uninstall_Click(object sender, RoutedEventArgs e)
     {
-        var root = RefreshRootState(persist: true);
-        var selected = GetSelectedEntry();
-        if (root is null || selected is not { IsTrusted: true, Release: not null })
+        _ = ShowDeleteInstanceOverlayAsync();
+    }
+
+    private async Task ShowDeleteInstanceOverlayAsync()
+    {
+        try
         {
-            StatusBox.Text = LocalizedText.Get("UiSelectTrustedInstance");
+            await RefreshLauncherDiscoveryAsync();
+            _ = RefreshRootState(persist: false);
+            _deleteSelectedEntry = null;
+            _pendingDeleteEntry = null;
+            _pendingCleanupRequest = null;
+            _cleanupCheckGeneration++;
+            DeleteInstanceListBox.ItemsSource = _instanceChoices;
+            DeleteInstanceListBox.SelectedIndex = -1;
+            DeleteManagedFilesButton.IsEnabled = false;
+            DeleteRemainingDataButton.IsEnabled = false;
+            DeleteInstanceDetails.Text = _instanceChoices.Count == 0
+                ? LocalizedText.Get("UiNoInstancesToDelete")
+                : string.Empty;
+        }
+        catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            _deleteSelectedEntry = null;
+            _pendingDeleteEntry = null;
+            DeleteInstanceListBox.ItemsSource = null;
+            DeleteManagedFilesButton.IsEnabled = false;
+            DeleteRemainingDataButton.IsEnabled = false;
+            DeleteInstanceDetails.Text = LocalizedText.Get("UiNoInstancesToDelete") + Environment.NewLine + ex.Message;
+        }
+        MainContentScrollViewer.IsEnabled = false;
+        DeleteInstanceOverlay.Visibility = Visibility.Visible;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => DeleteInstanceListBox.Focus()));
+    }
+
+    private void DeleteInstanceOverlay_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape || UninstallConfirmOverlay.Visibility == Visibility.Visible) return;
+        e.Handled = true;
+        CloseDeleteInstanceOverlay();
+    }
+
+    private void DeleteOverlayCancel_Click(object sender, RoutedEventArgs e) => CloseDeleteInstanceOverlay();
+
+    private void CloseDeleteInstanceOverlay()
+    {
+        DeleteInstanceOverlay.Visibility = Visibility.Collapsed;
+        DeleteInstanceOverlay.IsEnabled = true;
+        MainContentScrollViewer.IsEnabled = true;
+        _deleteSelectedEntry = null;
+        _pendingDeleteEntry = null;
+        _pendingCleanupRequest = null;
+        _cleanupCheckGeneration++;
+        DeleteInstanceListBox.SelectedIndex = -1;
+        Keyboard.Focus(UninstallButton);
+    }
+
+    private async void DeleteInstanceListBox_SelectionChanged(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        _deleteSelectedEntry = (DeleteInstanceListBox.SelectedItem as InstanceChoice)?.Entry;
+        var selected = _deleteSelectedEntry;
+        DeleteManagedFilesButton.IsEnabled = selected is { IsTrusted: true, Release: not null };
+        DeleteRemainingDataButton.IsEnabled = false;
+        var generation = ++_cleanupCheckGeneration;
+        if (selected is null)
+        {
+            DeleteInstanceDetails.Text = _instanceChoices.Count == 0
+                ? LocalizedText.Get("UiNoInstancesToDelete") : string.Empty;
             return;
         }
-        var pending = _installer.GetPendingOperation(root);
-        if (pending is not null && !SamePath(pending.Value.InstancePath, selected.Path))
+        var state = LocalizedText.Get(selected.State switch
         {
-            StatusBox.Text = LocalizedText.Get("TransactionRecoveryRequired", pending.Value.InstancePath);
-            return;
+            InstalledInstanceState.Trusted => IsActiveInstance(selected) ? "UiInstanceActive" : "UiInstanceInactive",
+            InstalledInstanceState.PackageMissing => "UiInstancePackageMissing",
+            InstalledInstanceState.Residue => "UiInstanceResidue",
+            InstalledInstanceState.UnknownRelease => "UiInstanceUnknown",
+            InstalledInstanceState.Invalid => "UiInstanceInvalid",
+            _ => "UiInstanceUnsafe"
+        });
+        var launcher = LocalizedText.Get(selected.Layout?.IsPrism == true
+            ? "UiLauncherOptionPrism" : "UiLauncherOptionOfficial");
+        var displayRelease = GetDisplayRelease(selected);
+        var release = displayRelease is null ? LocalizedText.Get("UiUnknownInstance") :
+            $"{displayRelease.PackName} {displayRelease.PackVersion} ({displayRelease.MinecraftVersion})";
+        var targetPath = selected.Layout?.IsPrism == true ? selected.Layout.InstanceDirectory : selected.Path;
+        DeleteInstanceDetails.Text = LocalizedText.Get("UiDeleteEntryDetails", release, launcher, state,
+            targetPath, LocalizedText.Get("UiDeleteCleanupChecking"));
+        try
+        {
+            var request = await Task.Run(() => InstanceRemovalService.PrepareCleanup(selected,
+                GetEntryRoot(selected), AppContext.BaseDirectory, _launcher.LauncherRoot));
+            if (generation != _cleanupCheckGeneration || !ReferenceEquals(selected, _deleteSelectedEntry)) return;
+            DeleteRemainingDataButton.IsEnabled = true;
+            DeleteInstanceDetails.Text = LocalizedText.Get("UiDeleteEntryDetails", release, launcher, state,
+                targetPath, LocalizedText.Get("UiDeleteCleanupEligible"));
         }
+        catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or
+                                       ArgumentException or NotSupportedException or System.Text.Json.JsonException or
+                                       FormatException or InvalidOperationException or KeyNotFoundException)
+        {
+            if (generation != _cleanupCheckGeneration || !ReferenceEquals(selected, _deleteSelectedEntry)) return;
+            DeleteInstanceDetails.Text = LocalizedText.Get("UiDeleteEntryDetails", release, launcher, state,
+                targetPath, ex.Message);
+        }
+    }
+
+    private void DeleteManagedFiles_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = _deleteSelectedEntry;
+        if (selected is not { IsTrusted: true, Release: not null }) return;
+        _pendingDeleteEntry = selected;
+        _pendingDeleteAction = PendingDeleteAction.Uninstall;
+        _pendingCleanupRequest = null;
+        UninstallConfirmTitle.Text = LocalizedText.Get("UiUninstallConfirmTitle");
+        UninstallConfirmMessage.Text = LocalizedText.Get("UiUninstallConfirmMessage");
         UninstallConfirmDetails.Text = LocalizedText.Get("UiUninstallConfirmTarget", selected.Release.PackName,
             selected.Release.PackVersion, selected.Path);
-        _uninstallReturnFocus = UninstallButton;
+        UninstallConfirmButton.Content = LocalizedText.Get("UiUninstall");
+        ShowUninstallConfirmation();
+    }
+
+    private async void DeleteRemainingData_Click(object sender, RoutedEventArgs e)
+    {
+        var selected = _deleteSelectedEntry;
+        if (selected is null) return;
+        DeleteRemainingDataButton.IsEnabled = false;
+        StatusBox.Text = LocalizedText.Get("UiDeleteCleanupChecking");
+        InstanceCleanupRequest request;
+        try
+        {
+            request = await Task.Run(() => InstanceRemovalService.PrepareCleanup(selected,
+                GetEntryRoot(selected), AppContext.BaseDirectory, _launcher.LauncherRoot));
+        }
+        catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or
+                                       ArgumentException or NotSupportedException or System.Text.Json.JsonException or
+                                       FormatException or InvalidOperationException or KeyNotFoundException)
+        {
+            StatusBox.Text = ex.Message;
+            DeleteRemainingDataButton.IsEnabled = false;
+            var failedTargetPath = selected.Layout?.IsPrism == true ? selected.Layout.InstanceDirectory : selected.Path;
+            var failedDisplayRelease = GetDisplayRelease(selected);
+            var failedRelease = failedDisplayRelease is null ? LocalizedText.Get("UiUnknownInstance") :
+                $"{failedDisplayRelease.PackName} {failedDisplayRelease.PackVersion} ({failedDisplayRelease.MinecraftVersion})";
+            DeleteInstanceDetails.Text = LocalizedText.Get("UiDeleteEntryDetails", failedRelease,
+                LocalizedText.Get(selected.Layout?.IsPrism == true ? "UiLauncherOptionPrism" : "UiLauncherOptionOfficial"),
+                LocalizedText.Get("UiInstanceResidue"), failedTargetPath, ex.Message);
+            return;
+        }
+        if (!ReferenceEquals(selected, _deleteSelectedEntry)) return;
+        _pendingDeleteEntry = selected;
+        _pendingCleanupRequest = request;
+        _pendingDeleteAction = PendingDeleteAction.RemoveResidue;
+        UninstallConfirmTitle.Text = LocalizedText.Get("UiDeleteRemainingConfirmTitle");
+        UninstallConfirmMessage.Text = LocalizedText.Get("UiDeleteRemainingConfirmMessage");
+        UninstallConfirmDetails.Text = LocalizedText.Get("UiDeleteRemainingConfirmTarget",
+            LocalizedText.Get(selected.Layout?.IsPrism == true ? "UiLauncherOptionPrism" : "UiLauncherOptionOfficial"),
+            GetDisplayRelease(selected) is not { } displayRelease ? LocalizedText.Get("UiUnknownInstance") :
+                $"{displayRelease.PackName} {displayRelease.PackVersion}",
+            FormatCleanupCategories(request.Categories), request.TargetPath);
+        UninstallConfirmButton.Content = LocalizedText.Get("UiDeleteRemainingData");
+        ShowUninstallConfirmation();
+    }
+
+    private void ShowUninstallConfirmation()
+    {
+        _uninstallReturnFocus = DeleteManagedFilesButton;
+        DeleteInstanceOverlay.IsEnabled = false;
         MainContentScrollViewer.IsEnabled = false;
         UninstallConfirmOverlay.Visibility = Visibility.Visible;
         Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => UninstallCancelButton.Focus()));
     }
+
+    private static string FormatCleanupCategories(IReadOnlyList<string> categories) => categories.Count == 0
+        ? LocalizedText.Get("UiCleanupCategoryNone")
+        : string.Join(", ", categories.Select(key => LocalizedText.Get(key)));
 
     private void UninstallConfirmOverlay_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
@@ -133,17 +565,38 @@ public partial class MainWindow : Window
 
     private async void UninstallConfirm_Click(object sender, RoutedEventArgs e)
     {
+        var selected = _pendingDeleteEntry;
+        var action = _pendingDeleteAction;
+        var cleanupRequest = _pendingCleanupRequest;
+        _pendingCleanupRequest = null;
         CloseUninstallConfirmation();
-        await RunOperationAsync(Operation.Uninstall);
+        DeleteInstanceOverlay.Visibility = Visibility.Collapsed;
+        MainContentScrollViewer.IsEnabled = true;
+        _deleteSelectedEntry = null;
+        if (selected is null) return;
+        if (action == PendingDeleteAction.Uninstall)
+            await RunOperationAsync(Operation.Uninstall, operationTarget: selected);
+        else
+            await RunOperationAsync(Operation.RemoveResidue, operationTarget: selected, cleanupRequest: cleanupRequest);
     }
 
     private void CloseUninstallConfirmation()
     {
         UninstallConfirmOverlay.Visibility = Visibility.Collapsed;
+        _pendingCleanupRequest = null;
+        _pendingDeleteEntry = null;
+        _pendingDeleteAction = PendingDeleteAction.None;
+        DeleteInstanceOverlay.IsEnabled = true;
         MainContentScrollViewer.IsEnabled = true;
         var returnFocus = _uninstallReturnFocus ?? UninstallButton;
         _uninstallReturnFocus = null;
-        Keyboard.Focus(returnFocus);
+        if (DeleteInstanceOverlay.Visibility == Visibility.Visible)
+            Keyboard.Focus(returnFocus);
+        else
+        {
+            MainContentScrollViewer.IsEnabled = true;
+            Keyboard.Focus(returnFocus);
+        }
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)
@@ -162,27 +615,14 @@ public partial class MainWindow : Window
 
     private void InstallRootBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
     {
-        _selectedInstancePath = null;
-        _instanceChoices = [];
         _activeMarker = null;
         _gameDirectory = null;
         _currentOperationLog = null;
-        InstalledInstanceComboBox.ItemsSource = null;
-        InstalledInstanceStatusText.Text = LocalizedText.Get("UiRootChangedSelectInstance");
         RootAvailabilityText.Text = LocalizedText.Get("UiRootNeedsValidation");
     }
 
     private void InstallRootBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e) =>
         _ = RefreshRootState(persist: true);
-
-    private void InstalledInstanceComboBox_SelectionChanged(object sender,
-        System.Windows.Controls.SelectionChangedEventArgs e)
-    {
-        if (_changingInstanceSelection) return;
-        var selected = GetSelectedEntry();
-        _selectedInstancePath = selected?.Path;
-        UpdateSelectedInstanceStatus();
-    }
 
     private string? RefreshRootState(bool persist)
     {
@@ -199,7 +639,9 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    InstallerPreferences.SaveLastValidatedRoot(InstallerPreferences.DefaultPath, root);
+                    InstallerPreferences.SaveLastValidatedRoot(InstallerPreferences.DefaultPath, root,
+                        _prismScan.State == LauncherDiscoveryState.Unknown ? null : _prismTargets,
+                        _prismScan.State == LauncherDiscoveryState.Unknown ? _savedPrismHints : null);
                     _missingSavedRootPath = null;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InstallerException)
@@ -211,13 +653,9 @@ public partial class MainWindow : Window
             _activeMarker = null;
             var pending = _installer.GetPendingOperation(root);
             if (Directory.Exists(root) && pending is null) _activeMarker = _installer.InspectActiveMarker(root);
-            _instanceChoices = Directory.Exists(root)
-                ? InstalledInstanceCatalog.Enumerate(root, AppContext.BaseDirectory)
-                    .Select(entry => new InstanceChoice(entry, FormatInstanceChoice(entry)))
-                    .ToArray()
-                : [];
-            _changingInstanceSelection = true;
-            InstalledInstanceComboBox.ItemsSource = _instanceChoices;
+            var allEntries = new List<InstalledInstanceEntry>(_prismInstanceEntries);
+            if (Directory.Exists(root)) allEntries.AddRange(InstalledInstanceCatalog.Enumerate(root, AppContext.BaseDirectory));
+            _instanceChoices = BuildInstanceChoices(allEntries);
             RootAvailabilityText.Text = pending is not null
                 ? LocalizedText.Get("UiPendingRecoveryAt", pending.Value.InstancePath)
                 : Directory.Exists(root) ? LocalizedText.Get("UiRootAvailable", root) : LocalizedText.Get("UiRootReady", root);
@@ -231,82 +669,101 @@ public partial class MainWindow : Window
                         _ => "ActiveMarkerUnsafe"
                     }));
 
-            var preferredPath = _selectedInstancePath;
-            var activePath = _activeMarker?.InstancePath;
-            var choice = _instanceChoices.FirstOrDefault(item => SamePath(item.Entry.Path, preferredPath)) ??
-                _instanceChoices.FirstOrDefault(item => SamePath(item.Entry.Path, activePath)) ??
-                _instanceChoices.FirstOrDefault(item => item.Entry.IsTrusted) ?? _instanceChoices.FirstOrDefault(item => item.Entry.IsOpenable);
-            InstalledInstanceComboBox.SelectedItem = choice;
-            _changingInstanceSelection = false;
-            _selectedInstancePath = choice?.Entry.Path;
-            UpdateSelectedInstanceStatus();
+            if (DeleteInstanceOverlay.Visibility == Visibility.Visible)
+                DeleteInstanceListBox.ItemsSource = _instanceChoices;
             return root;
         }
         catch (InstallerException ex)
         {
-            _instanceChoices = [];
             _activeMarker = null;
-            _selectedInstancePath = null;
-            InstalledInstanceComboBox.ItemsSource = null;
-            InstalledInstanceStatusText.Text = LocalizedText.Get("UiNoTrustedInstances");
+            ApplyPrismEntriesWithoutOfficialRoot();
             RootAvailabilityText.Text = ex.Code == "ROOT_UNSAFE" || ex.Code == "VANILLA_PATH_BLOCKED"
                 ? ex.Message : LocalizedText.Get("UiSavedRootUnavailable");
             return null;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            _instanceChoices = [];
             _activeMarker = null;
-            _selectedInstancePath = null;
-            InstalledInstanceComboBox.ItemsSource = null;
-            InstalledInstanceStatusText.Text = LocalizedText.Get("UiNoTrustedInstances");
+            ApplyPrismEntriesWithoutOfficialRoot();
             RootAvailabilityText.Text = LocalizedText.Get("UiSavedRootUnavailable");
             return null;
         }
     }
 
-    private string FormatInstanceChoice(InstalledInstanceEntry entry)
+    private void ApplyPrismEntriesWithoutOfficialRoot()
     {
-        var release = entry.Release;
-        var name = release is null ? Path.GetFileName(entry.Path) : $"{release.PackName} {release.PackVersion}";
-        var state = SamePath(entry.Path, _activeMarker?.InstancePath)
-            ? LocalizedText.Get("UiInstanceActive") : LocalizedText.Get("UiInstanceInactive");
-        state += " · " + LocalizedText.Get(entry.State switch
+        _instanceChoices = BuildInstanceChoices(_prismInstanceEntries);
+        if (DeleteInstanceOverlay.Visibility == Visibility.Visible)
+            DeleteInstanceListBox.ItemsSource = _instanceChoices;
+    }
+
+    private IReadOnlyList<InstanceChoice> BuildInstanceChoices(IEnumerable<InstalledInstanceEntry> entries)
+    {
+        var unique = entries.DistinctBy(entry => Path.GetFullPath(entry.Path), StringComparer.OrdinalIgnoreCase).ToArray();
+        var duplicateGroups = unique.GroupBy(entry =>
         {
-            InstalledInstanceState.Trusted => "UiInstanceTrusted",
+            var launcher = entry.Layout is { IsPrism: true } layout ? layout.Fingerprint : "official";
+            var release = GetDisplayRelease(entry)?.PackVersion ??
+                          Path.GetFileName(entry.Layout?.InstanceDirectory ?? entry.Path);
+            return launcher + "|" + release;
+        }, StringComparer.OrdinalIgnoreCase).Where(group => group.Count() > 1)
+          .SelectMany(group => group.OrderBy(entry => entry.Path, StringComparer.OrdinalIgnoreCase)
+              .Select((entry, index) => (Path: entry.Path, Ordinal: index + 1)))
+          .ToDictionary(item => item.Path, item => item.Ordinal, StringComparer.OrdinalIgnoreCase);
+        return unique.Select(entry => new InstanceChoice(entry,
+            FormatInstanceChoice(entry, duplicateGroups.TryGetValue(entry.Path, out var ordinal) ? ordinal : null))).ToArray();
+    }
+
+    private string FormatInstanceChoice(InstalledInstanceEntry entry, int? duplicateOrdinal)
+    {
+        var release = GetDisplayRelease(entry);
+        var name = release is null ? LocalizedText.Get("UiUnknownInstance") :
+            $"{release.PackName} {release.PackVersion} · {release.MinecraftVersion}";
+        var launcherName = LocalizedText.Get(entry.Layout?.IsPrism == true
+            ? "PrismInstanceTargetDisplay" : "OfficialInstanceTargetDisplay", name);
+        var state = entry.State switch
+        {
+            InstalledInstanceState.Trusted => IsActiveInstance(entry) ? "UiInstanceActive" : "UiInstanceInactive",
             InstalledInstanceState.PackageMissing => "UiInstancePackageMissing",
             InstalledInstanceState.Residue => "UiInstanceResidue",
             InstalledInstanceState.UnknownRelease => "UiInstanceUnknown",
             InstalledInstanceState.Invalid => "UiInstanceInvalid",
             _ => "UiInstanceUnsafe"
-        });
-        return $"{name} — {state}";
+        };
+        state = LocalizedText.Get(state);
+        var ordinal = duplicateOrdinal is null ? "" : " · " + LocalizedText.Get("UiInstanceOrdinal", duplicateOrdinal.Value);
+        return $"{launcherName}{ordinal} — {state}";
     }
 
-    private void UpdateSelectedInstanceStatus()
+    private static KnownPackRelease? GetDisplayRelease(InstalledInstanceEntry entry)
     {
-        var selected = GetSelectedEntry();
-        if (selected is null)
-        {
-            InstalledInstanceStatusText.Text = LocalizedText.Get("UiNoTrustedInstances");
-            return;
-        }
-        var releaseLabel = selected.Release is null
-            ? Path.GetFileName(selected.Path)
-            : $"{selected.Release.PackName} {selected.Release.PackVersion}";
-        InstalledInstanceStatusText.Text = LocalizedText.Get("UiSelectedInstanceStatus", releaseLabel, selected.Path,
-            SamePath(selected.Path, _activeMarker?.InstancePath)
-                ? LocalizedText.Get("UiInstanceActive") : LocalizedText.Get("UiInstanceInactive"));
+        if (entry.Release is not null) return entry.Release;
+        var directoryName = Path.GetFileName(entry.Layout?.InstanceDirectory ?? entry.Path);
+        return InstanceDirectoryNaming.TryGetReleaseFromName(directoryName, out var release) ? release : null;
     }
 
-    private InstalledInstanceEntry? GetSelectedEntry() =>
-        (InstalledInstanceComboBox.SelectedItem as InstanceChoice)?.Entry;
+    private InstalledInstanceEntry? GetSelectedEntry()
+    {
+        if (_operationTargetEntry is not null) return _operationTargetEntry;
+        var active = _instanceChoices.Select(choice => choice.Entry)
+            .Where(entry => entry.IsTrusted && IsActiveInstance(entry)).ToArray();
+        return active.Length == 1 ? active[0] : null;
+    }
 
     private InstalledInstanceEntry RequireTrustedSelected(string root)
     {
-        var selected = GetSelectedEntry();
-        if (selected is not { IsTrusted: true } || !IsUnderSelectedRoot(root, selected.Path))
+        var requested = _operationTargetEntry;
+        var selected = requested is null ? GetSelectedEntry() : _instanceChoices.Select(choice => choice.Entry)
+            .SingleOrDefault(entry => SamePath(entry.Path, requested.Path) &&
+                (entry.Layout?.Fingerprint ?? "official").Equals(requested.Layout?.Fingerprint ?? "official",
+                    StringComparison.OrdinalIgnoreCase));
+        if (selected is not { IsTrusted: true } || !IsUnderSelectedRoot(root, selected))
             throw new InstallerException("INSTANCE_UNTRUSTED", LocalizedText.Get("UiSelectTrustedInstance"));
+        if (selected.Layout is { IsPrism: true } prismLayout)
+        {
+            prismLayout.Validate();
+            LauncherDiscovery.RevalidatePrismTarget(ToPrismTarget(prismLayout));
+        }
         return selected;
     }
 
@@ -327,31 +784,136 @@ public partial class MainWindow : Window
             MessageBoxImage.Warning) == MessageBoxResult.Yes;
     }
 
-    private InstalledInstanceEntry? ResolveImportTarget(string root)
+    private string GetEntryRoot(InstalledInstanceEntry entry) => entry.Layout?.IsPrism == true
+        ? entry.Layout.StateRoot
+        : Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(entry.Path)))!;
+
+    private async Task<InstalledInstanceEntry?> ResolveActiveOperationTargetAsync(bool allowSingleTrustedFallback = false)
     {
-        var selected = GetSelectedEntry();
-        if (selected is { IsTrusted: true } && IsUnderSelectedRoot(root, selected.Path)) return selected;
-        var activePath = _installer.GetActiveInstancePath(root);
-        return _instanceChoices.Select(item => item.Entry)
-            .FirstOrDefault(entry => entry.IsTrusted && SamePath(entry.Path, activePath));
+        LauncherInventory inventory;
+        try
+        {
+            inventory = await ScanLaunchersAsync();
+            ApplyLauncherInventory(inventory);
+            _ = RefreshRootState(persist: false);
+        }
+        catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            StatusBox.Text = ex.Message;
+            return null;
+        }
+
+        var hasUnknown = inventory.OfficialUnknown || inventory.PrismScan.State == LauncherDiscoveryState.Unknown;
+        LauncherInstallSelection? selection;
+        if (!hasUnknown && inventory.OfficialTargets.Count == 1 &&
+            inventory.PrismScan.State == LauncherDiscoveryState.Absent)
+            selection = MakeAutomaticSelection(LauncherKind.Official, inventory);
+        else if (!hasUnknown && inventory.PrismScan.State == LauncherDiscoveryState.Found &&
+                 inventory.PrismScan.PrismTargets.Count == 1 && inventory.OfficialTargets.Count == 0)
+            selection = MakeAutomaticSelection(LauncherKind.Prism, inventory);
+        else if (!hasUnknown && inventory.OfficialTargets.Count == 0 && inventory.PrismScan.State == LauncherDiscoveryState.Absent)
+        {
+            StatusBox.Text = LocalizedText.Get("UiNoActiveInstallation");
+            return null;
+        }
+        else
+            selection = await ShowLauncherChoiceAsync(inventory, null, LocalizedText.Get("UiChooseActiveLauncher"));
+
+        if (selection is null) return null;
+        string? activePath;
+        if (selection.Kind == LauncherKind.Prism && selection.PrismTarget is { } prismTarget)
+        {
+            var layout = InstallationLayout.Prism(prismTarget, "minepack-target-validation");
+            var marker = _installer.InspectActiveMarker(layout);
+            activePath = marker.State == ActiveMarkerState.Valid ? marker.InstancePath : null;
+            var entry = activePath is null ? null : _instanceChoices.Select(choice => choice.Entry).SingleOrDefault(candidate =>
+                    candidate.IsTrusted && candidate.Layout is { IsPrism: true } installedLayout &&
+                    installedLayout.Fingerprint.Equals(layout.Fingerprint, StringComparison.OrdinalIgnoreCase) &&
+                    SamePath(candidate.Path, activePath));
+            if (entry is not null) return entry;
+            if (allowSingleTrustedFallback && marker.State is
+                (ActiveMarkerState.Absent or ActiveMarkerState.Malformed or ActiveMarkerState.MissingTarget))
+            {
+                var candidates = _instanceChoices.Select(choice => choice.Entry)
+                    .Where(candidate => candidate.IsTrusted && candidate.Layout is { IsPrism: true } candidateLayout &&
+                        candidateLayout.Fingerprint.Equals(layout.Fingerprint, StringComparison.OrdinalIgnoreCase) &&
+                        candidate.Release!.PackName.Equals(SelectedPackName, StringComparison.Ordinal))
+                    .ToArray();
+                if (candidates.Length == 1) return candidates[0];
+            }
+        }
+        else
+        {
+            var root = RefreshRootState(persist: false);
+            if (root is not null)
+            {
+                var marker = _installer.InspectActiveMarker(root);
+                activePath = marker.State == ActiveMarkerState.Valid ? marker.InstancePath : null;
+                var entry = activePath is null ? null : _instanceChoices.Select(choice => choice.Entry).SingleOrDefault(candidate =>
+                        candidate.IsTrusted && candidate.Layout is null && SamePath(candidate.Path, activePath) &&
+                        IsUnderSelectedRoot(root, candidate));
+                if (entry is not null) return entry;
+                if (allowSingleTrustedFallback && marker.State is
+                    (ActiveMarkerState.Absent or ActiveMarkerState.Malformed or ActiveMarkerState.MissingTarget))
+                {
+                    var candidates = _instanceChoices.Select(choice => choice.Entry)
+                        .Where(candidate => candidate.IsTrusted && candidate.Layout is null &&
+                            IsUnderSelectedRoot(root, candidate) &&
+                            candidate.Release!.PackName.Equals(SelectedPackName, StringComparison.Ordinal)).ToArray();
+                    if (candidates.Length == 1) return candidates[0];
+                }
+            }
+        }
+
+        StatusBox.Text = LocalizedText.Get("UiNoActiveInstallation");
+        return null;
     }
 
-    private static bool IsUnderSelectedRoot(string root, string path) =>
-        Path.GetDirectoryName(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(path)))) is { } parent &&
-        SamePath(parent, root);
+    private static bool IsUnderSelectedRoot(string root, InstalledInstanceEntry entry)
+    {
+        if (entry.Layout is { IsPrism: true } layout)
+        {
+            try
+            {
+                layout.Validate();
+                return SamePath(entry.Path, layout.GameDirectory) &&
+                       SamePath(Path.GetDirectoryName(layout.GameDirectory), layout.InstanceDirectory);
+            }
+            catch (InstallerException) { return false; }
+        }
+        return Path.GetDirectoryName(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Path.GetFullPath(entry.Path)))) is { } parent &&
+               SamePath(parent, root);
+    }
+
+    private bool IsActiveInstance(InstalledInstanceEntry entry) => entry.Layout?.IsPrism == true
+        ? _activePrismInstancePaths.Any(path => SamePath(path, entry.Path))
+        : SamePath(entry.Path, _activeMarker?.InstancePath);
+
+    private static PrismLauncherTarget ToPrismTarget(InstallationLayout layout) =>
+        new(layout.LauncherIdentity, layout.PrismDataRoot!, layout.InstancesRoot, layout.Fingerprint, "owned-instance");
 
     private static bool SamePath(string? first, string? second) => first is not null && second is not null &&
         Path.TrimEndingDirectorySeparator(Path.GetFullPath(first)).Equals(
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(second)), StringComparison.OrdinalIgnoreCase);
 
-    private async Task RunOperationAsync(Operation operation, string? sourceWorlds = null)
+    private async Task RunOperationAsync(Operation operation, string? sourceWorlds = null,
+        InstalledInstanceEntry? operationTarget = null, InstanceCleanupRequest? cleanupRequest = null)
     {
         if (_operationCancellation is not null) return;
+        if ((operation is Operation.Repair or Operation.ConfigureLauncher or Operation.ImportWorlds) && operationTarget is null)
+            operationTarget = await ResolveActiveOperationTargetAsync(allowSingleTrustedFallback: operation == Operation.ConfigureLauncher);
+        if (operation is not Operation.Install && operationTarget is null)
+        {
+            if (operation is Operation.Uninstall or Operation.RemoveResidue)
+                StatusBox.Text = LocalizedText.Get("UiSelectTrustedInstance");
+            return;
+        }
+        _operationTargetEntry = operationTarget;
         var cancellation = new CancellationTokenSource();
         _operationCancellation = cancellation;
-        _operationCanBeCancelled = operation != Operation.Uninstall;
+        _operationCanBeCancelled = operation is not (Operation.Uninstall or Operation.RemoveResidue);
         var selectedPackForLog = SelectedPack;
-        var installedReleaseForLog = operation == Operation.Install ? null : GetSelectedEntry()?.Release;
+        var installedReleaseForLog = operation == Operation.Install ? null : operationTarget?.Release;
         var operationLog = new OperationLog(operation.ToString().ToLowerInvariant(), _installerVersion,
             InstallRootBox.Text, installedReleaseForLog?.PackVersion ?? selectedPackForLog.Version,
             installedReleaseForLog?.MinecraftVersion ?? TestPackRelease.MinecraftVersion,
@@ -368,6 +930,9 @@ public partial class MainWindow : Window
         OperationProgress.IsIndeterminate = true;
         InstructionsBox.Text = "";
         DiagnosticText.Text = "";
+        PrismLauncherTarget? selectedPrismTarget = null;
+        var prismOperationTarget = false;
+        var prismRepairTarget = false;
         StatusBox.Text = LocalizedText.Get("OperationWait");
         StateHeading.Text = LocalizedText.Get(operation == Operation.Install ? "OperationInstalling" : "OperationWorking");
         ProgressLabel.Text = operation switch
@@ -376,27 +941,57 @@ public partial class MainWindow : Window
             Operation.Repair => LocalizedText.Get("SearchingPack"),
             Operation.ConfigureLauncher => LocalizedText.Get("RestoringProfile"),
             Operation.ImportWorlds => LocalizedText.Get("CopyingWorlds"),
+            Operation.RemoveResidue => LocalizedText.Get("UiDeleteCleanupChecking"),
             _ => LocalizedText.Get("PreparingUninstall")
         };
 
         try
         {
-            operationLog.Write("preflight", "started", "ui_operation_started");
             await OperationGuard.RunAsync(async () =>
             {
-            var root = RefreshRootState(persist: true)
-                ?? throw new InstallerException("ROOT_UNAVAILABLE", LocalizedText.Get("UiSavedRootUnavailable"));
+            var root = operationTarget is not null
+                ? GetEntryRoot(operationTarget)
+                : operation == Operation.Install ? null : RefreshRootState(persist: true);
             var selectedPack = SelectedPack;
             if (operation == Operation.Install && !File.Exists(selectedPack.Path))
                 throw new InstallerException("PACK_NOT_FOUND", LocalizedText.Get("PublishedPackMissing"));
 
+            LauncherInstallSelection? installSelection = null;
+            if (operation == Operation.Install)
+            {
+                installSelection = await ResolveLauncherInstallSelectionAsync();
+                if (installSelection is null)
+                {
+                    operationOutcome = "cancelled";
+                    operationFailureCode = "CANCELLED";
+                    StatusBox.Text = LocalizedText.Get("OperationStoppedStatus");
+                    return;
+                }
+                selectedPrismTarget = installSelection.PrismTarget;
+                prismOperationTarget = selectedPrismTarget is not null;
+                if (selectedPrismTarget is not null)
+                    root = InstallationLayout.Prism(selectedPrismTarget,
+                        $"test-pack-{selectedPack.Version}-{selectedPack.Hash[..12].ToLowerInvariant()}").StateRoot;
+                else
+                    root = RefreshRootState(persist: false);
+            }
+            if (root is null) throw new InstallerException("ROOT_UNAVAILABLE", LocalizedText.Get("UiSavedRootUnavailable"));
+            operationLog.Write("preflight", "started", "ui_operation_started");
+
             if (operation == Operation.ImportWorlds)
             {
-                var importTarget = ResolveImportTarget(root)
-                    ?? throw new InstallerException("INSTANCE_UNTRUSTED", LocalizedText.Get("UiSelectTrustedInstance"));
+                var importTarget = operationTarget;
+                if (importTarget is not { IsTrusted: true } || !IsUnderSelectedRoot(root, importTarget))
+                    throw new InstallerException("INSTANCE_UNTRUSTED", LocalizedText.Get("UiSelectTrustedInstance"));
                 var worldProgress = new Progress<string>(message => ProgressLabel.Text = message);
                 var imported = await Task.Run(async () =>
                 {
+                    if (importTarget.Layout is { IsPrism: true } prismLayout)
+                    {
+                        prismOperationTarget = true;
+                        await _prismLauncherController.CloseBeforeInstallAsync(ToPrismTarget(prismLayout), cancellation.Token);
+                        return await WorldImportService.ImportAsync(sourceWorlds!, prismLayout, worldProgress, cancellation.Token, operationLog);
+                    }
                     return await WorldImportService.ImportAsync(sourceWorlds!, importTarget.Path, worldProgress, cancellation.Token, operationLog);
                 }, cancellation.Token);
                 StateHeading.Text = LocalizedText.Get("WorldImportComplete");
@@ -404,6 +999,32 @@ public partial class MainWindow : Window
                 InstructionsBox.Text = LocalizedText.Get("UiWorldImportSafetyTarget", importTarget.Release!.PackName,
                     importTarget.Release.PackVersion, importTarget.Path);
                 ProgressLabel.Text = LocalizedText.Get("OperationComplete");
+                if (importTarget.Layout?.IsPrism == true) await RefreshLauncherDiscoveryAsync();
+                operationOutcome = "completed";
+                return;
+            }
+
+            if (operation == Operation.RemoveResidue)
+            {
+                if (cleanupRequest is null || operationTarget is null ||
+                    !SamePath(cleanupRequest.TargetPath, operationTarget.Layout?.InstanceDirectory ?? operationTarget.Path))
+                    throw new InstallerException("INSTANCE_CLEANUP_CHANGED", LocalizedText.Get("InstanceCleanupChanged"));
+                if (cleanupRequest.IsPrism && operationTarget.Layout is { IsPrism: true } prismLayout)
+                {
+                    LauncherDiscovery.RevalidatePrismTarget(ToPrismTarget(prismLayout));
+                    await _prismLauncherController.CloseBeforeInstallAsync(ToPrismTarget(prismLayout), cancellation.Token);
+                    prismOperationTarget = true;
+                }
+                var cleanupResult = await InstanceRemovalService.RemoveAsync(cleanupRequest,
+                    RecycleBinService.MoveToRecycleBinAsync);
+                filesRemoved = true;
+                StateHeading.Text = LocalizedText.Get("UiDeleteRemainingComplete");
+                StatusBox.Text = cleanupResult.OwnershipRecordRetained
+                    ? LocalizedText.Get("UiDeleteOwnershipRecordRetained")
+                    : LocalizedText.Get("UiDeleteRemainingComplete");
+                InstructionsBox.Text = "";
+                ProgressLabel.Text = LocalizedText.Get("OperationComplete");
+                await RefreshLauncherDiscoveryAsync();
                 operationOutcome = "completed";
                 return;
             }
@@ -430,6 +1051,7 @@ public partial class MainWindow : Window
                     : item.Message;
             });
 
+            InstallResult result;
             if (operation == Operation.ConfigureLauncher)
             {
                 var target = RequireTrustedSelected(root);
@@ -437,6 +1059,35 @@ public partial class MainWindow : Window
                 var (archivePath, archiveHash) = InstalledInstanceCatalog.PinnedArchive(release.PackVersion, AppContext.BaseDirectory);
                 if (!File.Exists(archivePath))
                     throw new InstallerException("PACK_NOT_FOUND", LocalizedText.Get("SelectedPackUnavailable"));
+
+                if (target.Layout is { IsPrism: true } prismLayout)
+                {
+                    prismOperationTarget = true;
+                    await Task.Run(() => _prismLauncherController.CloseBeforeInstallAsync(ToPrismTarget(prismLayout), cancellation.Token), cancellation.Token);
+                    result = await Task.Run(() => _installer.InstallAsync(archivePath, archiveHash, prismLayout,
+                        progress, cancellation.Token, operationLog), cancellation.Token);
+                    if (result.Success)
+                    {
+                        filesInstalled = true;
+                        _gameDirectory = result.GameDirectory;
+                        StateHeading.Text = LocalizedText.Get("PackInstalled");
+                        StatusBox.Text = result.Message;
+                        InstructionsBox.Text = LocalizedText.Get("PrismLaunchInstruction", LauncherProfile.ProfileName(release.MinecraftVersion));
+                        ProgressLabel.Text = LocalizedText.Get("OperationComplete");
+                        await RefreshLauncherDiscoveryAsync();
+                        operationOutcome = "completed";
+                    }
+                    else
+                    {
+                        operationFailureCode = result.Code;
+                        operationOutcome = result.Code == "CANCELLED" ? "cancelled" : "failed";
+                        StateHeading.Text = LocalizedText.Get(result.Code == "CANCELLED" ? "OperationCancelledHeading" : "OperationFailedHeading");
+                        StatusBox.Text = result.Code == "CANCELLED" ? LocalizedText.Get("OperationStoppedStatus") : result.Message;
+                        DiagnosticText.Text = FormatDiagnostic(result.Code, operationLog.CurrentLogPath);
+                        ProgressLabel.Text = LocalizedText.Get(result.Code == "CANCELLED" ? "OperationCancelledHeading" : "OperationFailedProgress");
+                    }
+                    return;
+                }
 
                 var pending = _installer.GetPendingOperation(root);
                 if (pending is not null)
@@ -514,10 +1165,23 @@ public partial class MainWindow : Window
                 return;
             }
 
-            InstallResult result;
             var configureRepairedTarget = false;
             if (operation == Operation.Install)
             {
+                if (installSelection?.PrismTarget is { } prismTarget)
+                {
+                    operationLog.Write("preflight", "started", "launcher_choice_confirmed",
+                        new { launcherKind = "Prism", targetFingerprint = prismTarget.Fingerprint });
+                    await Task.Run(() => _prismLauncherController.CloseBeforeInstallAsync(prismTarget, cancellation.Token), cancellation.Token);
+                    result = await Task.Run(() => _installer.InstallAsync(selectedPack.Path, selectedPack.Hash, prismTarget,
+                        progress, cancellation.Token, operationLog), cancellation.Token);
+                }
+                else
+                {
+                var officialTarget = installSelection?.OfficialTarget
+                    ?? throw new InstallerException("LAUNCHER_TARGET_UNAVAILABLE", LocalizedText.Get("LauncherDiscoveryFailed"));
+                operationLog.Write("preflight", "started", "launcher_choice_confirmed",
+                    new { launcherKind = "Official", targetIdentity = officialTarget.Identity });
                 var pending = _installer.GetPendingOperation(root);
                 var allowMarkerRecovery = false;
                 if (pending is null)
@@ -542,7 +1206,7 @@ public partial class MainWindow : Window
                 }
                 await Task.Run(_launcher.CheckProfileReady, cancellation.Token);
                 ProgressLabel.Text = LocalizedText.Get("ClosingLauncherProgress");
-                launcherTarget = await Task.Run(() => _launcherController.CloseBeforeInstallAsync(cancellation.Token, operationLog), cancellation.Token);
+                launcherTarget = await Task.Run(() => _launcherController.CloseBeforeInstallAsync(officialTarget, cancellation.Token, operationLog), cancellation.Token);
                 await Task.Run(_launcher.CheckReady, cancellation.Token);
                 if (pending is not null)
                 {
@@ -597,61 +1261,121 @@ public partial class MainWindow : Window
                         : await Task.Run(() => _installer.InstallAsync(selectedPack.Path, selectedPack.Hash, root,
                             progress, cancellation.Token, _launcher, operationLog, allowMarkerRecovery), cancellation.Token);
                 }
+                }
             }
             else if (operation == Operation.Uninstall)
             {
+                var uninstallTarget = RequireTrustedSelected(root);
+                var uninstallLayout = uninstallTarget.Layout;
+                if (uninstallLayout is { IsPrism: true } prismLayout)
+                {
+                    prismOperationTarget = true;
+                    await Task.Run(() => _prismLauncherController.CloseBeforeInstallAsync(ToPrismTarget(prismLayout), cancellation.Token), cancellation.Token);
+                }
                 result = await Task.Run(async () =>
                 {
-                    var pending = _installer.GetPendingOperation(root);
-                    var target = RequireTrustedSelected(root);
-                    if (pending is not null && !SamePath(pending.Value.InstancePath, target.Path))
+                    var pending = uninstallLayout is { IsPrism: true } ? _installer.GetPendingOperation(uninstallLayout) : _installer.GetPendingOperation(root);
+                    if (pending is not null && !SamePath(pending.Value.InstancePath, uninstallTarget.Path))
                         throw new InstallerException("TRANSACTION_RECOVERY_REQUIRED",
                             LocalizedText.Get("TransactionRecoveryRequired", pending.Value.InstancePath));
-                    var (packPath, packHash) = InstalledInstanceCatalog.PinnedArchive(target.Release!.PackVersion, AppContext.BaseDirectory);
+                    var (packPath, packHash) = InstalledInstanceCatalog.PinnedArchive(uninstallTarget.Release!.PackVersion, AppContext.BaseDirectory);
+                    if (uninstallLayout is { IsPrism: true })
+                        return await _installer.UninstallAsync(uninstallLayout, packPath, packHash, operationLog);
                     var active = _installer.GetActiveInstancePath(root);
-                    var launcher = SamePath(active, target.Path) ? _launcher : null;
-                    return await _installer.UninstallAsync(root, target.Path, packPath, packHash, launcher, operationLog);
+                    var launcher = SamePath(active, uninstallTarget.Path) ? _launcher : null;
+                    return await _installer.UninstallAsync(root, uninstallTarget.Path, packPath, packHash, launcher, operationLog);
                 }, cancellation.Token);
             }
             else
             {
-                var pending = _installer.GetPendingOperation(root);
-                var selectedTargetPath = _selectedInstancePath;
+                var selectedBeforeRecovery = GetSelectedEntry();
+                var selectedLayout = selectedBeforeRecovery?.Layout;
+                if (selectedLayout is { IsPrism: true } prismLayout)
+                {
+                    prismOperationTarget = true;
+                    await Task.Run(() => _prismLauncherController.CloseBeforeInstallAsync(ToPrismTarget(prismLayout), cancellation.Token), cancellation.Token);
+                }
+                else if (root is null)
+                    throw new InstallerException("ROOT_UNAVAILABLE", LocalizedText.Get("UiSavedRootUnavailable"));
+
+                var pending = selectedLayout is { IsPrism: true }
+                    ? _installer.GetPendingOperation(selectedLayout)
+                    : _installer.GetPendingOperation(root!);
+                var selectedTargetPath = selectedBeforeRecovery?.Path;
                 if (pending is not null)
                 {
+                    if (selectedTargetPath is not null && !SamePath(pending.Value.InstancePath, selectedTargetPath))
+                        throw new InstallerException("TRANSACTION_RECOVERY_REQUIRED",
+                            LocalizedText.Get("TransactionRecoveryRequired", pending.Value.InstancePath));
+                    if (selectedLayout is { IsPrism: true } pendingPrismLayout &&
+                        !SamePath(pending.Value.InstancePath, pendingPrismLayout.GameDirectory))
+                        throw new InstallerException("TRANSACTION_RECOVERY_REQUIRED",
+                            LocalizedText.Get("TransactionRecoveryRequired", pending.Value.InstancePath));
+
                     fileProgressPhase = "pending-recovery";
                     OperationProgress.Value = 0;
                     OperationProgress.IsIndeterminate = true;
                     ProgressLabel.Text = LocalizedText.Get("SearchingPack");
                     var (pendingArchive, pendingHash) = InstalledInstanceCatalog.PinnedArchive(pending.Value.PackVersion, AppContext.BaseDirectory);
-                    var recovered = await Task.Run(() => _installer.RepairAsync(pending.Value.InstancePath,
-                        pendingArchive, pendingHash, progress, cancellation.Token, _launcher, operationLog), cancellation.Token);
+                    var recovered = selectedLayout is { IsPrism: true }
+                        ? await Task.Run(() => _installer.RepairAsync(selectedLayout, pendingArchive, pendingHash,
+                            progress, cancellation.Token, operationLog), cancellation.Token)
+                        : await Task.Run(() => _installer.RepairAsync(pending.Value.InstancePath,
+                            pendingArchive, pendingHash, progress, cancellation.Token, _launcher, operationLog), cancellation.Token);
                     if (!recovered.Success) result = recovered;
                     else
                     {
+                        selectedTargetPath = pending.Value.InstancePath;
                         fileProgressPhase = "selected-files";
                         OperationProgress.Value = 0;
                         OperationProgress.IsIndeterminate = true;
                         ProgressLabel.Text = LocalizedText.Get("PreparingFiles");
-                        _ = RefreshRootState(persist: false);
-                        var selected = RequireTrustedSelected(root);
-                        if (selectedTargetPath is null || !SamePath(selected.Path, selectedTargetPath))
+                        if (selectedLayout is { IsPrism: true }) await RefreshLauncherDiscoveryAsync();
+                        else _ = RefreshRootState(persist: false);
+                        var selectedRoot = selectedLayout is { IsPrism: true } ? selectedLayout.StateRoot : root!;
+                        var refreshed = RequireTrustedSelected(selectedRoot);
+                        if (!SamePath(refreshed.Path, selectedTargetPath))
                             throw new InstallerException("INSTANCE_UNTRUSTED", LocalizedText.Get("UiSelectTrustedInstance"));
-                        var (installedPackPath, installedPackHash) = InstalledInstanceCatalog.PinnedArchive(selected.Release!.PackVersion, AppContext.BaseDirectory);
+                        if (selectedLayout is { IsPrism: true } &&
+                            (refreshed.Layout is not { IsPrism: true } refreshedLayout ||
+                             !refreshedLayout.Fingerprint.Equals(selectedLayout.Fingerprint, StringComparison.OrdinalIgnoreCase)))
+                            throw new InstallerException("PRISM_TARGET_CHANGED", LocalizedText.Get("PrismIdentityChanged"));
+                        var (installedPackPath, installedPackHash) = InstalledInstanceCatalog.PinnedArchive(refreshed.Release!.PackVersion, AppContext.BaseDirectory);
+                        if (refreshed.Layout is { IsPrism: true } repairedLayout)
+                        {
+                            prismRepairTarget = true;
+                            result = await Task.Run(() => _installer.RepairAsync(repairedLayout, installedPackPath, installedPackHash,
+                                progress, cancellation.Token, operationLog), cancellation.Token);
+                        }
+                        else
+                        {
+                            var active = _installer.GetActiveInstancePath(root);
+                            configureRepairedTarget = SamePath(active, refreshed.Path);
+                            result = await Task.Run(() => _installer.RepairAsync(refreshed.Path, installedPackPath, installedPackHash,
+                                progress, cancellation.Token, configureRepairedTarget ? _launcher : null, operationLog), cancellation.Token);
+                        }
+                    }
+                }
+                else
+                {
+                    var selected = RequireTrustedSelected(selectedLayout is { IsPrism: true } prismSelectedLayout
+                        ? prismSelectedLayout.StateRoot
+                        : root!);
+                    selectedLayout = selected.Layout;
+                    var (installedPackPath, installedPackHash) = InstalledInstanceCatalog.PinnedArchive(selected.Release!.PackVersion, AppContext.BaseDirectory);
+                    if (selectedLayout is { IsPrism: true })
+                    {
+                        prismRepairTarget = true;
+                        result = await Task.Run(() => _installer.RepairAsync(selectedLayout, installedPackPath, installedPackHash,
+                            progress, cancellation.Token, operationLog), cancellation.Token);
+                    }
+                    else
+                    {
                         var active = _installer.GetActiveInstancePath(root);
                         configureRepairedTarget = SamePath(active, selected.Path);
                         result = await Task.Run(() => _installer.RepairAsync(selected.Path, installedPackPath, installedPackHash,
                             progress, cancellation.Token, configureRepairedTarget ? _launcher : null, operationLog), cancellation.Token);
                     }
-                }
-                else
-                {
-                    var selected = RequireTrustedSelected(root);
-                    var (installedPackPath, installedPackHash) = InstalledInstanceCatalog.PinnedArchive(selected.Release!.PackVersion, AppContext.BaseDirectory);
-                    var active = _installer.GetActiveInstancePath(root);
-                    configureRepairedTarget = SamePath(active, selected.Path);
-                    result = await Task.Run(() => _installer.RepairAsync(selected.Path, installedPackPath, installedPackHash,
-                        progress, cancellation.Token, configureRepairedTarget ? _launcher : null, operationLog), cancellation.Token);
                 }
             }
 
@@ -663,19 +1387,48 @@ public partial class MainWindow : Window
                     filesInstalled = true;
                     if (operation == Operation.Install)
                     {
-                        _selectedInstancePath = result.GameDirectory;
-                        var launch = await _launcherController.ConfigureAndStartAsync(launcherTarget,
-                            () => ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token, operationLog), operationLog);
-                        if (launch.Status == MinecraftLauncherStartStatus.Requested)
-                            StatusBox.Text = LocalizedText.Get("LauncherStartRequestedStatus");
+                        if (selectedPrismTarget is not null)
+                        {
+                            try
+                            {
+                                await Task.Run(() => _prismLauncherController.Start(selectedPrismTarget), cancellation.Token);
+                                StatusBox.Text = LocalizedText.Get("PrismStartRequestedStatus",
+                                    LauncherProfile.ProfileName(selectedPack.MinecraftVersion));
+                                InstructionsBox.Text = LocalizedText.Get("PrismLaunchInstruction",
+                                    LauncherProfile.ProfileName(selectedPack.MinecraftVersion));
+                            }
+                            catch (Exception ex) when (ex is InvalidOperationException or IOException or UnauthorizedAccessException or Win32Exception)
+                            {
+                                operationOutcome = "profile_pending";
+                                StatusBox.Text = LocalizedText.Get("PrismStartFailedStatus",
+                                    LauncherProfile.ProfileName(selectedPack.MinecraftVersion));
+                                InstructionsBox.Text = LocalizedText.Get("PrismLaunchInstruction",
+                                    LauncherProfile.ProfileName(selectedPack.MinecraftVersion));
+                                DiagnosticText.Text = FormatDiagnostic("PRISM_START_FAILED", operationLog.CurrentLogPath);
+                            }
+                        }
                         else
                         {
-                            operationOutcome = "profile_pending";
-                            StatusBox.Text = LocalizedText.Get(launch.Status == MinecraftLauncherStartStatus.Failed
-                                ? "LauncherStartFailedStatus" : "LauncherStartUnavailableStatus");
-                            InstructionsBox.Text = LocalizedText.Get("LaunchInstruction");
-                            DiagnosticText.Text = launch.Diagnostic;
+                            var launch = await _launcherController.ConfigureAndStartAsync(launcherTarget,
+                                () => ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token, operationLog), operationLog);
+                            if (launch.Status == MinecraftLauncherStartStatus.Requested)
+                                StatusBox.Text = LocalizedText.Get("LauncherStartRequestedStatus");
+                            else
+                            {
+                                operationOutcome = "profile_pending";
+                                StatusBox.Text = LocalizedText.Get(launch.Status == MinecraftLauncherStartStatus.Failed
+                                    ? "LauncherStartFailedStatus" : "LauncherStartUnavailableStatus");
+                                InstructionsBox.Text = LocalizedText.Get("LaunchInstruction");
+                                DiagnosticText.Text = launch.Diagnostic;
+                            }
                         }
+                    }
+                    else if (operation == Operation.Repair && prismRepairTarget)
+                    {
+                        StateHeading.Text = LocalizedText.Get("PrismRepairCompleteStatus");
+                        StatusBox.Text = result.Message;
+                        InstructionsBox.Text = "";
+                        ProgressLabel.Text = LocalizedText.Get("OperationComplete");
                     }
                     else if (operation == Operation.Repair && configureRepairedTarget)
                         await ConfigureLauncherAsync(result.GameDirectory!, cancellation.Token, operationLog);
@@ -686,7 +1439,8 @@ public partial class MainWindow : Window
                         InstructionsBox.Text = LocalizedText.Get("RepairInactiveHint");
                         ProgressLabel.Text = LocalizedText.Get("OperationComplete");
                     }
-                    _ = RefreshRootState(persist: false);
+                    if (prismOperationTarget) await RefreshLauncherDiscoveryAsync();
+                    else _ = RefreshRootState(persist: false);
                 }
                 else
                 {
@@ -695,7 +1449,8 @@ public partial class MainWindow : Window
                     ProgressLabel.Text = LocalizedText.Get("OperationComplete");
                     StatusBox.Text = result.Message;
                     InstructionsBox.Text = LocalizedText.Get("UserFilesPreserved");
-                    _ = RefreshRootState(persist: false);
+                    if (prismOperationTarget) await RefreshLauncherDiscoveryAsync();
+                    else _ = RefreshRootState(persist: false);
                 }
                 if (operationOutcome != "profile_pending") operationOutcome = "completed";
             }
@@ -788,8 +1543,11 @@ public partial class MainWindow : Window
             OperationProgress.IsIndeterminate = false;
             cancellation.Dispose();
             _operationCancellation = null;
+            _operationTargetEntry = null;
             _operationCanBeCancelled = true;
             SetBusy(false);
+            try { await RefreshLauncherDiscoveryAsync(); }
+            catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException) { }
         }
     }
 
@@ -824,13 +1582,13 @@ public partial class MainWindow : Window
         DiagnosticText.Text = LocalizedText.Get("GameFolderLabel", gameDirectory);
     }
 
-    private void OpenFolder_Click(object sender, RoutedEventArgs e)
+    private async void OpenFolder_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            var root = RefreshRootState(persist: false);
-            var selected = GetSelectedEntry();
-            var path = root is not null && selected is { IsOpenable: true } && IsUnderSelectedRoot(root, selected.Path)
+            var selected = await ResolveActiveOperationTargetAsync();
+            var root = selected is null ? null : GetEntryRoot(selected);
+            var path = selected is { IsOpenable: true } && root is not null && IsUnderSelectedRoot(root, selected)
                 ? selected.Path : null;
             if (path is null || !Directory.Exists(path))
             {
@@ -948,7 +1706,6 @@ public partial class MainWindow : Window
         CancelButton.Visibility = busy && _operationCanBeCancelled ? Visibility.Visible : Visibility.Collapsed;
         RetryLauncherButton.IsEnabled = !busy;
         ImportWorldsButton.IsEnabled = !busy;
-        InstalledInstanceComboBox.IsEnabled = !busy;
         OpenFolderButton.IsEnabled = !busy;
         OpenLogButton.IsEnabled = !busy;
         ExportLogButton.IsEnabled = !busy;
@@ -964,6 +1721,17 @@ public partial class MainWindow : Window
     }
 
     private sealed record InstanceChoice(InstalledInstanceEntry Entry, string Display);
+    private sealed record LauncherInventory(IReadOnlyList<MinecraftLauncherTarget> OfficialTargets,
+        LauncherScanResult PrismScan, bool OfficialUnknown,
+        IReadOnlyList<InstalledInstanceEntry> PrismInstanceEntries, HashSet<string> ActivePrismInstancePaths);
+    private sealed record LauncherInstallSelection(LauncherKind Kind, MinecraftLauncherTarget? OfficialTarget,
+        PrismLauncherTarget? PrismTarget);
+    private sealed record LauncherTargetChoice(LauncherKind Kind, string Display,
+        MinecraftLauncherTarget? OfficialTarget, PrismLauncherTarget? PrismTarget)
+    {
+        public LauncherInstallSelection ToSelection() => new(Kind, OfficialTarget, PrismTarget);
+    }
 
-    private enum Operation { Install, Repair, Uninstall, ConfigureLauncher, ImportWorlds }
+    private enum Operation { Install, Repair, Uninstall, ConfigureLauncher, ImportWorlds, RemoveResidue }
+    private enum PendingDeleteAction { None, Uninstall, RemoveResidue }
 }

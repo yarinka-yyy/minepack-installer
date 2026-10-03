@@ -61,7 +61,7 @@ public sealed class MinecraftLauncherController
         operationLog?.Write("preflight", "started", "launcher_close_started");
         try
         {
-            var target = await OperationGuard.RunAsync(() => CloseBeforeInstallCoreAsync(cancellationToken), cancellationToken)
+            var target = await OperationGuard.RunAsync(() => CloseBeforeInstallCoreAsync(null, cancellationToken), cancellationToken)
                 .ConfigureAwait(false);
             operationLog?.Write("preflight", "completed", "launcher_close_completed", new { targetFound = target is not null });
             return target;
@@ -74,17 +74,42 @@ public sealed class MinecraftLauncherController
         }
     }
 
-    private async Task<MinecraftLauncherTarget?> CloseBeforeInstallCoreAsync(CancellationToken cancellationToken)
+    public async Task<MinecraftLauncherTarget> CloseBeforeInstallAsync(MinecraftLauncherTarget selectedTarget,
+        CancellationToken cancellationToken = default, OperationLog? operationLog = null)
+    {
+        ArgumentNullException.ThrowIfNull(selectedTarget);
+        operationLog?.Write("preflight", "started", "launcher_close_started", new { selected = true });
+        try
+        {
+            var target = await OperationGuard.RunAsync(
+                () => CloseBeforeInstallCoreAsync(selectedTarget, cancellationToken), cancellationToken).ConfigureAwait(false);
+            return target ?? throw new InstallerException("LAUNCHER_TARGET_UNAVAILABLE", LocalizedText.Get("LauncherDiscoveryFailed"));
+        }
+        catch (Exception ex)
+        {
+            operationLog?.WriteException("preflight", "launcher_close_failed", ex,
+                ex is OperationCanceledException && cancellationToken.IsCancellationRequested ? "cancelled" : "failed");
+            throw;
+        }
+    }
+
+    public IReadOnlyList<MinecraftLauncherTarget> FindTargets() => _platform.FindTargets().Distinct().ToArray();
+
+    private async Task<MinecraftLauncherTarget?> CloseBeforeInstallCoreAsync(MinecraftLauncherTarget? selectedTarget,
+        CancellationToken cancellationToken)
     {
         var targets = _platform.FindTargets().Distinct().ToArray();
         if (_platform.HasUnidentifiedLauncherProcess())
             throw new InstallerException("LAUNCHER_IDENTITY_UNKNOWN", LocalizedText.Get("LauncherIdentityUnknown"));
 
-        var running = targets.Where(HasRunningProcesses).ToArray();
-        if (running.Length > 1 || (running.Length == 0 && targets.Length > 1))
+        if (selectedTarget is not null && !targets.Contains(selectedTarget))
+            throw new InstallerException("LAUNCHER_TARGET_UNAVAILABLE", LocalizedText.Get("LauncherDiscoveryFailed"));
+
+        var running = (selectedTarget is null ? targets : [selectedTarget]).Where(HasRunningProcesses).ToArray();
+        if (selectedTarget is null && (running.Length > 1 || (running.Length == 0 && targets.Length > 1)))
             throw new InstallerException("LAUNCHER_TARGET_AMBIGUOUS", LocalizedText.Get("LauncherTargetsAmbiguous"));
 
-        var target = running.Length == 1 ? running[0] : targets.SingleOrDefault();
+        var target = selectedTarget ?? (running.Length == 1 ? running[0] : targets.SingleOrDefault());
         if (target is null) return null;
 
         var discoveredProcesses = _platform.FindRunningProcesses(target);
@@ -130,6 +155,22 @@ public sealed class MinecraftLauncherController
             if (HasRunningProcesses(target))
                 throw new InstallerException("LAUNCHER_RUNNING", LocalizedText.Get("LauncherRunning"));
         }
+    }
+
+    public void EnsureClosed(MinecraftLauncherTarget selectedTarget)
+    {
+        ArgumentNullException.ThrowIfNull(selectedTarget);
+        if (_platform.HasUnidentifiedLauncherProcess())
+            throw new InstallerException("LAUNCHER_IDENTITY_UNKNOWN", LocalizedText.Get("LauncherIdentityUnknown"));
+        if (!_platform.FindTargets().Contains(selectedTarget))
+            throw new InstallerException("LAUNCHER_TARGET_UNAVAILABLE", LocalizedText.Get("LauncherDiscoveryFailed"));
+        var processes = _platform.FindRunningProcesses(selectedTarget);
+        try
+        {
+            if (processes.Any(process => !process.HasExited))
+                throw new InstallerException("LAUNCHER_RUNNING", LocalizedText.Get("LauncherRunning"));
+        }
+        finally { foreach (var process in processes) process.Dispose(); }
     }
 
     private bool HasRunningProcesses(MinecraftLauncherTarget target)
