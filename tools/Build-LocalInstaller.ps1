@@ -1,13 +1,16 @@
 [CmdletBinding()]
-param()
+param(
+    [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$')]
+    [string] $InstallerVersion = '1.6.1'
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $artifactRoot = [IO.Path]::GetFullPath((Join-Path $repoRoot 'artifacts'))
-$buildRoot = [IO.Path]::GetFullPath((Join-Path $artifactRoot 'build-1.6'))
-$packageName = 'MinePack-Installer-1.6-win-x64'
+$buildRoot = [IO.Path]::GetFullPath((Join-Path $artifactRoot "build-$InstallerVersion"))
+$packageName = "MinePack-Installer-$InstallerVersion-win-x64"
 $packageRoot = [IO.Path]::GetFullPath((Join-Path $artifactRoot $packageName))
 $zipPath = [IO.Path]::GetFullPath((Join-Path $artifactRoot ($packageName + '.zip')))
 $unpackedRoot = [IO.Path]::GetFullPath((Join-Path $buildRoot 'unpacked'))
@@ -141,7 +144,7 @@ try {
     $projectPath = Join-Path $repoRoot 'src/MinePack.Installer/MinePack.Installer.csproj'
     [xml] $project = Get-Content -LiteralPath $projectPath -Raw
     $version = $project.Project.PropertyGroup.Version | Select-Object -First 1
-    if ($version -ne '1.6.0') { throw "Installer version must be 1.6.0, got '$version'." }
+    if ($version -ne $InstallerVersion) { throw "Installer version must be $InstallerVersion, got '$version'." }
 
     $sourceArchives = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'releases') -Recurse -File -Filter '*.mrpack' |
         Sort-Object FullName)
@@ -169,7 +172,7 @@ try {
         }
     }
 
-    Write-Host 'Publishing self-contained win-x64 single-file installer 1.6.0...'
+    Write-Host "Publishing self-contained win-x64 single-file installer $InstallerVersion..."
     $publishArguments = @(
         'publish', $projectPath, '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true',
         '--artifacts-path', $buildRoot, '-p:PublishSingleFile=true',
@@ -183,8 +186,8 @@ try {
     $exe = Join-Path $packageRoot 'MinePack.Installer.exe'
     if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'Published installer EXE is missing.' }
     $productVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($exe).ProductVersion
-    if ([string]::IsNullOrWhiteSpace($productVersion) -or -not $productVersion.StartsWith('1.6.0', [StringComparison]::Ordinal)) {
-        throw "Published EXE version is not 1.6.0: '$productVersion'"
+    if ([string]::IsNullOrWhiteSpace($productVersion) -or $productVersion -cne $InstallerVersion) {
+        throw "Published EXE version is not ${InstallerVersion}: '$productVersion'"
     }
 
     $requiredFiles = @(
@@ -254,7 +257,7 @@ try {
         $roots = @($entries | ForEach-Object { $_.FullName.Split('/')[0] } | Sort-Object -Unique)
         if ($entries.Count -eq 0 -or $roots.Count -ne 1 -or $roots[0] -cne $packageName -or
             @($entries | Where-Object { -not $_.FullName.StartsWith($packageName + '/', [StringComparison]::Ordinal) }).Count -ne 0) {
-            throw 'The ZIP must contain files under one MinePack-Installer-1.6-win-x64 root folder.'
+            throw "The ZIP must contain files under one $packageName root folder."
         }
     }
     finally { $zipRead.Dispose() }

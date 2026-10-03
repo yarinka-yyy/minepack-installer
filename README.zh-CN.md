@@ -4,7 +4,7 @@
 
 MinePack 帮你为 **Minecraft: Java Edition**安装精选模组，无须逐个手动配置。它会下载并校验所选文件，把游戏内容放在独立的 MinePack 文件夹中。
 
-MinePack 适用于 Windows，安装的是 Minecraft: Java Edition 26.2 整合包。游玩需要受支持的启动器，以及拥有 Java Edition 使用权的账号。已发布的安装程序 1.5.0 支持官方 Minecraft Launcher；本地版本 1.6.0 也支持 Prism Launcher。
+MinePack 适用于 Windows，安装的是 Minecraft: Java Edition 26.2 整合包。游玩需要受支持的启动器，以及拥有 Java Edition 使用权的账号。已发布的安装程序 1.5.0 支持官方 Minecraft Launcher；本地版本 1.6.1 也支持 Prism Launcher。
 
 ## 选择整合包
 
@@ -12,17 +12,17 @@ MinePack 适用于 Windows，安装的是 Minecraft: Java Edition 26.2 整合包
 
 **Frontier** 包含 Vanilla Plus 的全部内容，总计 65 个模组、12 个资源包和 1 个光影包。五个建筑模组带来窗户、栅栏与围墙、桥梁、门和更多楼梯样式。在尚未探索的区域，你还能发现改进的村庄、遗迹、高塔、下界建筑、掠夺者营地，以及由 YUNG's 模组重新设计的地牢、神庙、矿井、要塞和下界堡垒；仅 MVS 就宣称拥有[超过 130 种建筑结构](https://modrinth.com/mod/moogs-voyager-structures)。村庄里会出现持剑或弩的守卫。蜘蛛可以攀爬墙壁和天花板，世界选择界面也会显示每个世界的游玩时长。MinePack 非官方移植的 xali's Enhanced Vanilla 默认启用，并配有 Continuity 和 CIT Resewn Continuation；ZIP 内注明作者 xalixilax 和 CC BY-NC 4.0 许可。Tree Harvester 及其依赖 Collective 已锁定版本；Remodeled Doors 3D 和内置的门模型兼容资源包按高于 xali's 的优先级启用。
 
-公开版 MinePack Installer 1.5.0 包含 Vanilla Plus 0.18.1 和 Frontier 0.19.6。本地 Installer 1.6.0 使用 Frontier 0.19.7。Low On Fire 已从两种整合包中移除。
+公开版 MinePack Installer 1.5.0 包含 Vanilla Plus 0.18.1 和 Frontier 0.19.6。本地 Installer 1.6.1 使用 Frontier 0.19.7。Low On Fire 已从两种整合包中移除。
 
-Frontier 0.19.7 更新了 xali 资源包和 YUNG's Better Desert Temples。它包含在本地 1.6.0 安装程序中；游戏内资源和进度检查尚未完成。
+Frontier 0.19.7 更新了 xali 资源包和 YUNG's Better Desert Temples。它包含在本地 1.6.1 安装程序中；游戏内资源和进度检查尚未完成。
 
 ## 离线文档与源代码
 
-本地 1.6.0 安装包包含安装程序的 [0BSD 许可证](LICENSE)、[Vanilla Plus 历史档案](releases/test-pack/README.md)、[Frontier 版本说明](releases/vanilla-2-plus/README.md)以及[第三方源代码和构建说明](third-party/README.md)。对应的 YUNG's 源代码位于 `third-party/yungs-sources/`，其中包含七个分支的八个版本化快照、精确的二进制映射、构建文件和许可证。1.6.0 仅为本地版本，没有创建 GitHub Release。
+本地 1.6.1 安装包包含安装程序的 [0BSD 许可证](LICENSE)、[Vanilla Plus 历史档案](releases/test-pack/README.md)、[Frontier 版本说明](releases/vanilla-2-plus/README.md)以及[第三方源代码和构建说明](third-party/README.md)。对应的 YUNG's 源代码位于 `third-party/yungs-sources/`，其中包含七个分支的八个版本化快照、精确的二进制映射、构建文件和许可证。1.6.1 基于 `main` 构建，只支持 Vanilla Plus 和 Frontier；不再支持实验性的 Test 整合包。1.6.1 没有 GitHub Release。
 
 ## 安装
 
-**发行状态：**下方的已发布 Installer 1.5.0 ZIP 支持官方 Minecraft Launcher。本地 Installer 1.6.0 支持官方 Launcher 和 Prism Launcher；没有为 1.6.0 创建 GitHub Release。
+**发行状态：**下方的已发布 Installer 1.5.0 ZIP 支持官方 Minecraft Launcher。本地 Installer 1.6.1 支持官方 Launcher 和 Prism Launcher；没有为 1.6.1 创建 GitHub Release。
 
 1. 下载 [MinePack-Installer-1.5.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.5.0/MinePack-Installer-1.5.0-win-x64.zip)，并将整个 ZIP 解压到一个文件夹中。请将解压后的文件放在一起。
 2. 运行 `MinePack.Installer.exe`，选择 **Vanilla Plus** 或 **Frontier**，然后点击**安装整合包**。MinePack 会准备所选整合包并更新它在 Launcher 中的配置。安装时，它可能会关闭正在运行的官方 Launcher；完成后会尝试重新打开。
@@ -30,9 +30,9 @@ Frontier 0.19.7 更新了 xali 资源包和 YUNG's Better Desert Temples。它�
 
 EXE 目前尚未进行数字签名，因此 Windows 可能显示 SmartScreen 警告。请只从上述版本页面下载 ZIP。
 
-本地版本 1.6.0 会自动选择唯一检测到的 Launcher。如果同时安装了官方 Launcher 和 Prism Launcher，安装程序会询问使用哪一个。Prism 会创建独立的 **MinePack for 26.2** instance；官方 Launcher 配置也使用相同名称，所有界面语言均保留此拼写。
+安装位置选项位于**安装整合包**按钮正下方。本地版本 1.6.1 会自动选择唯一检测到的 Launcher。如果同时安装了官方 Launcher 和 Prism Launcher，安装程序会询问使用哪一个。确认 Launcher 和安装目录后才会显示进度；点击面板外部或按 Escape 只会隐藏面板，不会取消操作，点击**显示进度**可重新打开。完整安装成功后会显示**整合包已安装**及启动说明；完成结果也可以点击面板外部或按 Escape 关闭。Prism 会创建独立的 **MinePack for 26.2** instance；官方 Launcher 配置也使用相同名称，所有界面语言均保留此拼写。
 
-新 instance 默认关闭 VSync；Repair 和重新安装会保留已有的 `options.txt`。如果 Prism 是便携版或尚未注册，请使用 **定位 Prism Launcher** 指定 EXE 或数据目录，或重新扫描。安装程序不会遍历磁盘。
+新 instance 默认关闭 VSync；Repair 和重新安装会保留已有的 `options.txt`。如果 Prism 是便携版或尚未注册，请使用**选择 Prism Launcher**选择 EXE 或数据目录，或点击**重新搜索启动器**。安装程序不会遍历磁盘。
 
 ## 游戏文件夹与世界
 

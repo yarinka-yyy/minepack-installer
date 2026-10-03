@@ -4,7 +4,7 @@ English · [Русский](README.ru.md) · [简体中文](README.zh-CN.md)
 
 MinePack helps you install a curated collection of mods for **Minecraft: Java Edition** without setting up each mod by hand. It downloads the selected files, checks them, and puts the game in a separate MinePack folder.
 
-MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. To play, you need a supported launcher and an account with access to Java Edition. The published 1.5.0 installer supports the official Minecraft Launcher; local version 1.6.0 also supports Prism Launcher.
+MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. To play, you need a supported launcher and an account with access to Java Edition. The published 1.5.0 installer supports the official Minecraft Launcher; local version 1.6.1 also supports Prism Launcher.
 
 ## Choose a pack
 
@@ -12,17 +12,17 @@ MinePack works on Windows and installs packs for Minecraft: Java Edition 26.2. T
 
 **Frontier** includes everything in Vanilla Plus: 65 mods, 12 resource packs, and 1 shader in total. Five building mods add windows, fences and walls, bridges, doors, and more stair designs. In unexplored areas you can find improved villages, ruins, towers, Nether buildings, pillager camps, and YUNG's redesigned dungeons, temples, mineshafts, strongholds, and Nether fortresses; MVS alone advertises [over 130 structure designs](https://modrinth.com/mod/moogs-voyager-structures). Villages gain sword- and crossbow-wielding guards. Spiders can climb walls and ceilings, and the world selection screen shows how long you have played each world. The unofficial MinePack port of xali's Enhanced Vanilla is enabled by default with Continuity and CIT Resewn Continuation; its ZIP credits xalixilax and is licensed CC BY-NC 4.0. Tree Harvester and its Collective dependency are pinned; Remodeled Doors 3D is enabled above xali's with an embedded blockstate compatibility pack.
 
-The public MinePack Installer 1.5.0 includes Vanilla Plus 0.18.1 and Frontier 0.19.6. The local Installer 1.6.0 uses Frontier 0.19.7. Low On Fire has been removed from both packs.
+The public MinePack Installer 1.5.0 includes Vanilla Plus 0.18.1 and Frontier 0.19.6. The local Installer 1.6.1 uses Frontier 0.19.7. Low On Fire has been removed from both packs.
 
-Frontier 0.19.7 updates xali's resource pack and YUNG's Better Desert Temples. It is included in the local 1.6.0 package, while in-game resource and advancement checks remain pending.
+Frontier 0.19.7 updates xali's resource pack and YUNG's Better Desert Temples. It is included in the local 1.6.1 package, while in-game resource and advancement checks remain pending.
 
 ## Offline documents and sources
 
-The local 1.6.0 package includes the installer [0BSD license](LICENSE), the [Vanilla Plus archive history](releases/test-pack/README.md), [Frontier release notes](releases/vanilla-2-plus/README.md), and the [third-party source/build notes](third-party/README.md). The corresponding YUNG's source kit is at `third-party/yungs-sources/`; it contains eight versioned source snapshots for seven forks, exact artifact mappings, build files, and licenses. Version 1.6.0 is a local package and has no GitHub Release.
+The local 1.6.1 package includes the installer [0BSD license](LICENSE), the [Vanilla Plus archive history](releases/test-pack/README.md), [Frontier release notes](releases/vanilla-2-plus/README.md), and the [third-party source/build notes](third-party/README.md). The corresponding YUNG's source kit is at `third-party/yungs-sources/`; it contains eight versioned source snapshots for seven forks, exact artifact mappings, build files, and licenses. Version 1.6.1 is built from `main`, supports Vanilla Plus and Frontier only, and has no GitHub Release; the experimental Test pack is no longer supported.
 
 ## Install
 
-**Release status:** the published Installer 1.5.0 ZIP below supports the official Minecraft Launcher. The local Installer 1.6.0 package supports both the official launcher and Prism Launcher; no GitHub Release has been created for 1.6.0.
+**Release status:** the published Installer 1.5.0 ZIP below supports the official Minecraft Launcher. The local Installer 1.6.1 package supports both the official launcher and Prism Launcher; no GitHub Release has been created for 1.6.1.
 
 1. Download [MinePack-Installer-1.5.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.5.0/MinePack-Installer-1.5.0-win-x64.zip) and extract the entire ZIP into a folder. Keep the extracted files together.
 2. Run `MinePack.Installer.exe`, choose **Vanilla Plus** or **Frontier**, then click **Install pack**. MinePack prepares the selected pack and updates its Launcher profile. It may close a running official Launcher during setup, then tries to open it when installation is complete.
@@ -30,9 +30,9 @@ The local 1.6.0 package includes the installer [0BSD license](LICENSE), the [Van
 
 The EXE is not digitally signed yet, so Windows may show a SmartScreen warning. Download the ZIP only from the release page linked above.
 
-In the local 1.6.0 build, MinePack automatically uses the only supported launcher it finds. If both launchers are installed, the installer asks which one to use. Prism receives its own instance named **MinePack for 26.2**; the official Launcher profile uses the same name. The choice screen keeps this spelling in every interface language.
+The install-location control sits directly below **Install pack**. In the local 1.6.1 build, MinePack automatically uses the only supported launcher it finds. If both launchers are installed, the installer asks which one to use. Progress appears after the launcher and destination are accepted. Clicking outside the panel or pressing Escape hides it without cancelling the operation; **Show progress** opens it again. On full success, **Pack installed** appears with launch instructions, and the result can also be dismissed outside or with Escape. Prism receives its own instance named **MinePack for 26.2**; the official Launcher profile uses the same name. The choice screen keeps this spelling in every interface language.
 
-New instances start with VSync disabled; Repair and reinstall preserve an existing `options.txt`. For portable or unregistered Prism installations, use **Locate** to select the launcher executable or data directory, or rescan. Discovery does not scan drives.
+New instances start with VSync disabled; Repair and reinstall preserve an existing `options.txt`. For portable or unregistered Prism installations, use **Browse for Prism Launcher** to select the executable or data directory, or **Search for launchers again**. Discovery does not scan drives.
 
 ## Game folders and worlds
 
