@@ -2,12 +2,18 @@ using System.Diagnostics;
 using System.ComponentModel;
 using System.IO;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Navigation;
 using System.Windows.Threading;
 using MinePack.Core;
 using Microsoft.Win32;
+
+[assembly: InternalsVisibleTo("MinePack.UiSmoke")]
 
 namespace MinePack.Installer;
 
@@ -17,6 +23,7 @@ public partial class MainWindow : Window
     private readonly MinecraftLauncherController _launcherController;
     private readonly PrismLauncherController _prismLauncherController;
     private readonly FabricLauncherService _launcher;
+    private readonly string _preferencesPath;
     private CancellationTokenSource? _operationCancellation;
     private IInputElement? _uninstallReturnFocus;
     private bool _operationCanBeCancelled = true;
@@ -42,14 +49,22 @@ public partial class MainWindow : Window
     private IReadOnlyList<LauncherTargetChoice> _launcherTargetChoices = [];
     private TaskCompletionSource<LauncherInstallSelection?>? _launcherChoiceCompletion;
     private IInputElement? _launcherChoiceReturnFocus;
+    private int _launcherChoiceGeneration;
+    private int _uninstallConfirmationGeneration;
 
-    public MainWindow()
+    public MainWindow() : this(null)
+    {
+    }
+
+    internal MainWindow(string? fixtureRoot)
     {
         InitializeComponent();
+        _preferencesPath = fixtureRoot is null
+            ? InstallerPreferences.DefaultPath
+            : Path.Combine(fixtureRoot, "installer-preferences.json");
         _launcherController = new MinecraftLauncherController();
         _prismLauncherController = new PrismLauncherController();
         _launcher = new FabricLauncherService(ensureLauncherClosed: _launcherController.EnsureClosed);
-        Loaded += MainWindow_Loaded;
         VanillaPlusOption.Checked += PackChoice_Changed;
         Vanilla2PlusOption.Checked += PackChoice_Changed;
         var assembly = typeof(MainWindow).Assembly;
@@ -58,7 +73,15 @@ public partial class MainWindow : Window
             ?? "0.0.0";
         InstallerVersionText.Text = LocalizedText.Get("UiInstallerVersion", _installerVersion);
         UpdatePackSelection();
-        var preferences = InstallerPreferences.Load(InstallerPreferences.DefaultPath);
+        if (fixtureRoot is not null)
+        {
+            InstallRootBox.Text = fixtureRoot;
+            RootAvailabilityText.Text = LocalizedText.Get("UiRootNeedsValidation");
+            return;
+        }
+
+        Loaded += MainWindow_Loaded;
+        var preferences = InstallerPreferences.Load(_preferencesPath);
         _savedPrismHints = preferences.PrismTargetHints;
         InstallRootBox.Text = preferences.LastValidatedRoot ?? InstallService.DefaultInstallRoot;
         if (preferences.LastValidatedRoot is not null && !Directory.Exists(preferences.LastValidatedRoot))
@@ -165,7 +188,9 @@ public partial class MainWindow : Window
         LauncherKind? preferredKind, string status)
     {
         _launcherChoiceReturnFocus = Keyboard.FocusedElement;
-        _launcherChoiceCompletion = new TaskCompletionSource<LauncherInstallSelection?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<LauncherInstallSelection?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var generation = ++_launcherChoiceGeneration;
+        _launcherChoiceCompletion = completion;
         LauncherChoiceStatus.Text = status;
         _settingLauncherChoices = true;
         OfficialLauncherChoice.IsEnabled = !inventory.OfficialUnknown && inventory.OfficialTargets.Count > 0;
@@ -175,21 +200,55 @@ public partial class MainWindow : Window
         PrismLauncherChoice.IsChecked = preferredKind == LauncherKind.Prism;
         _settingLauncherChoices = false;
         UpdateLauncherTargetChoices();
+        MainContentScrollViewer.IsEnabled = false;
         LauncherChoiceOverlay.Visibility = Visibility.Visible;
         _ = Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
         {
+            if (!IsCurrentLauncherChoiceSession(completion, generation)) return;
             if (OfficialLauncherChoice.IsEnabled && preferredKind != LauncherKind.Prism) OfficialLauncherChoice.Focus();
             else if (PrismLauncherChoice.IsEnabled) PrismLauncherChoice.Focus();
             else LocatePrismButton.Focus();
         }));
-        var result = await _launcherChoiceCompletion.Task;
-        LauncherChoiceOverlay.Visibility = Visibility.Collapsed;
-        _launcherChoiceCompletion = null;
-        var returnFocus = _launcherChoiceReturnFocus;
-        _launcherChoiceReturnFocus = null;
-        if (returnFocus is not null) Keyboard.Focus(returnFocus);
+        LauncherInstallSelection? result;
+        try
+        {
+            result = await completion.Task;
+        }
+        finally
+        {
+            if (IsSameLauncherChoiceSession(completion, generation))
+            {
+                LauncherChoiceOverlay.Visibility = Visibility.Collapsed;
+                _launcherChoiceCompletion = null;
+                MainContentScrollViewer.IsEnabled = true;
+                var returnFocus = _launcherChoiceReturnFocus;
+                _launcherChoiceReturnFocus = null;
+                if (returnFocus is not null) Keyboard.Focus(returnFocus);
+            }
+        }
         if (result?.Kind == LauncherKind.Prism) SavePrismTargetHints();
         return result;
+    }
+
+    private bool IsSameLauncherChoiceSession(TaskCompletionSource<LauncherInstallSelection?> completion,
+        int generation) => generation == _launcherChoiceGeneration &&
+                           ReferenceEquals(completion, _launcherChoiceCompletion) &&
+                           LauncherChoiceOverlay.Visibility == Visibility.Visible;
+
+    private bool IsCurrentLauncherChoiceSession(TaskCompletionSource<LauncherInstallSelection?> completion,
+        int generation) => IsSameLauncherChoiceSession(completion, generation) && !completion.Task.IsCompleted;
+
+    private LauncherChoiceSession? CaptureLauncherChoiceSession() =>
+        _launcherChoiceCompletion is { } completion && IsCurrentLauncherChoiceSession(completion, _launcherChoiceGeneration)
+            ? new LauncherChoiceSession(completion, _launcherChoiceGeneration)
+            : null;
+
+    internal LauncherChoiceSession? CaptureLauncherChoiceSessionForUiSmoke() => CaptureLauncherChoiceSession();
+
+    internal Task<LauncherInstallSelection?> ShowLauncherChoiceForUiSmokeAsync(LauncherInventory inventory)
+    {
+        ApplyLauncherInventory(inventory);
+        return ShowLauncherChoiceAsync(inventory, null, string.Empty);
     }
 
     private void UpdateLauncherTargetChoices()
@@ -236,12 +295,20 @@ public partial class MainWindow : Window
 
     private void LauncherChoiceContinue_Click(object sender, RoutedEventArgs e)
     {
-        if (LauncherTargetComboBox.SelectedItem is not LauncherTargetChoice choice) return;
+        if (_launcherChoiceCompletion is not { } completion || completion.Task.IsCompleted ||
+            LauncherTargetComboBox.SelectedItem is not LauncherTargetChoice choice) return;
         _launcherChoiceCompletion?.TrySetResult(choice.ToSelection());
     }
 
     private void LauncherChoiceCancel_Click(object sender, RoutedEventArgs e) =>
         _launcherChoiceCompletion?.TrySetResult(null);
+
+    private void LauncherChoiceOverlay_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || IsWithinCard(e.OriginalSource as DependencyObject, LauncherChoiceCard)) return;
+        _launcherChoiceCompletion?.TrySetResult(null);
+        e.Handled = true;
+    }
 
     private void LauncherChoiceOverlay_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -259,14 +326,25 @@ public partial class MainWindow : Window
 
     private async void RescanLauncherButton_Click(object sender, RoutedEventArgs e)
     {
+        var session = CaptureLauncherChoiceSession();
+        if (session is null) return;
+        await RescanLauncherChoicesAsync(session, ScanLaunchersAsync());
+    }
+
+    private async Task<bool> RescanLauncherChoicesAsync(LauncherChoiceSession session, Task<LauncherInventory> scan)
+    {
+        var completion = session.Completion;
+        var generation = session.Generation;
+        if (!IsCurrentLauncherChoiceSession(completion, generation)) return false;
         LauncherChoiceStatus.Text = LocalizedText.Get("UiLauncherChoiceUnknown");
-        var inventory = await ScanLaunchersAsync();
+        var preferred = OfficialLauncherChoice.IsChecked == true ? LauncherKind.Official :
+            PrismLauncherChoice.IsChecked == true ? LauncherKind.Prism : (LauncherKind?)null;
+        var inventory = await scan;
+        if (!IsCurrentLauncherChoiceSession(completion, generation)) return false;
         ApplyLauncherInventory(inventory);
         var status = inventory.PrismScan.State == LauncherDiscoveryState.Unknown || inventory.OfficialUnknown
             ? LocalizedText.Get("UiLauncherChoiceUnknown") + Environment.NewLine +
               (inventory.PrismScan.DiagnosticCode ?? "OFFICIAL_DISCOVERY_UNKNOWN") : string.Empty;
-        var preferred = OfficialLauncherChoice.IsChecked == true ? LauncherKind.Official :
-            PrismLauncherChoice.IsChecked == true ? LauncherKind.Prism : (LauncherKind?)null;
         _settingLauncherChoices = true;
         OfficialLauncherChoice.IsChecked = false;
         PrismLauncherChoice.IsChecked = false;
@@ -278,10 +356,19 @@ public partial class MainWindow : Window
         if (preferred == LauncherKind.Official && OfficialLauncherChoice.IsEnabled) OfficialLauncherChoice.IsChecked = true;
         else if (preferred == LauncherKind.Prism && PrismLauncherChoice.IsEnabled) PrismLauncherChoice.IsChecked = true;
         UpdateLauncherTargetChoices();
+        return true;
+    }
+
+    internal Task<bool> RescanLauncherChoicesForUiSmokeAsync(Task<LauncherInventory> scan)
+    {
+        var session = CaptureLauncherChoiceSession();
+        return session is null ? Task.FromResult(false) : RescanLauncherChoicesAsync(session, scan);
     }
 
     private async void LocatePrismButton_Click(object sender, RoutedEventArgs e)
     {
+        var session = CaptureLauncherChoiceSession();
+        if (session is null) return;
         var executablePicker = new OpenFileDialog
         {
             Title = LocalizedText.Get("UiLauncherLocatePrism"),
@@ -290,13 +377,23 @@ public partial class MainWindow : Window
             Multiselect = false
         };
         if (executablePicker.ShowDialog(this) != true) return;
+        if (!IsCurrentLauncherChoiceSession(session.Completion, session.Generation)) return;
         var result = await Task.Run(() => LauncherDiscovery.LocatePrismExecutable(executablePicker.FileName));
+        if (!IsCurrentLauncherChoiceSession(session.Completion, session.Generation)) return;
         if (result.State != LauncherDiscoveryState.Found && result.DiagnosticCode is "PRISM_CONFIG_UNKNOWN" or "PRISM_DATA_ROOT_UNKNOWN")
         {
             var folderPicker = new OpenFolderDialog { Title = LocalizedText.Get("PrismConfigurationUnknown") };
             if (folderPicker.ShowDialog(this) != true) return;
+            if (!IsCurrentLauncherChoiceSession(session.Completion, session.Generation)) return;
             result = await Task.Run(() => LauncherDiscovery.LocatePrismExecutable(executablePicker.FileName, folderPicker.FolderName));
         }
+        ApplyLocatedPrismResult(result, session.Completion, session.Generation);
+    }
+
+    private bool ApplyLocatedPrismResult(LauncherScanResult result,
+        TaskCompletionSource<LauncherInstallSelection?> completion, int generation)
+    {
+        if (!IsCurrentLauncherChoiceSession(completion, generation)) return false;
         _prismScan = result;
         _prismTargets = result.PrismTargets;
         var status = result.State == LauncherDiscoveryState.Found && !_officialDiscoveryUnknown
@@ -312,15 +409,19 @@ public partial class MainWindow : Window
             _settingLauncherChoices = false;
         }
         UpdateLauncherTargetChoices();
+        return true;
     }
+
+    internal bool ApplyLocatedPrismResultForUiSmoke(LauncherChoiceSession session, LauncherScanResult result) =>
+        ApplyLocatedPrismResult(result, session.Completion, session.Generation);
 
     private void SavePrismTargetHints()
     {
         try
         {
             var root = InstallService.ValidateInstallRoot(InstallRootBox.Text);
-            InstallerPreferences.SaveLastValidatedRoot(InstallerPreferences.DefaultPath, root, _prismTargets);
-            _savedPrismHints = InstallerPreferences.Load(InstallerPreferences.DefaultPath).PrismTargetHints;
+            InstallerPreferences.SaveLastValidatedRoot(_preferencesPath, root, _prismTargets);
+            _savedPrismHints = InstallerPreferences.Load(_preferencesPath).PrismTargetHints;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InstallerException)
         {
@@ -389,6 +490,7 @@ public partial class MainWindow : Window
             _deleteSelectedEntry = null;
             _pendingDeleteEntry = null;
             _pendingCleanupRequest = null;
+            _pendingDeleteAction = PendingDeleteAction.None;
             _cleanupCheckGeneration++;
             DeleteInstanceListBox.ItemsSource = _instanceChoices;
             DeleteInstanceListBox.SelectedIndex = -1;
@@ -402,21 +504,73 @@ public partial class MainWindow : Window
         {
             _deleteSelectedEntry = null;
             _pendingDeleteEntry = null;
+            _pendingCleanupRequest = null;
+            _pendingDeleteAction = PendingDeleteAction.None;
+            _cleanupCheckGeneration++;
             DeleteInstanceListBox.ItemsSource = null;
             DeleteManagedFilesButton.IsEnabled = false;
             DeleteRemainingDataButton.IsEnabled = false;
             DeleteInstanceDetails.Text = LocalizedText.Get("UiNoInstancesToDelete") + Environment.NewLine + ex.Message;
         }
-        MainContentScrollViewer.IsEnabled = false;
-        DeleteInstanceOverlay.Visibility = Visibility.Visible;
-        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => DeleteInstanceListBox.Focus()));
+        DisplayDeleteInstanceOverlay();
     }
+
+    private void DisplayDeleteInstanceOverlay()
+    {
+        MainContentScrollViewer.IsEnabled = false;
+        DeleteInstanceOverlay.IsEnabled = true;
+        DeleteInstanceOverlay.Visibility = Visibility.Visible;
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (DeleteInstanceOverlay.Visibility == Visibility.Visible && DeleteInstanceOverlay.IsEnabled)
+                DeleteInstanceListBox.Focus();
+        }));
+    }
+
+    internal void ShowDeleteOverlayForUiSmoke(InstalledInstanceEntry entry)
+    {
+        _instanceChoices = [new InstanceChoice(entry, entry.DirectoryName)];
+        DeleteInstanceListBox.ItemsSource = _instanceChoices;
+        DeleteInstanceListBox.SelectedIndex = -1;
+        _deleteSelectedEntry = entry;
+        DeleteManagedFilesButton.IsEnabled = entry is { IsTrusted: true, Release: not null };
+        DeleteRemainingDataButton.IsEnabled = false;
+        DisplayDeleteInstanceOverlay();
+    }
+
+    internal int BeginCleanupPreparationForUiSmoke(InstalledInstanceEntry entry)
+    {
+        _deleteSelectedEntry = entry;
+        return ++_cleanupCheckGeneration;
+    }
+
+    internal bool ApplyCleanupFailureForUiSmoke(InstalledInstanceEntry entry, int generation, string message) =>
+        ApplyCleanupPreparationFailure(entry, generation, message);
+
+    internal void ShowResidueConfirmationForUiSmoke(InstalledInstanceEntry entry)
+    {
+        _deleteSelectedEntry = entry;
+        _pendingDeleteEntry = entry;
+        _pendingDeleteAction = PendingDeleteAction.RemoveResidue;
+        _pendingCleanupRequest = null;
+        ShowUninstallConfirmation();
+    }
+
+    internal bool HasPendingDeleteActionForUiSmoke => _pendingDeleteAction != PendingDeleteAction.None;
 
     private void DeleteInstanceOverlay_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key != Key.Escape || UninstallConfirmOverlay.Visibility == Visibility.Visible) return;
         e.Handled = true;
         CloseDeleteInstanceOverlay();
+    }
+
+    private void DeleteInstanceOverlay_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || UninstallConfirmOverlay.Visibility == Visibility.Visible ||
+            IsWithinCard(e.OriginalSource as DependencyObject, DeleteInstanceCard)) return;
+        CloseDeleteInstanceOverlay();
+        e.Handled = true;
     }
 
     private void DeleteOverlayCancel_Click(object sender, RoutedEventArgs e) => CloseDeleteInstanceOverlay();
@@ -429,9 +583,30 @@ public partial class MainWindow : Window
         _deleteSelectedEntry = null;
         _pendingDeleteEntry = null;
         _pendingCleanupRequest = null;
+        _pendingDeleteAction = PendingDeleteAction.None;
         _cleanupCheckGeneration++;
         DeleteInstanceListBox.SelectedIndex = -1;
         Keyboard.Focus(UninstallButton);
+    }
+
+    private bool IsCurrentDeleteSelection(InstalledInstanceEntry selected, int generation) =>
+        generation == _cleanupCheckGeneration && DeleteInstanceOverlay.Visibility == Visibility.Visible &&
+        ReferenceEquals(selected, _deleteSelectedEntry);
+
+    private bool ApplyCleanupPreparationFailure(InstalledInstanceEntry selected, int generation, string message)
+    {
+        if (!IsCurrentDeleteSelection(selected, generation) || UninstallConfirmOverlay.Visibility == Visibility.Visible)
+            return false;
+        StatusBox.Text = message;
+        DeleteRemainingDataButton.IsEnabled = false;
+        var targetPath = selected.Layout?.IsPrism == true ? selected.Layout.InstanceDirectory : selected.Path;
+        var displayRelease = GetDisplayRelease(selected);
+        var release = displayRelease is null ? LocalizedText.Get("UiUnknownInstance") :
+            $"{displayRelease.PackName} {displayRelease.PackVersion} ({displayRelease.MinecraftVersion})";
+        DeleteInstanceDetails.Text = LocalizedText.Get("UiDeleteEntryDetails", release,
+            LocalizedText.Get(selected.Layout?.IsPrism == true ? "UiLauncherOptionPrism" : "UiLauncherOptionOfficial"),
+            LocalizedText.Get("UiInstanceResidue"), targetPath, message);
+        return true;
     }
 
     private async void DeleteInstanceListBox_SelectionChanged(object sender,
@@ -469,7 +644,7 @@ public partial class MainWindow : Window
         {
             var request = await Task.Run(() => InstanceRemovalService.PrepareCleanup(selected,
                 GetEntryRoot(selected), AppContext.BaseDirectory, _launcher.LauncherRoot));
-            if (generation != _cleanupCheckGeneration || !ReferenceEquals(selected, _deleteSelectedEntry)) return;
+            if (!IsCurrentDeleteSelection(selected, generation)) return;
             DeleteRemainingDataButton.IsEnabled = true;
             DeleteInstanceDetails.Text = LocalizedText.Get("UiDeleteEntryDetails", release, launcher, state,
                 targetPath, LocalizedText.Get("UiDeleteCleanupEligible"));
@@ -478,7 +653,7 @@ public partial class MainWindow : Window
                                        ArgumentException or NotSupportedException or System.Text.Json.JsonException or
                                        FormatException or InvalidOperationException or KeyNotFoundException)
         {
-            if (generation != _cleanupCheckGeneration || !ReferenceEquals(selected, _deleteSelectedEntry)) return;
+            if (!IsCurrentDeleteSelection(selected, generation)) return;
             DeleteInstanceDetails.Text = LocalizedText.Get("UiDeleteEntryDetails", release, launcher, state,
                 targetPath, ex.Message);
         }
@@ -503,6 +678,7 @@ public partial class MainWindow : Window
     {
         var selected = _deleteSelectedEntry;
         if (selected is null) return;
+        var generation = ++_cleanupCheckGeneration;
         DeleteRemainingDataButton.IsEnabled = false;
         StatusBox.Text = LocalizedText.Get("UiDeleteCleanupChecking");
         InstanceCleanupRequest request;
@@ -515,18 +691,10 @@ public partial class MainWindow : Window
                                        ArgumentException or NotSupportedException or System.Text.Json.JsonException or
                                        FormatException or InvalidOperationException or KeyNotFoundException)
         {
-            StatusBox.Text = ex.Message;
-            DeleteRemainingDataButton.IsEnabled = false;
-            var failedTargetPath = selected.Layout?.IsPrism == true ? selected.Layout.InstanceDirectory : selected.Path;
-            var failedDisplayRelease = GetDisplayRelease(selected);
-            var failedRelease = failedDisplayRelease is null ? LocalizedText.Get("UiUnknownInstance") :
-                $"{failedDisplayRelease.PackName} {failedDisplayRelease.PackVersion} ({failedDisplayRelease.MinecraftVersion})";
-            DeleteInstanceDetails.Text = LocalizedText.Get("UiDeleteEntryDetails", failedRelease,
-                LocalizedText.Get(selected.Layout?.IsPrism == true ? "UiLauncherOptionPrism" : "UiLauncherOptionOfficial"),
-                LocalizedText.Get("UiInstanceResidue"), failedTargetPath, ex.Message);
+            ApplyCleanupPreparationFailure(selected, generation, ex.Message);
             return;
         }
-        if (!ReferenceEquals(selected, _deleteSelectedEntry)) return;
+        if (!IsCurrentDeleteSelection(selected, generation)) return;
         _pendingDeleteEntry = selected;
         _pendingCleanupRequest = request;
         _pendingDeleteAction = PendingDeleteAction.RemoveResidue;
@@ -543,11 +711,19 @@ public partial class MainWindow : Window
 
     private void ShowUninstallConfirmation()
     {
-        _uninstallReturnFocus = DeleteManagedFilesButton;
+        var generation = ++_uninstallConfirmationGeneration;
+        _uninstallReturnFocus = _pendingDeleteAction == PendingDeleteAction.RemoveResidue
+            ? DeleteRemainingDataButton.IsEnabled ? DeleteRemainingDataButton : DeleteInstanceListBox
+            : DeleteManagedFilesButton.IsEnabled ? DeleteManagedFilesButton : DeleteInstanceListBox;
         DeleteInstanceOverlay.IsEnabled = false;
         MainContentScrollViewer.IsEnabled = false;
         UninstallConfirmOverlay.Visibility = Visibility.Visible;
-        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() => UninstallCancelButton.Focus()));
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (generation == _uninstallConfirmationGeneration &&
+                UninstallConfirmOverlay.Visibility == Visibility.Visible)
+                UninstallCancelButton.Focus();
+        }));
     }
 
     private static string FormatCleanupCategories(IReadOnlyList<string> categories) => categories.Count == 0
@@ -559,6 +735,13 @@ public partial class MainWindow : Window
         if (e.Key != Key.Escape) return;
         e.Handled = true;
         CloseUninstallConfirmation();
+    }
+
+    private void UninstallConfirmOverlay_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || IsWithinCard(e.OriginalSource as DependencyObject, UninstallConfirmCard)) return;
+        CloseUninstallConfirmation();
+        e.Handled = true;
     }
 
     private void UninstallCancel_Click(object sender, RoutedEventArgs e) => CloseUninstallConfirmation();
@@ -582,21 +765,46 @@ public partial class MainWindow : Window
 
     private void CloseUninstallConfirmation()
     {
+        _uninstallConfirmationGeneration++;
         UninstallConfirmOverlay.Visibility = Visibility.Collapsed;
         _pendingCleanupRequest = null;
         _pendingDeleteEntry = null;
         _pendingDeleteAction = PendingDeleteAction.None;
         DeleteInstanceOverlay.IsEnabled = true;
-        MainContentScrollViewer.IsEnabled = true;
+        var deleteOverlayVisible = DeleteInstanceOverlay.Visibility == Visibility.Visible;
+        MainContentScrollViewer.IsEnabled = !deleteOverlayVisible;
         var returnFocus = _uninstallReturnFocus ?? UninstallButton;
         _uninstallReturnFocus = null;
-        if (DeleteInstanceOverlay.Visibility == Visibility.Visible)
-            Keyboard.Focus(returnFocus);
-        else
+        Keyboard.Focus(returnFocus);
+    }
+
+    private static bool IsWithinCard(DependencyObject? source, DependencyObject card)
+    {
+        if (source is null) return false;
+        var pending = new Stack<DependencyObject>();
+        var visited = new HashSet<DependencyObject>(ReferenceEqualityComparer.Instance);
+        pending.Push(source);
+        while (pending.TryPop(out var current))
         {
-            MainContentScrollViewer.IsEnabled = true;
-            Keyboard.Focus(returnFocus);
+            if (!visited.Add(current)) continue;
+            if (ReferenceEquals(current, card)) return true;
+            if (current is ComboBoxItem item && ItemsControl.ItemsControlFromItemContainer(item) is { } owner)
+                pending.Push(owner);
+            if (current is Popup popup && popup.PlacementTarget is { } placementTarget)
+                pending.Push(placementTarget);
+            if (current is ContentElement content)
+            {
+                if (ContentOperations.GetParent(content) is { } contentParent) pending.Push(contentParent);
+                if ((content as FrameworkContentElement)?.Parent is { } frameworkParent) pending.Push(frameworkParent);
+                continue;
+            }
+            DependencyObject? visualParent = null;
+            try { visualParent = VisualTreeHelper.GetParent(current); }
+            catch (InvalidOperationException) { }
+            if (visualParent is not null) pending.Push(visualParent);
+            if (LogicalTreeHelper.GetParent(current) is { } logicalParent) pending.Push(logicalParent);
         }
+        return false;
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)
@@ -639,7 +847,7 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    InstallerPreferences.SaveLastValidatedRoot(InstallerPreferences.DefaultPath, root,
+                    InstallerPreferences.SaveLastValidatedRoot(_preferencesPath, root,
                         _prismScan.State == LauncherDiscoveryState.Unknown ? null : _prismTargets,
                         _prismScan.State == LauncherDiscoveryState.Unknown ? _savedPrismHints : null);
                     _missingSavedRootPath = null;
@@ -1714,6 +1922,8 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _launcherChoiceCompletion?.TrySetResult(null);
+        _cleanupCheckGeneration++;
         _operationCancellation?.Cancel();
         _installer.Dispose();
         _launcher.Dispose();
@@ -1721,11 +1931,13 @@ public partial class MainWindow : Window
     }
 
     private sealed record InstanceChoice(InstalledInstanceEntry Entry, string Display);
-    private sealed record LauncherInventory(IReadOnlyList<MinecraftLauncherTarget> OfficialTargets,
+    internal sealed record LauncherInventory(IReadOnlyList<MinecraftLauncherTarget> OfficialTargets,
         LauncherScanResult PrismScan, bool OfficialUnknown,
         IReadOnlyList<InstalledInstanceEntry> PrismInstanceEntries, HashSet<string> ActivePrismInstancePaths);
-    private sealed record LauncherInstallSelection(LauncherKind Kind, MinecraftLauncherTarget? OfficialTarget,
+    internal sealed record LauncherInstallSelection(LauncherKind Kind, MinecraftLauncherTarget? OfficialTarget,
         PrismLauncherTarget? PrismTarget);
+    internal sealed record LauncherChoiceSession(TaskCompletionSource<LauncherInstallSelection?> Completion,
+        int Generation);
     private sealed record LauncherTargetChoice(LauncherKind Kind, string Display,
         MinecraftLauncherTarget? OfficialTarget, PrismLauncherTarget? PrismTarget)
     {

@@ -446,8 +446,9 @@
         <Grid x:Name="DeleteInstanceOverlay" Panel.ZIndex="100" Background="#B8000000"
               Visibility="Collapsed" Focusable="True" FocusManager.IsFocusScope="True"
               KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle"
-              PreviewKeyDown="DeleteInstanceOverlay_PreviewKeyDown">
-            <Border Style="{StaticResource WoodPanel}" HorizontalAlignment="Center" VerticalAlignment="Center"
+              PreviewKeyDown="DeleteInstanceOverlay_PreviewKeyDown"
+              PreviewMouseDown="DeleteInstanceOverlay_PreviewMouseDown">
+            <Border x:Name="DeleteInstanceCard" Style="{StaticResource WoodPanel}" HorizontalAlignment="Center" VerticalAlignment="Center"
                     Margin="22" Padding="18" MaxWidth="760" MaxHeight="560">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -527,8 +528,9 @@
         <Grid x:Name="UninstallConfirmOverlay" Panel.ZIndex="110" Background="#B8000000"
               Visibility="Collapsed" Focusable="True" FocusManager.IsFocusScope="True"
               KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle"
-              PreviewKeyDown="UninstallConfirmOverlay_PreviewKeyDown">
-            <Border Style="{StaticResource WoodPanel}" HorizontalAlignment="Center" VerticalAlignment="Center"
+              PreviewKeyDown="UninstallConfirmOverlay_PreviewKeyDown"
+              PreviewMouseDown="UninstallConfirmOverlay_PreviewMouseDown">
+            <Border x:Name="UninstallConfirmCard" Style="{StaticResource WoodPanel}" HorizontalAlignment="Center" VerticalAlignment="Center"
                     Margin="22" Padding="22" MaxWidth="570">
                 <StackPanel>
                     <TextBlock x:Name="UninstallConfirmTitle" Text="{loc:Localized Key=UiUninstallConfirmTitle}" FontSize="24"
@@ -550,8 +552,9 @@
         <Grid x:Name="LauncherChoiceOverlay" Panel.ZIndex="120" Background="#B8000000"
               Visibility="Collapsed" Focusable="True" FocusManager.IsFocusScope="True"
               KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle"
-              PreviewKeyDown="LauncherChoiceOverlay_PreviewKeyDown">
-            <Border Style="{StaticResource WoodPanel}" HorizontalAlignment="Center" VerticalAlignment="Center"
+              PreviewKeyDown="LauncherChoiceOverlay_PreviewKeyDown"
+              PreviewMouseDown="LauncherChoiceOverlay_PreviewMouseDown">
+            <Border x:Name="LauncherChoiceCard" Style="{StaticResource WoodPanel}" HorizontalAlignment="Center" VerticalAlignment="Center"
                     Margin="22" Padding="18" MaxWidth="650" MaxHeight="570">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel>
