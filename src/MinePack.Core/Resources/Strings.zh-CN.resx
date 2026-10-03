@@ -19,6 +19,8 @@
   <data name="UiInstallLocation" xml:space="preserve"><value>安装位置</value></data>
   <data name="UiBrowse" xml:space="preserve"><value>浏览…</value></data>
   <data name="UiInstall" xml:space="preserve"><value>安装整合包</value></data>
+  <data name="UiShowProgress" xml:space="preserve"><value>显示进度</value></data>
+  <data name="UiCloseProgress" xml:space="preserve"><value>关闭</value></data>
   <data name="UiCancel" xml:space="preserve"><value>取消</value></data>
   <data name="UiContinue" xml:space="preserve"><value>继续</value></data>
   <data name="UiReady" xml:space="preserve"><value>准备就绪，可以安装</value></data>
@@ -112,6 +114,8 @@
   <data name="WorldImportSummary" xml:space="preserve"><value>已复制存档：{0}。因名称已存在而跳过：{1}；缺少 session.lock：{2}；session.lock 已锁定或无法验证：{3}。</value></data>
   <data name="WorldImportSafety" xml:space="preserve"><value>源存档未更改。打开其他 Minecraft 版本的存档前请先备份：游戏可能会转换存档格式。</value></data>
   <data name="OperationComplete" xml:space="preserve"><value>操作完成</value></data>
+  <data name="UiOperationInstalledHeading" xml:space="preserve"><value>整合包已安装</value></data>
+  <data name="UiOperationInstallSuccess" xml:space="preserve"><value>{0} {1} 已安装到 {2}。</value></data>
   <data name="OperationBusy" xml:space="preserve"><value>另一个安装程序操作正在进行，请等待其完成。</value></data>
   <data name="OperationGuardUnavailable" xml:space="preserve"><value>安装程序无法安全获取操作锁，因此未进行任何更改。</value></data>
   <data name="GameIsRunning" xml:space="preserve"><value>Minecraft 正在使用此实例。请关闭游戏后重试。</value></data>

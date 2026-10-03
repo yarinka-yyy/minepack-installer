@@ -14,6 +14,7 @@ using MinePack.Installer;
 internal static class Program
 {
     private static Application? _application;
+    private static bool _reportedDpi;
 
     [STAThread]
     private static int Main()
@@ -28,8 +29,11 @@ internal static class Program
             Directory.CreateDirectory(output);
 
             VerifyOverlayDismissalAndStaleResults(output);
+            VerifyOperationProgressLifecycle(output);
             SaveChooserPreviews(output);
+            SaveOperationProgressPreviews(output);
             Console.WriteLine("All WPF UI smoke scenarios passed.");
+            Console.WriteLine("Native Windows display scaling was not changed.");
             return 0;
         }
         catch (Exception ex)
@@ -40,6 +44,178 @@ internal static class Program
         finally
         {
             _application?.Shutdown();
+        }
+    }
+
+    private static void VerifyOperationProgressLifecycle(string output)
+    {
+        var fixtureRoot = NewFixtureRoot(output);
+        Directory.CreateDirectory(fixtureRoot);
+        var window = CreateWindow("ru-RU", fixtureRoot);
+        try
+        {
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Collapsed,
+                "idle window has no progress overlay");
+            Require(window.MainContentScrollViewer.IsEnabled && window.InstallButton.IsDefault,
+                "idle main content and default Install action remain available");
+
+            var canceledBeforeAdmission = window.BeginOperationForUiSmoke();
+            var cancelledChoice = window.ShowLauncherChoiceForUiSmokeAsync(InventoryWithBothLaunchers());
+            PumpUntil(() => window.LauncherChoiceOverlay.Visibility == Visibility.Visible,
+                "chooser opens before operation progress");
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Collapsed,
+                "progress remains hidden while choosing a launcher");
+            var backdrop = RaiseMouse(window.LauncherChoiceOverlay, window.LauncherChoiceOverlay);
+            Require(backdrop.Handled, "launcher chooser cancellation is handled");
+            WaitFor(cancelledChoice, "pre-admission launcher choice cancellation");
+            Require(cancelledChoice.Result is null && window.OperationProgressOverlay.Visibility == Visibility.Collapsed,
+                "cancelled launcher choice does not show success or progress");
+            window.StatusBox.Text = LocalizedText.Get("OperationStoppedStatus");
+            window.FinishOperationForUiSmoke("cancelled");
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Collapsed &&
+                    window.InlineNoticeText.Visibility == Visibility.Visible &&
+                    window.InlineNoticeText.Text == LocalizedText.Get("OperationStoppedStatus"),
+                "cancelled chooser reports inline without opening progress or a stale result");
+            Require(!canceledBeforeAdmission.IsCancellationRequested,
+                "cancelling launcher selection does not cancel an already-dismissed progress token");
+
+            var inventory = InventoryWithBothLaunchers();
+            var acceptedToken = window.BeginOperationForUiSmoke();
+            var acceptedChoice = window.ShowLauncherChoiceForUiSmokeAsync(inventory);
+            PumpUntil(() => window.LauncherChoiceOverlay.Visibility == Visibility.Visible,
+                "accepted launcher chooser opens");
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Collapsed,
+                "progress is absent until the launcher is explicitly accepted");
+            window.OfficialLauncherChoice.IsChecked = true;
+            Require(window.LauncherChoiceContinueButton.IsEnabled,
+                "one verified official target can be explicitly continued");
+            window.LauncherChoiceContinueButton.RaiseEvent(
+                new RoutedEventArgs(ButtonBase.ClickEvent, window.LauncherChoiceContinueButton));
+            WaitFor(acceptedChoice, "official launcher choice acceptance");
+            Require(acceptedChoice.Result is { Kind: LauncherKind.Official },
+                "explicit chooser returns the accepted launcher target");
+            window.PresentOperationProgressForUiSmoke();
+            PumpOnce();
+
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Visible,
+                "accepted target followed by root admission opens progress");
+            Require(!window.MainContentScrollViewer.IsEnabled && !window.InstallButton.IsDefault,
+                "visible progress disables background controls and the default Install action");
+            Require(ReferenceEquals(window.OperationCancellationForUiSmoke, acceptedToken),
+                "accepted operation retains its cancellation token");
+
+            var enter = RaiseKey(window.OperationProgressOverlay, Key.Enter);
+            Require(enter.Handled && !acceptedToken.IsCancellationRequested,
+                "Enter on progress cannot click through to Install or cancel the operation");
+            RaiseMouse(window.OperationProgressCard, window.OperationProgressCard);
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Visible,
+                "clicking inside the progress card does not dismiss it");
+            var escape = RaiseKey(window.OperationProgressOverlay, Key.Escape);
+            Require(escape.Handled && window.OperationProgressOverlay.Visibility == Visibility.Collapsed &&
+                    ReferenceEquals(window.OperationCancellationForUiSmoke, acceptedToken) &&
+                    !acceptedToken.IsCancellationRequested,
+                "Escape hides progress without cancelling the running operation");
+            window.InstallButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, window.InstallButton));
+            PumpOnce();
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Visible &&
+                    ReferenceEquals(window.OperationCancellationForUiSmoke, acceptedToken),
+                "Install reopens progress after Escape");
+            backdrop = RaiseMouse(window.OperationProgressOverlay, window.OperationProgressOverlay);
+            Require(backdrop.Handled && window.OperationProgressOverlay.Visibility == Visibility.Collapsed,
+                "outside click hides the running progress overlay");
+            Require(ReferenceEquals(window.OperationCancellationForUiSmoke, acceptedToken) &&
+                    !acceptedToken.IsCancellationRequested,
+                "outside dismissal preserves the running operation and its token");
+            Require(window.MainContentScrollViewer.IsEnabled && window.InstallButton.IsEnabled &&
+                    Equals(window.InstallButton.Content, LocalizedText.Get("UiShowProgress")),
+                "hidden progress leaves Install enabled as a show-progress action");
+
+            window.InstallButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, window.InstallButton));
+            PumpOnce();
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Visible &&
+                    ReferenceEquals(window.OperationCancellationForUiSmoke, acceptedToken),
+                "Install reopens the same operation without starting another one");
+
+            backdrop = RaiseMouse(window.OperationProgressOverlay, window.OperationProgressOverlay);
+            Require(backdrop.Handled && window.OperationProgressOverlay.Visibility == Visibility.Collapsed,
+                "progress can be hidden before its final refresh");
+            window.PrepareOperationFinishForUiSmoke();
+            Require(ReferenceEquals(window.OperationCancellationForUiSmoke, acceptedToken),
+                "operation remains busy while final launcher refresh is pending");
+            window.InstallButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, window.InstallButton));
+            PumpOnce();
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Visible &&
+                    ReferenceEquals(window.OperationCancellationForUiSmoke, acceptedToken),
+                "Install cannot start a second operation during final refresh");
+
+            window.StatusBox.Text = LocalizedText.Get("UiOperationInstallSuccess", "Vanilla Plus", "fixture",
+                LocalizedText.Get("UiLauncherOptionOfficial"));
+            window.FinishOperationForUiSmoke("completed");
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Visible &&
+                    window.StateHeading.Text == LocalizedText.Get("UiOperationInstalledHeading") &&
+                    window.ProgressLabel.Text == LocalizedText.Get("InstallComplete"),
+                "full install completion shows an installed heading and completed progress label");
+            RaiseMouse(window.OperationProgressCard, window.OperationProgressCard);
+            window.CancelButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, window.CancelButton));
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Collapsed &&
+                    window.MainContentScrollViewer.IsEnabled && window.InlineNoticeText.Visibility == Visibility.Visible,
+                "the explicit close button dismisses the completed result and leaves a visible notice");
+
+            window.BeginOperationForUiSmoke();
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Collapsed &&
+                    window.InlineNoticeText.Visibility == Visibility.Collapsed &&
+                    window.StatusBox.Text == LocalizedText.Get("OperationWait"),
+                "a new operation clears the previous result");
+            window.StateHeading.Text = LocalizedText.Get("OperationFailedHeading");
+            window.StatusBox.Text = "fixture failure";
+            window.PresentOperationProgressForUiSmoke();
+            window.FinishOperationForUiSmoke("failed");
+            Require(window.StateHeading.Text == LocalizedText.Get("OperationFailedHeading") &&
+                    window.StateHeading.Text != LocalizedText.Get("UiOperationInstalledHeading"),
+                "failure is not presented as an installed pack");
+            backdrop = RaiseMouse(window.OperationProgressOverlay, window.OperationProgressOverlay);
+            Require(backdrop.Handled && window.OperationProgressOverlay.Visibility == Visibility.Collapsed,
+                "outside click closes a terminal error result");
+
+            window.BeginOperationForUiSmoke();
+            var cancelledToken = window.OperationCancellationForUiSmoke!;
+            window.PresentOperationProgressForUiSmoke();
+            window.CancelButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, window.CancelButton));
+            Require(cancelledToken.IsCancellationRequested, "explicit Cancel uses the current cancellable token");
+            window.StateHeading.Text = LocalizedText.Get("OperationCancelledHeading");
+            window.StatusBox.Text = LocalizedText.Get("OperationCancelledStatus");
+            window.FinishOperationForUiSmoke("cancelled");
+            Require(window.StateHeading.Text == LocalizedText.Get("OperationCancelledHeading"),
+                "cancelled operation remains distinct from success");
+            escape = RaiseKey(window.OperationProgressOverlay, Key.Escape);
+            Require(escape.Handled && window.OperationProgressOverlay.Visibility == Visibility.Collapsed,
+                "Escape closes a terminal cancellation result");
+
+            window.BeginOperationForUiSmoke();
+            window.PresentOperationProgressForUiSmoke();
+            window.StatusBox.Text = LocalizedText.Get("InstalledProfilePendingStatus");
+            window.FinishOperationForUiSmoke("profile_pending");
+            Require(window.StateHeading.Text == LocalizedText.Get("PackInstalledProfilePending"),
+                "profile-pending install remains distinct from complete success");
+            window.CancelButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, window.CancelButton));
+
+            var automatic = MainWindow.MakeAutomaticSelectionForUiSmoke(LauncherKind.Official,
+                InventoryWithOfficialOnly());
+            Require(automatic is { Kind: LauncherKind.Official },
+                "one verified official target produces an automatic selection");
+            window.BeginOperationForUiSmoke();
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Collapsed,
+                "automatic resolution alone does not expose progress before admission");
+            window.PresentOperationProgressForUiSmoke();
+            Require(window.OperationProgressOverlay.Visibility == Visibility.Visible,
+                "automatically resolved target can enter the same progress presentation");
+            window.FinishOperationForUiSmoke("failed");
+            window.CancelButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, window.CancelButton));
+            Console.WriteLine("Operation progress lifecycle, dismissal, reopen, and terminal states passed.");
+        }
+        finally
+        {
+            window.Close();
         }
     }
 
@@ -208,29 +384,80 @@ internal static class Program
     {
         foreach (var cultureName in new[] { "ru-RU", "en-US", "zh-CN" })
         {
-            var fixtureRoot = NewFixtureRoot(output);
-            var window = CreateWindow(cultureName, fixtureRoot);
-            try
+            foreach (var (width, height) in new[] { (710d, 610d), (850d, 730d) })
             {
-                var choice = window.ShowLauncherChoiceForUiSmokeAsync(InventoryWithBothLaunchers());
-                PumpUntil(() => window.LauncherChoiceOverlay.Visibility == Visibility.Visible, $"{cultureName} chooser opens");
-                PumpOnce();
-                window.UpdateLayout();
-                SaveWindowPng(window, Path.Combine(output, $"launcher-choice-{cultureName}.png"));
-                var outside = RaiseMouse(window.LauncherChoiceOverlay, window.LauncherChoiceOverlay);
-                Require(outside.Handled, $"{cultureName} chooser preview can be dismissed");
-                WaitFor(choice, $"{cultureName} chooser closes");
+                var fixtureRoot = NewFixtureRoot(output);
+                var window = CreateWindow(cultureName, fixtureRoot, width, height);
+                try
+                {
+                    var choice = window.ShowLauncherChoiceForUiSmokeAsync(InventoryWithBothLaunchers());
+                    PumpUntil(() => window.LauncherChoiceOverlay.Visibility == Visibility.Visible, $"{cultureName} chooser opens");
+                    PumpOnce();
+                    window.UpdateLayout();
+                    SaveWindowPng(window, Path.Combine(output, $"launcher-choice-{cultureName}-{width:0}x{height:0}.png"));
+                    var outside = RaiseMouse(window.LauncherChoiceOverlay, window.LauncherChoiceOverlay);
+                    Require(outside.Handled, $"{cultureName} chooser preview can be dismissed");
+                    WaitFor(choice, $"{cultureName} chooser closes");
+                }
+                finally
+                {
+                    window.Close();
+                }
             }
-            finally
+        }
+    }
+
+    private static void SaveOperationProgressPreviews(string output)
+    {
+        foreach (var cultureName in new[] { "ru-RU", "en-US", "zh-CN" })
+        {
+            foreach (var (width, height) in new[] { (710d, 610d), (850d, 730d) })
             {
-                window.Close();
+                SaveProgressState(output, cultureName, width, height, "idle");
+                SaveProgressState(output, cultureName, width, height, "running");
+                SaveProgressState(output, cultureName, width, height, "success");
             }
+        }
+    }
+
+    private static void SaveProgressState(string output, string cultureName, double width, double height, string state)
+    {
+        var fixtureRoot = NewFixtureRoot(output);
+        var window = CreateWindow(cultureName, fixtureRoot, width, height);
+        try
+        {
+            if (state != "idle")
+            {
+                window.BeginOperationForUiSmoke();
+                window.PresentOperationProgressForUiSmoke();
+                if (state == "success")
+                {
+                    window.StatusBox.Text = LocalizedText.Get("UiOperationInstallSuccess", "Vanilla Plus", "fixture",
+                        LocalizedText.Get("UiLauncherOptionOfficial"));
+                    window.FinishOperationForUiSmoke("completed");
+                }
+            }
+            PumpOnce();
+            window.UpdateLayout();
+            SaveWindowPng(window, Path.Combine(output,
+                $"operation-{state}-{cultureName}-{width:0}x{height:0}.png"));
+            if (window.OperationCancellationForUiSmoke is not null)
+                window.FinishOperationForUiSmoke("failed");
+        }
+        finally
+        {
+            window.Close();
         }
     }
 
     private static void SaveWindowPng(Window window, string path)
     {
         var dpi = VisualTreeHelper.GetDpi(window);
+        if (!_reportedDpi)
+        {
+            Console.WriteLine($"WPF preview DPI scale: {dpi.DpiScaleX:0.##}x{dpi.DpiScaleY:0.##} (current Windows display setting).");
+            _reportedDpi = true;
+        }
         var bitmap = new RenderTargetBitmap(
             Math.Max(1, (int)Math.Ceiling(window.ActualWidth * dpi.DpiScaleX)),
             Math.Max(1, (int)Math.Ceiling(window.ActualHeight * dpi.DpiScaleY)),
@@ -242,7 +469,7 @@ internal static class Program
         encoder.Save(stream);
     }
 
-    private static MainWindow CreateWindow(string cultureName, string fixtureRoot)
+    private static MainWindow CreateWindow(string cultureName, string fixtureRoot, double width = 850, double height = 730)
     {
         var culture = CultureInfo.GetCultureInfo(cultureName);
         CultureInfo.CurrentCulture = culture;
@@ -250,8 +477,8 @@ internal static class Program
         CultureInfo.DefaultThreadCurrentUICulture = culture;
         var window = new MainWindow(fixtureRoot)
         {
-            Width = 850,
-            Height = 730,
+            Width = width,
+            Height = height,
             WindowStartupLocation = WindowStartupLocation.Manual,
             Left = 100,
             Top = 100
@@ -288,6 +515,11 @@ internal static class Program
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
     }
 
+    private static MainWindow.LauncherInventory InventoryWithOfficialOnly() =>
+        new([new MinecraftLauncherTarget(MinecraftLauncherKind.Win32, @"C:\MinePackUiSmoke\MinecraftLauncher.exe")],
+            new LauncherScanResult(LauncherDiscoveryState.Absent, [], "fixture"), false, [],
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+
     private static MainWindow.LauncherInventory EmptyInventory(string diagnostic) =>
         new([], new LauncherScanResult(LauncherDiscoveryState.Absent, [], diagnostic), false, [],
             new HashSet<string>(StringComparer.OrdinalIgnoreCase));
@@ -298,6 +530,19 @@ internal static class Program
         {
             RoutedEvent = UIElement.PreviewMouseDownEvent,
             Source = originalSource
+        };
+        routedSource.RaiseEvent(args);
+        return args;
+    }
+
+    private static KeyEventArgs RaiseKey(UIElement routedSource, Key key)
+    {
+        var source = PresentationSource.FromVisual(routedSource)
+            ?? throw new InvalidOperationException("The WPF fixture has no presentation source.");
+        var args = new KeyEventArgs(Keyboard.PrimaryDevice, source, Environment.TickCount, key)
+        {
+            RoutedEvent = Keyboard.PreviewKeyDownEvent,
+            Source = routedSource
         };
         routedSource.RaiseEvent(args);
         return args;

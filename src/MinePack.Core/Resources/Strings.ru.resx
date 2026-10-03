@@ -19,6 +19,8 @@
   <data name="UiInstallLocation" xml:space="preserve"><value>Куда установить</value></data>
   <data name="UiBrowse" xml:space="preserve"><value>Обзор...</value></data>
   <data name="UiInstall" xml:space="preserve"><value>Установить сборку</value></data>
+  <data name="UiShowProgress" xml:space="preserve"><value>Показать прогресс</value></data>
+  <data name="UiCloseProgress" xml:space="preserve"><value>Закрыть</value></data>
   <data name="UiCancel" xml:space="preserve"><value>Отмена</value></data>
   <data name="UiContinue" xml:space="preserve"><value>Продолжить</value></data>
   <data name="UiReady" xml:space="preserve"><value>Готово к установке</value></data>
@@ -112,6 +114,8 @@
   <data name="WorldImportSummary" xml:space="preserve"><value>Скопировано миров: {0}. Пропущено совпадений имён: {1}; нет session.lock: {2}; session.lock занят или не проверен: {3}.</value></data>
   <data name="WorldImportSafety" xml:space="preserve"><value>Исходные миры сохранены. Мир из другой версии Minecraft открывайте только после резервной копии: сама игра может преобразовать его формат.</value></data>
   <data name="OperationComplete" xml:space="preserve"><value>Операция завершена</value></data>
+  <data name="UiOperationInstalledHeading" xml:space="preserve"><value>Сборка установлена</value></data>
+  <data name="UiOperationInstallSuccess" xml:space="preserve"><value>{0} {1} установлена в {2}.</value></data>
   <data name="OperationBusy" xml:space="preserve"><value>Уже выполняется другая операция установщика. Дождитесь её завершения.</value></data>
   <data name="OperationGuardUnavailable" xml:space="preserve"><value>Не удалось безопасно получить блокировку операций установщика. Изменения не внесены.</value></data>
   <data name="GameIsRunning" xml:space="preserve"><value>Minecraft использует этот экземпляр. Закройте игру и повторите попытку.</value></data>

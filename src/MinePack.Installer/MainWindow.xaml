@@ -361,6 +361,8 @@
                 <Button x:Name="InstallButton" Content="{loc:Localized Key=UiInstall}"
                         Style="{StaticResource InstallButtonStyle}" IsDefault="True"
                         Margin="0,2,0,12" Click="Install_Click"/>
+                <TextBlock x:Name="InlineNoticeText" Style="{StaticResource MutedText}"
+                           Visibility="Collapsed" Margin="2,0,2,12" FontSize="15"/>
 
                 <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12" Padding="16,12">
                     <StackPanel>
@@ -376,25 +378,6 @@
                         </DockPanel>
                         <TextBlock x:Name="RootAvailabilityText" Style="{StaticResource MutedText}"
                                    FontSize="13" TextWrapping="Wrap" Margin="1,9,0,0"/>
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12">
-                    <StackPanel>
-                        <DockPanel>
-                            <Button x:Name="CancelButton" Content="{loc:Localized Key=UiCancel}" Style="{StaticResource ActionButton}"
-                                    DockPanel.Dock="Right" Visibility="Collapsed" IsEnabled="False"
-                                    Margin="10,0,0,0" Click="Cancel_Click"/>
-                            <TextBlock x:Name="StateHeading" Text="{loc:Localized Key=UiReady}" FontSize="21"
-                                       FontWeight="Bold" VerticalAlignment="Center"/>
-                        </DockPanel>
-                        <ProgressBar x:Name="OperationProgress" Style="{StaticResource ProgressStyle}"
-                                     Height="18" Minimum="0" Maximum="1" Value="0" Margin="0,12,0,8"/>
-                        <TextBlock x:Name="ProgressLabel" Style="{StaticResource MutedText}" Text="{loc:Localized Key=UiWaiting}"/>
-                        <TextBlock x:Name="StatusBox" Text="{loc:Localized Key=UiInstallPrompt}"
-                                   Margin="0,9,0,0" FontSize="17"/>
-                        <TextBlock x:Name="InstructionsBox" Style="{StaticResource MutedText}"
-                                   Margin="0,5,0,0" FontSize="16"/>
                     </StackPanel>
                 </Border>
 
@@ -443,6 +426,35 @@
                 </Border>
             </StackPanel>
         </ScrollViewer>
+        <Grid x:Name="OperationProgressOverlay" Panel.ZIndex="90" Background="#B8000000"
+              Visibility="Collapsed" Focusable="True" FocusManager.IsFocusScope="True"
+              KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle"
+              PreviewKeyDown="OperationProgressOverlay_PreviewKeyDown"
+              PreviewMouseDown="OperationProgressOverlay_PreviewMouseDown">
+            <Border x:Name="OperationProgressCard" Style="{StaticResource WoodPanel}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" Margin="22"
+                    Padding="18" MaxWidth="700" MaxHeight="560" Focusable="True">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <DockPanel>
+                            <Button x:Name="CancelButton" Content="{loc:Localized Key=UiCancel}"
+                                    Style="{StaticResource ActionButton}" DockPanel.Dock="Right"
+                                    Visibility="Collapsed" IsEnabled="False" Margin="10,0,0,0"
+                                    Click="Cancel_Click"/>
+                            <TextBlock x:Name="StateHeading" Text="{loc:Localized Key=UiWaiting}"
+                                       FontSize="21" FontWeight="Bold" VerticalAlignment="Center"/>
+                        </DockPanel>
+                        <ProgressBar x:Name="OperationProgress" Style="{StaticResource ProgressStyle}"
+                                     Height="18" Minimum="0" Maximum="1" Value="0" Margin="0,12,0,8"/>
+                        <TextBlock x:Name="ProgressLabel" Style="{StaticResource MutedText}"
+                                   Text="{loc:Localized Key=UiWaiting}"/>
+                        <TextBlock x:Name="StatusBox" Margin="0,9,0,0" FontSize="17"/>
+                        <TextBlock x:Name="InstructionsBox" Style="{StaticResource MutedText}"
+                                   Margin="0,5,0,0" FontSize="16"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
         <Grid x:Name="DeleteInstanceOverlay" Panel.ZIndex="100" Background="#B8000000"
               Visibility="Collapsed" Focusable="True" FocusManager.IsFocusScope="True"
               KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle"

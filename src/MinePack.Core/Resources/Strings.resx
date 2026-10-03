@@ -19,6 +19,8 @@
   <data name="UiInstallLocation" xml:space="preserve"><value>Install location</value></data>
   <data name="UiBrowse" xml:space="preserve"><value>Browse...</value></data>
   <data name="UiInstall" xml:space="preserve"><value>Install pack</value></data>
+  <data name="UiShowProgress" xml:space="preserve"><value>Show progress</value></data>
+  <data name="UiCloseProgress" xml:space="preserve"><value>Close</value></data>
   <data name="UiCancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="UiContinue" xml:space="preserve"><value>Continue</value></data>
   <data name="UiReady" xml:space="preserve"><value>Ready to install</value></data>
@@ -112,6 +114,8 @@
   <data name="WorldImportSummary" xml:space="preserve"><value>Copied worlds: {0}. Skipped existing names: {1}; missing session.lock: {2}; locked or unverified session.lock: {3}.</value></data>
   <data name="WorldImportSafety" xml:space="preserve"><value>Source worlds were left unchanged. Before opening a world from another Minecraft version, make a backup: the game may convert its format.</value></data>
   <data name="OperationComplete" xml:space="preserve"><value>Operation complete</value></data>
+  <data name="UiOperationInstalledHeading" xml:space="preserve"><value>Pack installed</value></data>
+  <data name="UiOperationInstallSuccess" xml:space="preserve"><value>{0} {1} is installed in {2}.</value></data>
   <data name="OperationBusy" xml:space="preserve"><value>Another installer operation is already in progress. Wait for it to finish.</value></data>
   <data name="OperationGuardUnavailable" xml:space="preserve"><value>The installer could not safely acquire its operation guard. No changes were made.</value></data>
   <data name="GameIsRunning" xml:space="preserve"><value>Minecraft is using this instance. Close the game and try again.</value></data>

@@ -49,8 +49,11 @@ public partial class MainWindow : Window
     private IReadOnlyList<LauncherTargetChoice> _launcherTargetChoices = [];
     private TaskCompletionSource<LauncherInstallSelection?>? _launcherChoiceCompletion;
     private IInputElement? _launcherChoiceReturnFocus;
+    private IInputElement? _operationProgressReturnFocus;
     private int _launcherChoiceGeneration;
     private int _uninstallConfirmationGeneration;
+    private bool _operationProgressPresented;
+    private bool _operationProgressTerminal;
 
     public MainWindow() : this(null)
     {
@@ -86,9 +89,9 @@ public partial class MainWindow : Window
         InstallRootBox.Text = preferences.LastValidatedRoot ?? InstallService.DefaultInstallRoot;
         if (preferences.LastValidatedRoot is not null && !Directory.Exists(preferences.LastValidatedRoot))
             _missingSavedRootPath = Path.TrimEndingDirectorySeparator(Path.GetFullPath(preferences.LastValidatedRoot));
-        if (preferences.IsCorrupt) StatusBox.Text = LocalizedText.Get("UiPreferencesCorrupt");
+        if (preferences.IsCorrupt) ShowInlineNotice(LocalizedText.Get("UiPreferencesCorrupt"));
         var root = RefreshRootState(persist: false);
-        if (root is null && !preferences.IsCorrupt) StatusBox.Text = LocalizedText.Get("UiSavedRootUnavailable");
+        if (root is null && !preferences.IsCorrupt) ShowInlineNotice(LocalizedText.Get("UiSavedRootUnavailable"));
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -425,7 +428,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InstallerException)
         {
-            StatusBox.Text = LocalizedText.Get("UiPreferencesNotSaved");
+            ShowInlineNotice(LocalizedText.Get("UiPreferencesNotSaved"));
         }
     }
 
@@ -455,7 +458,192 @@ public partial class MainWindow : Window
         PackCountsText.Text = LocalizedText.Get(vanilla2Plus ? "UiPackCountsVanilla2Plus" : "UiPackCountsVanillaPlus");
     }
 
-    private async void Install_Click(object sender, RoutedEventArgs e) => await RunOperationAsync(Operation.Install);
+    private void BeginOperationPresentation(Operation operation)
+    {
+        _operationProgressPresented = false;
+        _operationProgressTerminal = false;
+        _operationProgressReturnFocus = Keyboard.FocusedElement;
+        OperationProgressOverlay.Visibility = Visibility.Collapsed;
+        MainContentScrollViewer.IsEnabled = true;
+        InstallButton.IsDefault = true;
+        CancelButton.IsDefault = false;
+        ClearInlineNotice();
+        OperationProgress.Value = 0;
+        OperationProgress.IsIndeterminate = true;
+        InstructionsBox.Text = string.Empty;
+        DiagnosticText.Text = string.Empty;
+        StatusBox.Text = LocalizedText.Get("OperationWait");
+        StateHeading.Text = LocalizedText.Get(operation == Operation.Install ? "OperationInstalling" : "OperationWorking");
+        ProgressLabel.Text = operation switch
+        {
+            Operation.Install => LocalizedText.Get("PreparingFiles"),
+            Operation.Repair => LocalizedText.Get("SearchingPack"),
+            Operation.ConfigureLauncher => LocalizedText.Get("RestoringProfile"),
+            Operation.ImportWorlds => LocalizedText.Get("CopyingWorlds"),
+            Operation.RemoveResidue => LocalizedText.Get("UiDeleteCleanupChecking"),
+            _ => LocalizedText.Get("PreparingUninstall")
+        };
+        SetBusy(true);
+    }
+
+    private void PresentOperationProgress()
+    {
+        _operationProgressPresented = true;
+        ShowOperationProgress();
+    }
+
+    private void ShowOperationProgress()
+    {
+        if (!_operationProgressPresented) return;
+        OperationProgressOverlay.Visibility = Visibility.Visible;
+        MainContentScrollViewer.IsEnabled = false;
+        InstallButton.IsDefault = false;
+        CancelButton.Content = LocalizedText.Get(_operationProgressTerminal ? "UiCloseProgress" : "UiCancel");
+        CancelButton.IsEnabled = _operationProgressTerminal ||
+                                 (_operationCancellation is not null && _operationCanBeCancelled);
+        CancelButton.Visibility = CancelButton.IsEnabled ? Visibility.Visible : Visibility.Collapsed;
+        CancelButton.IsDefault = _operationProgressTerminal;
+        _ = Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+        {
+            if (OperationProgressOverlay.Visibility != Visibility.Visible) return;
+            if (_operationProgressTerminal && CancelButton.IsEnabled) CancelButton.Focus();
+            else OperationProgressCard.Focus();
+        }));
+    }
+
+    private void HideOperationProgress()
+    {
+        if (_operationProgressTerminal || _operationCancellation is null) return;
+        OperationProgressOverlay.Visibility = Visibility.Collapsed;
+        MainContentScrollViewer.IsEnabled = true;
+        InstallButton.IsDefault = true;
+        var returnFocus = _operationProgressReturnFocus;
+        _operationProgressReturnFocus = null;
+        if (returnFocus is not null) Keyboard.Focus(returnFocus);
+        else InstallButton.Focus();
+    }
+
+    private void CompleteOperationPresentation(Operation operation, string outcome)
+    {
+        if (operation == Operation.Install && outcome == "completed")
+        {
+            StateHeading.Text = LocalizedText.Get("UiOperationInstalledHeading");
+            ProgressLabel.Text = LocalizedText.Get("InstallComplete");
+        }
+        else if (operation == Operation.Install && outcome == "profile_pending")
+            StateHeading.Text = LocalizedText.Get("PackInstalledProfilePending");
+
+        if (!_operationProgressPresented)
+        {
+            if (outcome != "completed") ShowInlineNotice(StatusBox.Text);
+            return;
+        }
+
+        _operationProgressTerminal = true;
+        ShowOperationProgress();
+    }
+
+    private void CloseCompletedOperationProgress()
+    {
+        if (!_operationProgressTerminal) return;
+        var notice = string.IsNullOrWhiteSpace(StatusBox.Text) ? StateHeading.Text :
+            $"{StateHeading.Text}: {StatusBox.Text}";
+        OperationProgressOverlay.Visibility = Visibility.Collapsed;
+        MainContentScrollViewer.IsEnabled = true;
+        InstallButton.IsDefault = true;
+        CancelButton.IsDefault = false;
+        _operationProgressPresented = false;
+        _operationProgressTerminal = false;
+        _operationProgressReturnFocus = null;
+        ShowInlineNotice(notice);
+        InstallButton.Focus();
+    }
+
+    private void ShowInlineNotice(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return;
+        InlineNoticeText.Text = message;
+        InlineNoticeText.Visibility = Visibility.Visible;
+        InlineNoticeText.BringIntoView();
+    }
+
+    private void ClearInlineNotice()
+    {
+        InlineNoticeText.Text = string.Empty;
+        InlineNoticeText.Visibility = Visibility.Collapsed;
+    }
+
+    private void OperationProgressOverlay_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || IsWithinCard(e.OriginalSource as DependencyObject, OperationProgressCard)) return;
+        if (_operationProgressTerminal) CloseCompletedOperationProgress();
+        else HideOperationProgress();
+        e.Handled = true;
+    }
+
+    private void OperationProgressOverlay_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            if (_operationProgressTerminal) CloseCompletedOperationProgress();
+            else HideOperationProgress();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Enter && !_operationProgressTerminal &&
+                 !ReferenceEquals(Keyboard.FocusedElement, CancelButton))
+            e.Handled = true;
+    }
+
+    internal CancellationTokenSource BeginOperationForUiSmoke()
+    {
+        if (_operationCancellation is not null) throw new InvalidOperationException("A fixture operation is already active.");
+        _operationCancellation = new CancellationTokenSource();
+        _operationCanBeCancelled = true;
+        BeginOperationPresentation(Operation.Install);
+        return _operationCancellation;
+    }
+
+    internal void PresentOperationProgressForUiSmoke() => PresentOperationProgress();
+
+    internal void FinishOperationForUiSmoke(string outcome)
+    {
+        PrepareOperationFinish();
+        ReleaseOperationBusy();
+        CompleteOperationPresentation(Operation.Install, outcome);
+    }
+
+    internal void PrepareOperationFinishForUiSmoke() => PrepareOperationFinish();
+
+    internal CancellationTokenSource? OperationCancellationForUiSmoke => _operationCancellation;
+
+    internal static LauncherInstallSelection? MakeAutomaticSelectionForUiSmoke(LauncherKind kind,
+        LauncherInventory inventory) => MakeAutomaticSelection(kind, inventory);
+
+    private void PrepareOperationFinish()
+    {
+        _operationCanBeCancelled = false;
+        CancelButton.IsEnabled = false;
+        CancelButton.Visibility = Visibility.Collapsed;
+    }
+
+    private void ReleaseOperationBusy()
+    {
+        _operationCancellation?.Dispose();
+        _operationCancellation = null;
+        _operationTargetEntry = null;
+        _operationCanBeCancelled = true;
+        SetBusy(false);
+    }
+
+    private async void Install_Click(object sender, RoutedEventArgs e)
+    {
+        if (_operationCancellation is not null)
+        {
+            if (_operationProgressPresented) ShowOperationProgress();
+            return;
+        }
+        await RunOperationAsync(Operation.Install);
+    }
 
     private async void Repair_Click(object sender, RoutedEventArgs e) => await RunOperationAsync(Operation.Repair);
 
@@ -597,7 +785,6 @@ public partial class MainWindow : Window
     {
         if (!IsCurrentDeleteSelection(selected, generation) || UninstallConfirmOverlay.Visibility == Visibility.Visible)
             return false;
-        StatusBox.Text = message;
         DeleteRemainingDataButton.IsEnabled = false;
         var targetPath = selected.Layout?.IsPrism == true ? selected.Layout.InstanceDirectory : selected.Path;
         var displayRelease = GetDisplayRelease(selected);
@@ -680,7 +867,7 @@ public partial class MainWindow : Window
         if (selected is null) return;
         var generation = ++_cleanupCheckGeneration;
         DeleteRemainingDataButton.IsEnabled = false;
-        StatusBox.Text = LocalizedText.Get("UiDeleteCleanupChecking");
+        DeleteInstanceDetails.Text = LocalizedText.Get("UiDeleteCleanupChecking");
         InstanceCleanupRequest request;
         try
         {
@@ -854,7 +1041,7 @@ public partial class MainWindow : Window
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InstallerException)
                 {
-                    StatusBox.Text = LocalizedText.Get("UiPreferencesNotSaved");
+                    ShowInlineNotice(LocalizedText.Get("UiPreferencesNotSaved"));
                 }
             }
 
@@ -1007,7 +1194,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException)
         {
-            StatusBox.Text = ex.Message;
+            ShowInlineNotice(ex.Message);
             return null;
         }
 
@@ -1021,7 +1208,7 @@ public partial class MainWindow : Window
             selection = MakeAutomaticSelection(LauncherKind.Prism, inventory);
         else if (!hasUnknown && inventory.OfficialTargets.Count == 0 && inventory.PrismScan.State == LauncherDiscoveryState.Absent)
         {
-            StatusBox.Text = LocalizedText.Get("UiNoActiveInstallation");
+            ShowInlineNotice(LocalizedText.Get("UiNoActiveInstallation"));
             return null;
         }
         else
@@ -1073,7 +1260,7 @@ public partial class MainWindow : Window
             }
         }
 
-        StatusBox.Text = LocalizedText.Get("UiNoActiveInstallation");
+        ShowInlineNotice(LocalizedText.Get("UiNoActiveInstallation"));
         return null;
     }
 
@@ -1113,7 +1300,7 @@ public partial class MainWindow : Window
         if (operation is not Operation.Install && operationTarget is null)
         {
             if (operation is Operation.Uninstall or Operation.RemoveResidue)
-                StatusBox.Text = LocalizedText.Get("UiSelectTrustedInstance");
+                ShowInlineNotice(LocalizedText.Get("UiSelectTrustedInstance"));
             return;
         }
         _operationTargetEntry = operationTarget;
@@ -1128,30 +1315,15 @@ public partial class MainWindow : Window
             installedReleaseForLog?.FabricLoaderVersion ?? TestPackRelease.FabricLoaderVersion,
             installedReleaseForLog?.ArchiveSha512 ?? selectedPackForLog.Hash);
         _currentOperationLog = operationLog;
-        SetBusy(true);
+        BeginOperationPresentation(operation);
         var filesInstalled = false;
         var filesRemoved = false;
         var operationOutcome = "failed";
         string? operationFailureCode = null;
         MinecraftLauncherTarget? launcherTarget = null;
-        OperationProgress.Value = 0;
-        OperationProgress.IsIndeterminate = true;
-        InstructionsBox.Text = "";
-        DiagnosticText.Text = "";
         PrismLauncherTarget? selectedPrismTarget = null;
         var prismOperationTarget = false;
         var prismRepairTarget = false;
-        StatusBox.Text = LocalizedText.Get("OperationWait");
-        StateHeading.Text = LocalizedText.Get(operation == Operation.Install ? "OperationInstalling" : "OperationWorking");
-        ProgressLabel.Text = operation switch
-        {
-            Operation.Install => LocalizedText.Get("PreparingFiles"),
-            Operation.Repair => LocalizedText.Get("SearchingPack"),
-            Operation.ConfigureLauncher => LocalizedText.Get("RestoringProfile"),
-            Operation.ImportWorlds => LocalizedText.Get("CopyingWorlds"),
-            Operation.RemoveResidue => LocalizedText.Get("UiDeleteCleanupChecking"),
-            _ => LocalizedText.Get("PreparingUninstall")
-        };
 
         try
         {
@@ -1184,6 +1356,7 @@ public partial class MainWindow : Window
                     root = RefreshRootState(persist: false);
             }
             if (root is null) throw new InstallerException("ROOT_UNAVAILABLE", LocalizedText.Get("UiSavedRootUnavailable"));
+            PresentOperationProgress();
             operationLog.Write("preflight", "started", "ui_operation_started");
 
             if (operation == Operation.ImportWorlds)
@@ -1347,7 +1520,9 @@ public partial class MainWindow : Window
                     {
                         operationOutcome = "cancelled";
                         operationFailureCode = "CANCELLED";
+                        StateHeading.Text = LocalizedText.Get("OperationCancelledHeading");
                         StatusBox.Text = LocalizedText.Get("OperationStoppedStatus");
+                        ProgressLabel.Text = LocalizedText.Get("OperationCancelledHeading");
                         return;
                     }
                 }
@@ -1660,7 +1835,14 @@ public partial class MainWindow : Window
                     if (prismOperationTarget) await RefreshLauncherDiscoveryAsync();
                     else _ = RefreshRootState(persist: false);
                 }
-                if (operationOutcome != "profile_pending") operationOutcome = "completed";
+                if (operationOutcome != "profile_pending")
+                {
+                    operationOutcome = "completed";
+                    if (operation == Operation.Install)
+                        StatusBox.Text = LocalizedText.Get("UiOperationInstallSuccess", SelectedPackName,
+                            selectedPack.Version, LocalizedText.Get(selectedPrismTarget is null
+                                ? "UiLauncherOptionOfficial" : "UiLauncherOptionPrism"));
+                }
             }
             else
             {
@@ -1749,13 +1931,11 @@ public partial class MainWindow : Window
         {
             operationLog.Complete(operationOutcome, operationFailureCode);
             OperationProgress.IsIndeterminate = false;
-            cancellation.Dispose();
-            _operationCancellation = null;
-            _operationTargetEntry = null;
-            _operationCanBeCancelled = true;
-            SetBusy(false);
+            PrepareOperationFinish();
             try { await RefreshLauncherDiscoveryAsync(); }
             catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException) { }
+            ReleaseOperationBusy();
+            CompleteOperationPresentation(operation, operationOutcome);
         }
     }
 
@@ -1800,14 +1980,14 @@ public partial class MainWindow : Window
                 ? selected.Path : null;
             if (path is null || !Directory.Exists(path))
             {
-                StatusBox.Text = LocalizedText.Get("InstalledFolderNotFound");
+                ShowInlineNotice(LocalizedText.Get("InstalledFolderNotFound"));
                 return;
             }
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            StatusBox.Text = LocalizedText.Get("OpenFolderFailed", ex.GetType().Name);
+            ShowInlineNotice(LocalizedText.Get("OpenFolderFailed", ex.GetType().Name));
         }
     }
 
@@ -1818,14 +1998,14 @@ public partial class MainWindow : Window
             var path = _currentOperationLog?.CurrentLogPath;
             if (path is null)
             {
-                StatusBox.Text = LocalizedText.Get("LogUnavailable");
+                ShowInlineNotice(LocalizedText.Get("LogUnavailable"));
                 return;
             }
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
         }
         catch (Exception ex)
         {
-            StatusBox.Text = LocalizedText.Get("OpenLogFailed", ex.GetType().Name);
+            ShowInlineNotice(LocalizedText.Get("OpenLogFailed", ex.GetType().Name));
         }
     }
 
@@ -1834,7 +2014,7 @@ public partial class MainWindow : Window
         var operationLog = _currentOperationLog;
         if (operationLog?.CurrentLogPath is null)
         {
-            StatusBox.Text = LocalizedText.Get("LogUnavailable");
+            ShowInlineNotice(LocalizedText.Get("LogUnavailable"));
             return;
         }
 
@@ -1847,9 +2027,9 @@ public partial class MainWindow : Window
             OverwritePrompt = true
         };
         if (dialog.ShowDialog(this) != true) return;
-        StatusBox.Text = operationLog.TryExportCurrent(dialog.FileName)
+        ShowInlineNotice(operationLog.TryExportCurrent(dialog.FileName)
             ? LocalizedText.Get("DiagnosticExported")
-            : LocalizedText.Get("DiagnosticExportFailed");
+            : LocalizedText.Get("DiagnosticExportFailed"));
     }
 
     private void ModrinthLink_RequestNavigate(object sender, RequestNavigateEventArgs e)
@@ -1863,7 +2043,7 @@ public partial class MainWindow : Window
         }
         catch
         {
-            StatusBox.Text = LocalizedText.Get("OpenModrinthFailed");
+            ShowInlineNotice(LocalizedText.Get("OpenModrinthFailed"));
         }
         e.Handled = true;
     }
@@ -1883,7 +2063,15 @@ public partial class MainWindow : Window
     private static (string Path, string Hash) PinnedArchive(string version) =>
         InstalledInstanceCatalog.PinnedArchive(version, AppContext.BaseDirectory);
 
-    private void Cancel_Click(object sender, RoutedEventArgs e) => _operationCancellation?.Cancel();
+    private void Cancel_Click(object sender, RoutedEventArgs e)
+    {
+        if (_operationProgressTerminal)
+        {
+            CloseCompletedOperationProgress();
+            return;
+        }
+        _operationCancellation?.Cancel();
+    }
 
     protected override void OnClosing(CancelEventArgs e)
     {
@@ -1892,10 +2080,14 @@ public partial class MainWindow : Window
             e.Cancel = true;
             if (_operationCanBeCancelled)
             {
-                StatusBox.Text = LocalizedText.Get("CancelCurrentOperation");
+                if (OperationProgressOverlay.Visibility == Visibility.Visible)
+                    StatusBox.Text = LocalizedText.Get("CancelCurrentOperation");
+                else ShowInlineNotice(LocalizedText.Get("CancelCurrentOperation"));
                 _operationCancellation.Cancel();
             }
-            else StatusBox.Text = LocalizedText.Get("OperationWait");
+            else if (OperationProgressOverlay.Visibility == Visibility.Visible)
+                StatusBox.Text = LocalizedText.Get("OperationWait");
+            else ShowInlineNotice(LocalizedText.Get("OperationWait"));
             return;
         }
         base.OnClosing(e);
@@ -1907,7 +2099,9 @@ public partial class MainWindow : Window
         Vanilla2PlusOption.IsEnabled = !busy;
         BrowseButton.IsEnabled = !busy;
         InstallRootBox.IsEnabled = !busy;
-        InstallButton.IsEnabled = !busy;
+        InstallButton.IsEnabled = true;
+        InstallButton.Content = LocalizedText.Get(busy ? "UiShowProgress" : "UiInstall");
+        InstallButton.IsDefault = OperationProgressOverlay.Visibility != Visibility.Visible;
         RepairButton.IsEnabled = !busy;
         UninstallButton.IsEnabled = !busy;
         CancelButton.IsEnabled = busy && _operationCanBeCancelled;
