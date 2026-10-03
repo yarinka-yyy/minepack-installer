@@ -32,11 +32,12 @@
   <data name="UiLauncherHint" xml:space="preserve"><value>如果实例未显示，请使用“检查并修复”恢复其启动器文件。</value></data>
   <data name="UiLauncherChoiceTitle" xml:space="preserve"><value>选择安装位置</value></data>
   <data name="UiLauncherChoiceHelper" xml:space="preserve"><value>选择要创建独立 MinePack 实例的启动器。</value></data>
+  <data name="UiLauncherNotFoundHint" xml:space="preserve"><value>未找到启动器？</value></data>
   <data name="UiLauncherOptionOfficial" xml:space="preserve"><value>Minecraft Launcher</value></data>
   <data name="UiLauncherOptionPrism" xml:space="preserve"><value>Prism Launcher</value></data>
   <data name="UiLauncherTargetLabel" xml:space="preserve"><value>启动器安装</value></data>
-  <data name="UiLauncherLocatePrism" xml:space="preserve"><value>定位 Prism Launcher</value></data>
-  <data name="UiLauncherRescan" xml:space="preserve"><value>重新扫描</value></data>
+  <data name="UiLauncherLocatePrism" xml:space="preserve"><value>选择 Prism Launcher</value></data>
+  <data name="UiLauncherRescan" xml:space="preserve"><value>重新搜索启动器</value></data>
   <data name="UiLauncherChoiceUnknown" xml:space="preserve"><value>无法验证启动器或其安装文件夹。请定位 Prism Launcher 或重新扫描后再安装。</value></data>
   <data name="UiLauncherTargetPath" xml:space="preserve"><value>{0}&#10;{1}</value></data>
   <data name="PrismStartRequestedStatus" xml:space="preserve"><value>已打开 Prism Launcher。请选择“{0}”并启动实例。</value></data>

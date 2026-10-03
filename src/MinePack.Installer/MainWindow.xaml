@@ -358,6 +358,10 @@
                     </Expander>
                 </Border>
 
+                <Button x:Name="InstallButton" Content="{loc:Localized Key=UiInstall}"
+                        Style="{StaticResource InstallButtonStyle}" IsDefault="True"
+                        Margin="0,2,0,12" Click="Install_Click"/>
+
                 <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12" Padding="16,12">
                     <StackPanel>
                         <TextBlock Text="{loc:Localized Key=UiInstallLocation}" FontSize="20" FontWeight="Bold" Margin="0,0,0,8"/>
@@ -374,10 +378,6 @@
                                    FontSize="13" TextWrapping="Wrap" Margin="1,9,0,0"/>
                     </StackPanel>
                 </Border>
-
-                <Button x:Name="InstallButton" Content="{loc:Localized Key=UiInstall}"
-                        Style="{StaticResource InstallButtonStyle}" IsDefault="True"
-                        Margin="0,2,0,12" Click="Install_Click"/>
 
                 <Border Style="{StaticResource WoodPanel}" Margin="0,0,0,12">
                     <StackPanel>
@@ -576,16 +576,33 @@
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
+                        <TextBlock Text="{loc:Localized Key=UiLauncherNotFoundHint}" Style="{StaticResource MutedText}"
+                                   FontSize="15" Margin="0,12,0,7"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Button x:Name="LocatePrismButton" Grid.Column="0"
+                                    AutomationProperties.Name="{loc:Localized Key=UiLauncherLocatePrism}"
+                                    Style="{StaticResource ActionButton}" MinHeight="56"
+                                    HorizontalContentAlignment="Stretch" Margin="0,0,5,0"
+                                    Click="LocatePrismButton_Click">
+                                <TextBlock Text="{loc:Localized Key=UiLauncherLocatePrism}"
+                                           TextAlignment="Center" TextWrapping="Wrap"/>
+                            </Button>
+                            <Button x:Name="RescanLauncherButton" Grid.Column="1"
+                                    AutomationProperties.Name="{loc:Localized Key=UiLauncherRescan}"
+                                    Style="{StaticResource ActionButton}" MinHeight="56"
+                                    HorizontalContentAlignment="Stretch" Margin="5,0,0,0"
+                                    Click="RescanLauncherButton_Click">
+                                <TextBlock Text="{loc:Localized Key=UiLauncherRescan}"
+                                           TextAlignment="Center" TextWrapping="Wrap"/>
+                            </Button>
+                        </Grid>
                         <TextBlock x:Name="LauncherChoiceStatus" Style="{StaticResource MutedText}"
                                    FontSize="15" Margin="0,10,0,0"/>
-                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
-                            <Button x:Name="LocatePrismButton" Content="{loc:Localized Key=UiLauncherLocatePrism}"
-                                    Style="{StaticResource ActionButton}" Margin="0,0,8,0"
-                                    Click="LocatePrismButton_Click"/>
-                            <Button x:Name="RescanLauncherButton" Content="{loc:Localized Key=UiLauncherRescan}"
-                                    Style="{StaticResource ActionButton}" Click="RescanLauncherButton_Click"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
                             <Button x:Name="LauncherChoiceCancelButton" Content="{loc:Localized Key=UiCancel}"
                                     Style="{StaticResource ActionButton}" Margin="0,0,10,0"
                                     Click="LauncherChoiceCancel_Click"/>

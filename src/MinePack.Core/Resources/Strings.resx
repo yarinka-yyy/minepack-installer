@@ -32,11 +32,12 @@
   <data name="UiLauncherHint" xml:space="preserve"><value>If the instance does not appear, use “Check and repair” to restore its launcher files.</value></data>
   <data name="UiLauncherChoiceTitle" xml:space="preserve"><value>Choose where to install</value></data>
   <data name="UiLauncherChoiceHelper" xml:space="preserve"><value>Choose the launcher that should receive this isolated MinePack instance.</value></data>
+  <data name="UiLauncherNotFoundHint" xml:space="preserve"><value>If your launcher is not listed</value></data>
   <data name="UiLauncherOptionOfficial" xml:space="preserve"><value>Minecraft Launcher</value></data>
   <data name="UiLauncherOptionPrism" xml:space="preserve"><value>Prism Launcher</value></data>
   <data name="UiLauncherTargetLabel" xml:space="preserve"><value>Launcher installation</value></data>
-  <data name="UiLauncherLocatePrism" xml:space="preserve"><value>Locate Prism Launcher</value></data>
-  <data name="UiLauncherRescan" xml:space="preserve"><value>Rescan</value></data>
+  <data name="UiLauncherLocatePrism" xml:space="preserve"><value>Browse for Prism Launcher</value></data>
+  <data name="UiLauncherRescan" xml:space="preserve"><value>Search for launchers again</value></data>
   <data name="UiLauncherChoiceUnknown" xml:space="preserve"><value>A launcher or one of its installation folders could not be verified. Locate Prism Launcher or rescan before installing.</value></data>
   <data name="UiLauncherTargetPath" xml:space="preserve"><value>{0}&#10;{1}</value></data>
   <data name="PrismStartRequestedStatus" xml:space="preserve"><value>Prism Launcher was opened. Select “{0}” and start the instance.</value></data>
