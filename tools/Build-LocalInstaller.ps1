@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$')]
-    [string] $InstallerVersion = '1.6.1'
+    [string] $InstallerVersion = '1.6.2'
 )
 
 Set-StrictMode -Version Latest
@@ -148,14 +148,14 @@ try {
 
     $sourceArchives = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'releases') -Recurse -File -Filter '*.mrpack' |
         Sort-Object FullName)
-    if ($sourceArchives.Count -ne 27) { throw "Expected 27 pinned .mrpack archives, found $($sourceArchives.Count)." }
+    if ($sourceArchives.Count -ne 29) { throw "Expected 29 pinned .mrpack archives, found $($sourceArchives.Count)." }
     $archiveLinks = @($project.Project.ItemGroup.Content | Where-Object {
         $_.Include -match '\.mrpack$'
     } | ForEach-Object { $_.Link.Replace('\', '/') } | Sort-Object -Unique)
     $archiveSources = @($sourceArchives | ForEach-Object { Get-RelativePath $repoRoot $_.FullName } | Sort-Object -Unique)
-    if ($archiveLinks.Count -ne 27 -or $archiveSources.Count -ne 27 -or
+    if ($archiveLinks.Count -ne 29 -or $archiveSources.Count -ne 29 -or
         @(Compare-Object $archiveSources $archiveLinks).Count -ne 0) {
-        throw 'The project content list does not match the 27 source .mrpack archives.'
+        throw 'The project content list does not match the 29 source .mrpack archives.'
     }
 
     $testPackPath = Join-Path $repoRoot 'src/MinePack.Core/TestPackRelease.cs'
@@ -212,7 +212,7 @@ try {
         }
     }
     $publishedArchives = @(Get-ChildItem -LiteralPath (Join-Path $packageRoot 'releases') -Recurse -File -Filter '*.mrpack')
-    if ($publishedArchives.Count -ne 27) { throw "Published package contains $($publishedArchives.Count) .mrpack files, expected 27." }
+    if ($publishedArchives.Count -ne 29) { throw "Published package contains $($publishedArchives.Count) .mrpack files, expected 29." }
 
     $sourceKitRoot = Join-Path $repoRoot 'third-party/yungs-sources'
     $publishedKitRoot = Join-Path $packageRoot 'third-party/yungs-sources'
@@ -271,7 +271,7 @@ try {
 
     Assert-ProtectedReleaseZips
     Write-Host "PASS: installer version $productVersion"
-    Write-Host "PASS: 27 .mrpack archives match source SHA-512; current pins match release constants"
+    Write-Host "PASS: 29 .mrpack archives match source SHA-512; current pins match release constants"
     Write-Host "PASS: $($sourceKit.Count) YUNG source-kit files and required licenses/docs included"
     Write-Host "PASS: ZIP has one root folder and $($packageInventory.Count) files match the published folder"
     Write-Host "EXE: $exe"

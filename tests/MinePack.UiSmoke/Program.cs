@@ -25,9 +25,11 @@ internal static class Program
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(dispatcher));
             _application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             var repositoryRoot = FindRepositoryRoot();
-            var output = Path.Combine(repositoryRoot, "artifacts", "build-1.6.1", "ui-smoke");
+            var output = Path.Combine(repositoryRoot, "artifacts", "build-1.6.2", "ui-smoke");
             Directory.CreateDirectory(output);
 
+            VerifyPackCatalogUi(output);
+            VerifyDeleteListGeometryAndPreviews(output);
             VerifyOverlayDismissalAndStaleResults(output);
             VerifyOperationProgressLifecycle(output);
             SaveChooserPreviews(output);
@@ -45,6 +47,276 @@ internal static class Program
         {
             _application?.Shutdown();
         }
+    }
+
+    private static void VerifyPackCatalogUi(string output)
+    {
+        foreach (var cultureName in new[] { "ru-RU", "en-US", "zh-CN" })
+        {
+            foreach (var (width, height) in new[] { (710d, 610d), (850d, 730d) })
+            {
+                var fixtureRoot = NewFixtureRoot(output);
+                Directory.CreateDirectory(fixtureRoot);
+                var window = CreateWindow(cultureName, fixtureRoot, width, height);
+                try
+                {
+                    Require(window.PackCountsText.Text == LocalizedText.Get("UiPackCountsVanillaPlus"),
+                        $"{cultureName} shows the current Vanilla Plus count");
+                    var vanillaGroups = ReadCatalogGroups(window);
+                    Require(vanillaGroups.Length == 8 &&
+                            vanillaGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 62 &&
+                            vanillaGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("resourcepacks/", StringComparison.Ordinal)) == 13 &&
+                            vanillaGroups.Single(group => group.Key == "CatalogWorldgen").Items.Count == 12 &&
+                            vanillaGroups.Single(group => group.Key == "CatalogTools").Items.Any(item => item.ProjectId == "n6PXGAoM") &&
+                            vanillaGroups.Single(group => group.Key == "CatalogTechnical").Items.Any(item => item.ProjectId == "Eldc1g37") &&
+                            !vanillaGroups.SelectMany(group => group.Items).Any(item => item.Name.StartsWith("Macaw's ", StringComparison.Ordinal)),
+                        $"{cultureName} Vanilla Plus catalog shows the shared worldgen base and no Macaw add-ons");
+                    var catalogExpander = FindVisualAncestor<Expander>(window.CatalogList)
+                        ?? throw new InvalidOperationException("The WPF fixture does not contain the catalog expander.");
+                    catalogExpander.IsExpanded = true;
+                    PumpOnce();
+                    window.UpdateLayout();
+                    SaveWindowPng(window, Path.Combine(output, $"catalog-vanilla-plus-{cultureName}-{width:0}x{height:0}.png"));
+
+                    window.Vanilla2PlusOption.IsChecked = true;
+                    PumpOnce();
+                    window.UpdateLayout();
+                    Require(window.PackCountsText.Text == LocalizedText.Get("UiPackCountsVanilla2Plus"),
+                        $"{cultureName} shows the current Frontier count");
+                    var frontierGroups = ReadCatalogGroups(window);
+                    Require(frontierGroups.Length == 9 &&
+                            frontierGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 67 &&
+                            frontierGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("resourcepacks/", StringComparison.Ordinal)) == 13 &&
+                            frontierGroups.Single(group => group.Key == "CatalogBuilding").Items.Count == 5 &&
+                            frontierGroups.Single(group => group.Key == "CatalogWorldgen").Items.Count == 12,
+                        $"{cultureName} Frontier catalog includes the five Macaw add-ons over the shared base");
+                    SaveWindowPng(window, Path.Combine(output, $"catalog-frontier-{cultureName}-{width:0}x{height:0}.png"));
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        }
+    }
+
+    private static CatalogGroup[] ReadCatalogGroups(MainWindow window) =>
+        (window.CatalogList.ItemsSource as IEnumerable<CatalogGroup>)?.ToArray()
+        ?? throw new InvalidOperationException("The WPF catalog has no group source.");
+
+    private static void VerifyDeleteListGeometryAndPreviews(string output)
+    {
+        foreach (var cultureName in new[] { "ru-RU", "en-US", "zh-CN" })
+        {
+            foreach (var (width, height) in new[] { (710d, 610d), (850d, 730d) })
+            {
+                var fixtureRoot = NewFixtureRoot(output);
+                Directory.CreateDirectory(fixtureRoot);
+                var window = CreateWindow(cultureName, fixtureRoot, width, height);
+                try
+                {
+                    var shortEntry = CreateResidueFixture(fixtureRoot, "MinePack-26.2-VanillaPlus-0.18.2-residue");
+                    var longName = "MinePack-26.2-Frontier-0.19.8-residue-" + string.Join('-', Enumerable.Repeat("user-data", 18));
+                    var longEntry = CreateResidueFixture(fixtureRoot, longName);
+
+                    window.ShowDeleteOverlayForUiSmoke(shortEntry);
+                    PumpOnce();
+                    window.UpdateLayout();
+                    window.DeleteInstanceListBox.UpdateLayout();
+                    PumpUntil(() => window.DeleteInstanceListBox.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem,
+                        $"{cultureName} single short delete-list row is rendered");
+                    var shortUnselectedInsets = MeasureListBoundaryInsets(window, 0, 0);
+                    LogListInsets(cultureName, width, height, "single-short-unselected", shortUnselectedInsets);
+                    AssertBalancedInsets(shortUnselectedInsets, $"{cultureName} single short unselected row is vertically centered in its ListBox");
+                    SaveWindowPng(window, Path.Combine(output, $"delete-list-single-short-unselected-{cultureName}-{width:0}x{height:0}.png"));
+                    window.DeleteInstanceListBox.SelectedIndex = 0;
+                    WaitForCleanupStatus(window, $"{cultureName} single short-row selection");
+                    window.UpdateLayout();
+                    var shortSelectedInsets = MeasureListBoundaryInsets(window, 0, 0);
+                    LogListInsets(cultureName, width, height, "single-short-selected", shortSelectedInsets);
+                    AssertBalancedInsets(shortSelectedInsets, $"{cultureName} single short selected row is vertically centered in its ListBox");
+                    SaveWindowPng(window, Path.Combine(output, $"delete-list-single-short-selected-{cultureName}-{width:0}x{height:0}.png"));
+
+                    window.ShowDeleteOverlayForUiSmoke(shortEntry, longEntry);
+                    PumpOnce();
+                    window.UpdateLayout();
+                    window.DeleteInstanceListBox.UpdateLayout();
+                    PumpUntil(() => window.DeleteInstanceListBox.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem &&
+                                    window.DeleteInstanceListBox.ItemContainerGenerator.ContainerFromIndex(1) is ListBoxItem,
+                        $"{cultureName} delete-list rows are rendered");
+                    var multiInsets = MeasureListBoundaryInsets(window, 0, 1);
+                    LogListInsets(cultureName, width, height, "multi-unselected", multiInsets);
+                    AssertBalancedInsets(multiInsets, $"{cultureName} non-overflow multi-list has symmetric outer padding");
+
+                    window.DeleteInstanceListBox.SelectedIndex = 0;
+                    WaitForCleanupStatus(window, $"{cultureName} short-row selection");
+                    window.UpdateLayout();
+                    AssertSelectionInsets(window, 0, 1, $"{cultureName} selected short row");
+                    var afterShortSelection = MeasureListBoundaryInsets(window, 0, 1);
+                    LogListInsets(cultureName, width, height, "multi-short-selected", afterShortSelection);
+                    AssertBalancedInsets(afterShortSelection, $"{cultureName} multi-list remains balanced after selecting the short row");
+                    AssertInsetsWithinOnePixel(multiInsets, afterShortSelection,
+                        $"{cultureName} selecting a short row does not change the multi-list boundary insets");
+                    SaveWindowPng(window, Path.Combine(output, $"delete-list-selected-short-{cultureName}-{width:0}x{height:0}.png"));
+
+                    window.DeleteInstanceListBox.SelectedIndex = 1;
+                    WaitForCleanupStatus(window, $"{cultureName} long-row selection");
+                    window.UpdateLayout();
+                    AssertSelectionInsets(window, 1, 0, $"{cultureName} selected wrapped row");
+                    var afterLongSelection = MeasureListBoundaryInsets(window, 0, 1);
+                    LogListInsets(cultureName, width, height, "multi-long-selected", afterLongSelection);
+                    AssertBalancedInsets(afterLongSelection, $"{cultureName} multi-list remains balanced after selecting the wrapped row");
+                    AssertInsetsWithinOnePixel(multiInsets, afterLongSelection,
+                        $"{cultureName} selecting a wrapped row does not change the multi-list boundary insets");
+                    SaveWindowPng(window, Path.Combine(output, $"delete-list-selected-long-{cultureName}-{width:0}x{height:0}.png"));
+
+                    window.ShowDeleteOverlayForUiSmoke(longEntry);
+                    PumpOnce();
+                    window.UpdateLayout();
+                    window.DeleteInstanceListBox.UpdateLayout();
+                    PumpUntil(() => window.DeleteInstanceListBox.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem,
+                        $"{cultureName} single delete-list row is rendered");
+                    var singleInsets = MeasureListBoundaryInsets(window, 0, 0);
+                    LogListInsets(cultureName, width, height, "single-long-unselected", singleInsets);
+                    AssertBalancedInsets(singleInsets, $"{cultureName} single wrapped unselected row is vertically centered in its ListBox");
+                    SaveWindowPng(window, Path.Combine(output, $"delete-list-single-long-unselected-{cultureName}-{width:0}x{height:0}.png"));
+                    window.DeleteInstanceListBox.SelectedIndex = 0;
+                    WaitForCleanupStatus(window, $"{cultureName} single-row selection");
+                    window.UpdateLayout();
+                    var selectedSingleInsets = MeasureListBoundaryInsets(window, 0, 0);
+                    LogListInsets(cultureName, width, height, "single-long-selected", selectedSingleInsets);
+                    AssertBalancedInsets(selectedSingleInsets, $"{cultureName} single wrapped selected row is vertically centered in its ListBox");
+                    var row = GetDeleteListItem(window, 0);
+                    var frameInsets = MeasureInsets(row, FindSelectionFrame(row), VisualTreeHelper.GetDpi(window).DpiScaleY);
+                    Require(Math.Abs(frameInsets.Top - frameInsets.Bottom) <= 1.0,
+                        $"{cultureName} selected single-row frame has balanced vertical insets");
+                    SaveWindowPng(window, Path.Combine(output, $"delete-list-single-long-{cultureName}-{width:0}x{height:0}.png"));
+
+                    var overflowEntries = Enumerable.Range(0, 12)
+                        .Select(index => CreateResidueFixture(fixtureRoot, $"MinePack-26.2-Frontier-0.19.8-residue-{index:00}"))
+                        .ToArray();
+                    window.ShowDeleteOverlayForUiSmoke(overflowEntries);
+                    PumpOnce();
+                    window.UpdateLayout();
+                    window.DeleteInstanceListBox.UpdateLayout();
+                    PumpUntil(() => window.DeleteInstanceListBox.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem,
+                        $"{cultureName} overflowing delete-list rows are rendered");
+                    var overflowViewer = FindVisualChild<ScrollViewer>(window.DeleteInstanceListBox)
+                        ?? throw new InvalidOperationException("The WPF delete list has no ScrollViewer.");
+                    Require(overflowViewer.ScrollableHeight > 1,
+                        $"{cultureName} many delete-list rows use the bounded scrolling viewport");
+                    window.DeleteInstanceListBox.SelectedIndex = 0;
+                    WaitForCleanupStatus(window, $"{cultureName} overflow list selection");
+                    window.UpdateLayout();
+                    RequireInsideCard(window.DeleteInstanceCard, window.DeleteOverlayCancelButton,
+                        $"{cultureName} overflow cancel button remains inside the dialog card");
+                    RequireInsideCard(window.DeleteInstanceCard, window.DeleteRemainingDataButton,
+                        $"{cultureName} overflow residue button remains inside the dialog card");
+                    RequireInsideCard(window.DeleteInstanceCard, window.DeleteManagedFilesButton,
+                        $"{cultureName} overflow uninstall button remains inside the dialog card");
+                    var selectedBeforeWheel = window.DeleteInstanceListBox.SelectedIndex;
+                    var offsetBeforeWheel = overflowViewer.VerticalOffset;
+                    overflowViewer.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, Environment.TickCount, -120)
+                    {
+                        RoutedEvent = Mouse.MouseWheelEvent,
+                        Source = overflowViewer
+                    });
+                    PumpOnce();
+                    Require(window.DeleteInstanceListBox.SelectedIndex == selectedBeforeWheel,
+                        $"{cultureName} scrolling the overflowing list does not change selection");
+                    Require(overflowViewer.VerticalOffset > offsetBeforeWheel,
+                        $"{cultureName} mouse-wheel input scrolls the real WPF ScrollViewer");
+                    SaveWindowPng(window, Path.Combine(output, $"delete-list-overflow-{cultureName}-{width:0}x{height:0}.png"));
+                    window.DeleteOverlayCancelButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent, window.DeleteOverlayCancelButton));
+                }
+                finally
+                {
+                    window.Close();
+                }
+            }
+        }
+    }
+
+    private static InstalledInstanceEntry CreateResidueFixture(string fixtureRoot, string name) =>
+        new(Path.Combine(fixtureRoot, "instances", "ui-residue-" + Guid.NewGuid().ToString("N")),
+            name, InstalledInstanceState.Residue, null, "UI_FIXTURE_RESIDUE");
+
+    private static void WaitForCleanupStatus(MainWindow window, string description) =>
+        PumpUntil(() => !window.DeleteInstanceDetails.Text.Contains(LocalizedText.Get("UiDeleteCleanupChecking"), StringComparison.Ordinal),
+            $"{description} cleanup preflight finishes against fixture paths");
+
+    private static void AssertSelectionInsets(MainWindow window, int selectedIndex, int unselectedIndex, string message)
+    {
+        var selected = GetDeleteListItem(window, selectedIndex);
+        var unselected = GetDeleteListItem(window, unselectedIndex);
+        var scale = VisualTreeHelper.GetDpi(window).DpiScaleY;
+        AssertInsetsWithinOnePixel(MeasureInsets(selected, FindSelectionFrame(selected), scale),
+            MeasureInsets(unselected, FindSelectionFrame(unselected), scale), message);
+    }
+
+    private static ListBoxItem GetDeleteListItem(MainWindow window, int index) =>
+        window.DeleteInstanceListBox.ItemContainerGenerator.ContainerFromIndex(index) as ListBoxItem
+        ?? throw new InvalidOperationException($"Delete-list row {index} is not realized.");
+
+    private static Border FindSelectionFrame(ListBoxItem item) =>
+        item.Template.FindName("SelectionFrame", item) as Border
+        ?? throw new InvalidOperationException("The delete-list selection frame was not found.");
+
+    private static (double Top, double Bottom) MeasureInsets(FrameworkElement parent, FrameworkElement child, double scaleY)
+    {
+        var origin = child.TransformToAncestor(parent).Transform(new Point(0, 0));
+        return (origin.Y * scaleY, (parent.ActualHeight - origin.Y - child.ActualHeight) * scaleY);
+    }
+
+    private static (double Top, double Bottom) MeasureListBoundaryInsets(MainWindow window, int firstIndex, int lastIndex)
+    {
+        var list = window.DeleteInstanceListBox;
+        var scale = VisualTreeHelper.GetDpi(window).DpiScaleY;
+        var firstFrame = FindSelectionFrame(GetDeleteListItem(window, firstIndex));
+        var lastFrame = FindSelectionFrame(GetDeleteListItem(window, lastIndex));
+        var firstInsets = MeasureInsets(list, firstFrame, scale);
+        var lastInsets = MeasureInsets(list, lastFrame, scale);
+        return (firstInsets.Top, lastInsets.Bottom);
+    }
+
+    private static void LogListInsets(string cultureName, double width, double height, string state,
+        (double Top, double Bottom) insets) =>
+        Console.WriteLine($"WPF list insets {cultureName} {width:0}x{height:0} {state}: top={insets.Top:0.0}px bottom={insets.Bottom:0.0}px");
+
+    private static void AssertInsetsWithinOnePixel((double Top, double Bottom) expected,
+        (double Top, double Bottom) actual, string message) =>
+        Require(Math.Abs(expected.Top - actual.Top) <= 1.0 && Math.Abs(expected.Bottom - actual.Bottom) <= 1.0,
+            $"{message}: expected top/bottom {expected.Top:0.0}/{expected.Bottom:0.0}px, actual {actual.Top:0.0}/{actual.Bottom:0.0}px");
+
+    private static void AssertBalancedInsets((double Top, double Bottom) insets, string message) =>
+        Require(Math.Abs(insets.Top - insets.Bottom) <= 1.0,
+            $"{message}: top/bottom {insets.Top:0.0}/{insets.Bottom:0.0}px");
+
+    private static void RequireInsideCard(FrameworkElement card, FrameworkElement child, string message)
+    {
+        var origin = child.TransformToAncestor(card).Transform(new Point(0, 0));
+        Require(child.IsVisible && origin.Y >= -1 && origin.Y + child.ActualHeight <= card.ActualHeight + 1,
+            $"{message}: child top/bottom {origin.Y:0.0}/{origin.Y + child.ActualHeight:0.0}px of card height {card.ActualHeight:0.0}px");
+    }
+
+    private static T? FindVisualAncestor<T>(DependencyObject element) where T : DependencyObject
+    {
+        for (var current = element; current is not null;
+             current = VisualTreeHelper.GetParent(current) ?? LogicalTreeHelper.GetParent(current))
+            if (current is T match) return match;
+        return null;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        var count = VisualTreeHelper.GetChildrenCount(parent);
+        for (var index = 0; index < count; index++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, index);
+            if (child is T match) return match;
+            if (FindVisualChild<T>(child) is { } descendant) return descendant;
+        }
+        return null;
     }
 
     private static void VerifyOperationProgressLifecycle(string output)

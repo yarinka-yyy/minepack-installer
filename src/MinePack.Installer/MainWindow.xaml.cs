@@ -67,7 +67,7 @@ public partial class MainWindow : Window
             : Path.Combine(fixtureRoot, "installer-preferences.json");
         _launcherController = new MinecraftLauncherController();
         _prismLauncherController = new PrismLauncherController();
-        _launcher = new FabricLauncherService(ensureLauncherClosed: _launcherController.EnsureClosed);
+        _launcher = new FabricLauncherService(fixtureRoot, ensureLauncherClosed: _launcherController.EnsureClosed);
         VanillaPlusOption.Checked += PackChoice_Changed;
         Vanilla2PlusOption.Checked += PackChoice_Changed;
         var assembly = typeof(MainWindow).Assembly;
@@ -715,13 +715,13 @@ public partial class MainWindow : Window
         }));
     }
 
-    internal void ShowDeleteOverlayForUiSmoke(InstalledInstanceEntry entry)
+    internal void ShowDeleteOverlayForUiSmoke(params InstalledInstanceEntry[] entries)
     {
-        _instanceChoices = [new InstanceChoice(entry, entry.DirectoryName)];
+        _instanceChoices = entries.Select(entry => new InstanceChoice(entry, entry.DirectoryName)).ToArray();
         DeleteInstanceListBox.ItemsSource = _instanceChoices;
         DeleteInstanceListBox.SelectedIndex = -1;
-        _deleteSelectedEntry = entry;
-        DeleteManagedFilesButton.IsEnabled = entry is { IsTrusted: true, Release: not null };
+        _deleteSelectedEntry = entries.FirstOrDefault();
+        DeleteManagedFilesButton.IsEnabled = _deleteSelectedEntry is { IsTrusted: true, Release: not null };
         DeleteRemainingDataButton.IsEnabled = false;
         DisplayDeleteInstanceOverlay();
     }

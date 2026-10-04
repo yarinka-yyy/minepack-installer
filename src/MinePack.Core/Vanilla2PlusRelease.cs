@@ -2,10 +2,12 @@ namespace MinePack.Core;
 
 public static class Vanilla2PlusRelease
 {
-    public const string ArtifactFileName = "vanilla-2-plus-0.19.7.mrpack";
+    public const string ArtifactFileName = "vanilla-2-plus-0.19.8.mrpack";
     public const string ArtifactRelativePath = "releases/vanilla-2-plus/" + ArtifactFileName;
-    public const string ArtifactSha512 = "11555813B812AC8469F82C10C91A2530D065BD53A71B2EF57E05718FA18F12B88175A6F2DFBDF65FF72C86BE44E83C2FB9D96DC17DC38AAC5B6EEBE5EF95AB2E";
-    public const string PackVersion = "0.19.7";
+    public const string ArtifactSha512 = "EEAB43179B7EE9B6C4A0BC1D20F2AC7E7C09F9CBDD632493D03A015B30543CECED00B96ED474B1F3420DBAA4E970FB0046BF76EC9CF201C21F514E59D59200AB";
+    public const string PreviousCurrentArtifactFileName = "vanilla-2-plus-0.19.7.mrpack";
+    public const string PreviousCurrentArtifactSha512 = "11555813B812AC8469F82C10C91A2530D065BD53A71B2EF57E05718FA18F12B88175A6F2DFBDF65FF72C86BE44E83C2FB9D96DC17DC38AAC5B6EEBE5EF95AB2E";
+    public const string PackVersion = "0.19.8";
     public const string MinecraftVersion = TestPackRelease.MinecraftVersion;
     public const string PreviousCandidateArtifactFileName = "vanilla-2-plus-0.19.6.mrpack";
     public const string PreviousCandidateArtifactSha512 = "5FEC73C5E023C251D35E20A32C181C0679669972D8945642D36725FFE575969473CA2F7AB75699D4E7ED91CB78AE57628570189A7548FE3898968BD663467D2B";
@@ -44,9 +46,11 @@ public static class Vanilla2PlusRelease
     ];
     public static string[] PreviousCandidateResourcePacks => PreviousResourcePacks
         .Where(name => name != "LowOnFire v26.2§8.zip").ToArray();
-    public static string[] InitialResourcePacks => PreviousResourcePacks
+    public static string[] LegacyCurrentResourcePacks => PreviousResourcePacks
         .Where(name => name != "LowOnFire v26.2§8.zip")
         .Select(name => name == "xalis-enhanced-vanilla-26.2-minepack.1.zip"
             ? "xalis-enhanced-vanilla-26.2-minepack.2.zip" : name).ToArray();
+
+    public static string[] InitialResourcePacks => TestPackRelease.InitialResourcePacks;
     public static string InitialOptions => TestPackRelease.BuildInitialOptions(InitialResourcePacks);
 }

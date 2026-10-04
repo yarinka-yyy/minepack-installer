@@ -51,6 +51,11 @@ hash = "549f571b8a25fa25e39490c37eb412af36c75afc7ce21304cfed0cc8549bb2bd"
 metafile = true
 
 [[files]]
+file = "mods/better-stats.pw.toml"
+hash = "32373bc120e6b8c05c81afc3674ed10750a9d15fd8370ebc7203e26bef72967f"
+metafile = true
+
+[[files]]
 file = "mods/better-village.pw.toml"
 hash = "2b28657052feb055ab8e13cf97bf87703ff8cc96935d45a92794735068a3299c"
 metafile = true
@@ -305,6 +310,11 @@ hash = "38e2b038c4a76bd772f7f1fde2325a5bbe94bedb4ff152cc87fdd16f2fa0f869"
 metafile = true
 
 [[files]]
+file = "mods/tcdcommons.pw.toml"
+hash = "8759afe2cad50f4ceb1f10c426c0c1a8e88e9b58333d1e98f9e9940a72955cfe"
+metafile = true
+
+[[files]]
 file = "mods/tree-harvester.pw.toml"
 hash = "fd111addde7dabcaab7d402c80c96c4e8d5d8121f5954f466b37025cdf4d25d6"
 metafile = true
@@ -329,8 +339,13 @@ hash = "02deec5980a738de5b9f79a4d80299717267f5526df838dceacb0a89e127edbc"
 metafile = true
 
 [[files]]
-file = "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.1.zip"
-hash = "ad8b48dd7cc7bd872ee8213b95acd791d33a6d991d52ff0cb827cc13c9f6c090"
+file = "resourcepacks/3d-default.pw.toml"
+hash = "dc2b23c4cdc52436cbc17b26840a2e3101f9a78210d9082a97c04dce3aba8215"
+metafile = true
+
+[[files]]
+file = "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.2.zip"
+hash = "791b1a98a8b973de01ec9d1ebc10cbbb1d1d1d94782d3ae8cec9f23f5227e0d7"
 
 [[files]]
 file = "resourcepacks/better-click-sounds.pw.toml"

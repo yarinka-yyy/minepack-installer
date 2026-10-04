@@ -1,3 +1,5 @@
 pack/test-pack/** text eol=lf
+pack/test-pack/mods/*.jar binary
+pack/test-pack/resourcepacks/*.zip binary
 releases/test-pack/*.mrpack binary
 third-party/yungs-sources/** -text

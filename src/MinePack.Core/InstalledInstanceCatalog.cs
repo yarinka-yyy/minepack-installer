@@ -44,6 +44,7 @@ public static class InstalledInstanceCatalog
     private static readonly KnownPackRelease[] Releases =
     [
         Test(TestPackRelease.PackVersion, TestPackRelease.ArtifactFileName, TestPackRelease.ArtifactSha512),
+        Test("0.18.1", TestPackRelease.PreviousCurrentArtifactFileName, TestPackRelease.PreviousCurrentArtifactSha512),
         Test("0.18.0", TestPackRelease.LowFireArtifactFileName, TestPackRelease.LowFireArtifactSha512),
         Test("0.15.0", TestPackRelease.SmoothArtifactFileName, TestPackRelease.SmoothArtifactSha512),
         Test("0.10.0", TestPackRelease.PriorArtifactFileName, TestPackRelease.PriorArtifactSha512),
@@ -57,6 +58,7 @@ public static class InstalledInstanceCatalog
         Test("0.2.0", TestPackRelease.PreviousArtifactFileName, TestPackRelease.PreviousArtifactSha512, "26.3"),
         Test("0.1.0", TestPackRelease.LegacyArtifactFileName, TestPackRelease.LegacyArtifactSha512, "26.3"),
         Frontier(Vanilla2PlusRelease.PackVersion, Vanilla2PlusRelease.ArtifactFileName, Vanilla2PlusRelease.ArtifactSha512),
+        Frontier("0.19.7", Vanilla2PlusRelease.PreviousCurrentArtifactFileName, Vanilla2PlusRelease.PreviousCurrentArtifactSha512),
         Frontier("0.19.6", Vanilla2PlusRelease.PreviousCandidateArtifactFileName, Vanilla2PlusRelease.PreviousCandidateArtifactSha512),
         Frontier("0.19.5", Vanilla2PlusRelease.DoorsArtifactFileName, Vanilla2PlusRelease.DoorsArtifactSha512),
         Frontier("0.19.4", Vanilla2PlusRelease.XalisArtifactFileName, Vanilla2PlusRelease.XalisArtifactSha512),

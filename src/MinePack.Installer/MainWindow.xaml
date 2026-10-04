@@ -474,7 +474,7 @@
                                FontWeight="Bold" Margin="0,0,0,9"/>
                     <TextBlock Grid.Row="1" Text="{loc:Localized Key=UiDeletePackHelper}" FontSize="16"
                                TextWrapping="Wrap" Margin="0,0,0,12"/>
-                    <ListBox Grid.Row="2" x:Name="DeleteInstanceListBox" MinHeight="80"
+                    <ListBox Grid.Row="2" x:Name="DeleteInstanceListBox" MaxHeight="260"
                              Background="#1B1713" Foreground="#FFF4DF" BorderBrush="#8E7D5D"
                              BorderThickness="2" FontSize="15" SelectionMode="Single"
                              ScrollViewer.VerticalScrollBarVisibility="Auto"

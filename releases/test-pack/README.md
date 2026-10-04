@@ -2,6 +2,10 @@
 
 This retained `test-pack` path contains Vanilla Plus release archives for installer compatibility. It is not the separate experimental Test 0.20.x pack.
 
+## 0.18.2 — shared 26.2 base and statistics
+
+Local candidate for Minecraft `26.2` and Fabric Loader `0.19.5`: 62 mods, 13 resource packs, and 1 shader. Adds pinned Better Statistics Screen `5.5.6` with TCDCommons `5.5.6` and 3D Default `1.16.0`; the shared Vanilla Plus base also now contains the world-generation set previously found only in Frontier. The 13 initial resource packs place 3D Default below the existing xali → Remodeled Doors → compatibility order. Compatibility ZIP `.2` preserves all 19 entries in `.1` and adds the three minimal alias models with parent `minecraft:block/block` and ambient occlusion disabled; `tools/Build-DoorCompatibility.ps1` rebuilds it deterministically. ZIP `.2` SHA-256: `791B1A98A8B973DE01EC9D1EBC10CBBB1D1D1D94782D3AE8CEC9F23F5227E0D7`. The exact Minecraft 26.2 resource check passed at format 88.0: 18 door/trapdoor blockstates and all 54 affected Remodeled Doors models (52 block, 2 item) resolve through the curated layers. Offline Smoke and strict direct-download Install/Repair/Uninstall passed. Archive SHA-512: `9B756275D14380848C06183CE8E693C8519ACDBD1EC13EBB3D65E1154F4E57E9EB3D03321A535FD1C5230797C3D093F925C1C24DE5B0E95D7B0B92722E4E3061`. The previous `0.18.1` archive remains immutable; in-game resource rendering and gameplay acceptance remain pending.
+
 ## 0.18.1 — Vanilla Plus without Low On Fire
 
 Published with MinePack Installer `1.5.0` for Minecraft `26.2` and Fabric Loader `0.19.5`: 37 mods, 7 resource packs, and 1 shader. Removes only Low On Fire; all other pinned downloads, the shader, and initial player settings are unchanged. The former `0.18.0` archive remains immutable for Repair and Uninstall. Archive SHA-512: `2E259CEE78A2022CDE78012BA95E6EE5E789C3F0DA45D3C51B1D7E4FC689865E0D981FD784C850EF74492F02F8AF8497943394ADC15DBE9135718918FAFB9906`. Deterministic smoke plus direct network Install/Repair/Uninstall in a clean temporary instance passed in the normal Windows user environment.

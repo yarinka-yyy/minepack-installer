@@ -1,8 +1,44 @@
 hash-format = "sha256"
 
 [[files]]
+file = "config/guardvillagers.json"
+hash = "dd5bdd22e69bb13afe8ce97f215807b405bcae48522c7750d50fddca5cfa9333"
+
+[[files]]
 file = "config/iris.properties"
 hash = "ecdc47e26c1b274613251b8935d35c7225b4e1b12b7671388999dacd0f7178cb"
+
+[[files]]
+file = "config/voxyworldgenv2.json"
+hash = "10a2ae6225b872b681e18bc1170b4cde28ad076b5f1d74088effc668f7afadba"
+
+[[files]]
+file = "mods/YungsApi-26.2-Fabric-6.1.3-minepack.1.jar"
+hash = "0c03efe456698bf64cc58797d6ff852aebbbaf67f85ad8dcf4dd9eb985821604"
+
+[[files]]
+file = "mods/YungsBetterDesertTemples-26.2-Fabric-5.1.1-minepack.2.jar"
+hash = "59486b06ead7d5b0ae30e60e738604490184f432b0ac263c27c20ce6a3aed59c"
+
+[[files]]
+file = "mods/YungsBetterDungeons-26.2-Fabric-6.1.1-minepack.1.jar"
+hash = "2307e18e81d55b7dec688f19cda22426ef8cc23e6b9267b98717be23ec66c046"
+
+[[files]]
+file = "mods/YungsBetterJungleTemples-26.2-Fabric-4.1.1-minepack.1.jar"
+hash = "a9e062061cc176a93de6f0722af3b7583199dc8a12238b43fd9f05fd51123ac3"
+
+[[files]]
+file = "mods/YungsBetterMineshafts-26.2-Fabric-6.1.1-minepack.1.jar"
+hash = "8a86d77211874f02ed4008e7d30cf272296d89167e31a32e8878ed0bbfab329f"
+
+[[files]]
+file = "mods/YungsBetterNetherFortresses-26.2-Fabric-4.1.1-minepack.1.jar"
+hash = "e660988ef669d409ccd0177c337d16038c4769cf7dc035698bd3308ee1fb8cbd"
+
+[[files]]
+file = "mods/YungsBetterStrongholds-26.2-Fabric-6.1.1-minepack.1.jar"
+hash = "d76c94f9a00890892e922bfa38c82a6d04e064f99ae4902533233de01dcf0aa2"
 
 [[files]]
 file = "mods/advancement-plaques.pw.toml"
@@ -12,6 +48,16 @@ metafile = true
 [[files]]
 file = "mods/better-block-entities.pw.toml"
 hash = "549f571b8a25fa25e39490c37eb412af36c75afc7ce21304cfed0cc8549bb2bd"
+metafile = true
+
+[[files]]
+file = "mods/better-stats.pw.toml"
+hash = "32373bc120e6b8c05c81afc3674ed10750a9d15fd8370ebc7203e26bef72967f"
+metafile = true
+
+[[files]]
+file = "mods/better-village.pw.toml"
+hash = "2b28657052feb055ab8e13cf97bf87703ff8cc96935d45a92794735068a3299c"
 metafile = true
 
 [[files]]
@@ -30,6 +76,11 @@ hash = "8e4512056e448a6f3d1ac179961eb699c15fbe000284e0aee041b5971b417302"
 metafile = true
 
 [[files]]
+file = "mods/cit-resewn-continuation.pw.toml"
+hash = "4395db527e48105767a3497932bf1eae8220b5c3467b89be150283877e0fd240"
+metafile = true
+
+[[files]]
 file = "mods/cloth-config.pw.toml"
 hash = "7fa9592b9948b8809018a4e7c3ca7da4d19fc5ef8c03021414cb22ae0253f083"
 metafile = true
@@ -37,6 +88,16 @@ metafile = true
 [[files]]
 file = "mods/clumps.pw.toml"
 hash = "3e4d788583a36e9d145407fadce148f037e5229bff430f7dcd281d4d426c9ee6"
+metafile = true
+
+[[files]]
+file = "mods/collective.pw.toml"
+hash = "d49aa6a6d317279e307c56e0473bac7f9bd909a5ae71c0110324b0aab28d7734"
+metafile = true
+
+[[files]]
+file = "mods/continuity.pw.toml"
+hash = "55059a859c4e983361c47b13a72c5de5f6a98ceb67a7914ecce8eb3738f73c8e"
 metafile = true
 
 [[files]]
@@ -95,6 +156,11 @@ hash = "289599ac70b0f0a9a0055f1bd10fb7e2c38c540c3ef49db8779c5c3988a7455c"
 metafile = true
 
 [[files]]
+file = "mods/guard-villagers-(fabricquilt).pw.toml"
+hash = "ed5c11155938cc32f74517ac00f5a0678e3004cdb03ee3ccb06bec4ad618796b"
+metafile = true
+
+[[files]]
 file = "mods/held-item-info.pw.toml"
 hash = "e0718ec44f9abe7e4fa8b4122478158db98b8dc2376a98c7382e0298e3b5bfa6"
 metafile = true
@@ -130,8 +196,23 @@ hash = "7262c5dea44f3ef66051c5300f498d03ad64f97cc5c920dd04ec8f0ba607bb92"
 metafile = true
 
 [[files]]
+file = "mods/it-takes-a-pillage-continuation.pw.toml"
+hash = "044ed525096b53f4f0f1140e98fdb16d13594f4b3d95b272c0f6dae5af3a0631"
+metafile = true
+
+[[files]]
 file = "mods/leaf-me-alone.pw.toml"
 hash = "93d7e285effc0163ef901fb27bf82027b0d907a501be88f4bca87ffed3ced6b7"
+metafile = true
+
+[[files]]
+file = "mods/library-ferret.pw.toml"
+hash = "264f69ceffa9b062ad4fe250ae40e5694dc0ff07f96c2d1044bb115df7ca5d88"
+metafile = true
+
+[[files]]
+file = "mods/mns-moogs-nether-structures.pw.toml"
+hash = "79239b5a547be0fae2e8f2a96b2807f538b416a47fcca57233058ca1ec92c2c9"
 metafile = true
 
 [[files]]
@@ -140,9 +221,23 @@ hash = "fa00f7dbf48bbcf6940248d3fd3629f43656c54006cc63d5560f9ca77ccd97a9"
 metafile = true
 
 [[files]]
+file = "mods/moogs-structure-lib.pw.toml"
+hash = "53533a761f7c2b7d1aa610f21b0bf2f7f6b4a2dc1bdb5cbbf2f90673c3d3e393"
+metafile = true
+
+[[files]]
+file = "mods/moogs-voyager-structures.pw.toml"
+hash = "48f5f92618ff0a13d6c9bd4b848eb8dc53b1dc476217c75c78e450113fe59030"
+metafile = true
+
+[[files]]
 file = "mods/mossylib.pw.toml"
 hash = "c4c27f20592bbf7ff810662addbfa66580ddfc5d9ee838cb0d77c05df47e77b7"
 metafile = true
+
+[[files]]
+file = "mods/nyfsspiders-fabric-26.2-3.0.0-minepack.1.jar"
+hash = "46ddc806f21758ee0f4af492cddc2b7956d917fcb894f4775a2d697b3dc5cd2a"
 
 [[files]]
 file = "mods/pick-up-notifier.pw.toml"
@@ -165,6 +260,11 @@ hash = "5587d752a3b30750512779e21e0a5eb400d0657593d9ba8c392e157ec74c251c"
 metafile = true
 
 [[files]]
+file = "mods/resourceful-lib.pw.toml"
+hash = "85abccaee90ea0b213687eaacafde09bcd30fb3fbcf6404e8e31245929f2e69b"
+metafile = true
+
+[[files]]
 file = "mods/sodium.pw.toml"
 hash = "a899b14d4bbab643586ac2734da162e9cae579d461f81776804c598a03297ebe"
 metafile = true
@@ -175,8 +275,28 @@ hash = "cfd82363b33192a90d7f0e63dc6149f9b37507d8ee428fc1cfdea48063a91720"
 metafile = true
 
 [[files]]
+file = "mods/structory.pw.toml"
+hash = "3c4da8a221086153d491104bba4fd8796dac92d5c3e0b2dc111a6c5d53b65484"
+metafile = true
+
+[[files]]
 file = "mods/subtle-effects.pw.toml"
 hash = "38e2b038c4a76bd772f7f1fde2325a5bbe94bedb4ff152cc87fdd16f2fa0f869"
+metafile = true
+
+[[files]]
+file = "mods/tcdcommons.pw.toml"
+hash = "8759afe2cad50f4ceb1f10c426c0c1a8e88e9b58333d1e98f9e9940a72955cfe"
+metafile = true
+
+[[files]]
+file = "mods/tree-harvester.pw.toml"
+hash = "fd111addde7dabcaab7d402c80c96c4e8d5d8121f5954f466b37025cdf4d25d6"
+metafile = true
+
+[[files]]
+file = "mods/voxy-worldgen.pw.toml"
+hash = "f89410d8372438d00a05b5f6dcfa4d73de70b444172ead4768b93e40b183caa7"
 metafile = true
 
 [[files]]
@@ -185,9 +305,22 @@ hash = "93462b004525a25f82e8faec0e6c54a37cffb214117639f604d997bc026af17c"
 metafile = true
 
 [[files]]
+file = "mods/worldplaytime-1.2.5-minepack.1-26.2-FABRIC.jar"
+hash = "a940695d1cb3230d42c307e1a5ffe4422425413044732a3d3e37852caf55d700"
+
+[[files]]
 file = "mods/xaeros-world-map.pw.toml"
 hash = "02deec5980a738de5b9f79a4d80299717267f5526df838dceacb0a89e127edbc"
 metafile = true
+
+[[files]]
+file = "resourcepacks/3d-default.pw.toml"
+hash = "dc2b23c4cdc52436cbc17b26840a2e3101f9a78210d9082a97c04dce3aba8215"
+metafile = true
+
+[[files]]
+file = "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.2.zip"
+hash = "791b1a98a8b973de01ec9d1ebc10cbbb1d1d1d94782d3ae8cec9f23f5227e0d7"
 
 [[files]]
 file = "resourcepacks/better-click-sounds.pw.toml"
@@ -215,6 +348,11 @@ hash = "91f03f95a740457e053a3c265b56ebe3b26342205c5e25ba3e4668ed60312880"
 metafile = true
 
 [[files]]
+file = "resourcepacks/freshly-modded.pw.toml"
+hash = "8dc0f40a89680eb8be2e5521c787d008706a574e508ca60e3562e0857405bcc4"
+metafile = true
+
+[[files]]
 file = "resourcepacks/gui-retextures.pw.toml"
 hash = "b4a3e94b129bbc54964096526debb947baf7d4155c07529264517c1138a1a5ce"
 metafile = true
@@ -223,6 +361,20 @@ metafile = true
 file = "resourcepacks/os-colorful-grasses.pw.toml"
 hash = "8b6f2f74f6d74f0dffd4fe89672a696e518bc8d5024fb62c2ca90480954d35d4"
 metafile = true
+
+[[files]]
+file = "resourcepacks/remodeled-doors.pw.toml"
+hash = "f606a48db00add8897df64cb469168f5aed42a58be4a294be957f3a1f4bd4a65"
+metafile = true
+
+[[files]]
+file = "resourcepacks/semos-animations-lib.pw.toml"
+hash = "3bd79a2e8fb89d9d094ea8c53ca657193d6a18f5173f7efdb69c8de79e053057"
+metafile = true
+
+[[files]]
+file = "resourcepacks/xalis-enhanced-vanilla-26.2-minepack.2.zip"
+hash = "834bd7a0b37e5c241ed3cb34fed7dec15be3172c5b0166a3fe8fa15bc3aa6034"
 
 [[files]]
 file = "shaderpacks/complementary-reimagined.pw.toml"

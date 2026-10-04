@@ -1,0 +1,13 @@
+name = "F.M.R.P"
+filename = "Freshly Modded 3.0.5.zip"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/u4nhiAdP/versions/ck5iB4VE/Freshly%20Modded%203.0.5.zip"
+hash-format = "sha512"
+hash = "dd31df879adef28b031fd2e358bf84ea791374a79378000f2635200589b6e447b821ed49da2d8334b9db67d1800796c6e3293a142d9c902903d8b530d3b78926"
+
+[update]
+[update.modrinth]
+mod-id = "u4nhiAdP"
+version = "ck5iB4VE"

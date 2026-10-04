@@ -1,0 +1,13 @@
+name = "Remodeled Doors 3D"
+filename = "§aRemodeled-Doors§8_§62.2.1.zip"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/emO4C1kf/versions/aBO2dU79/%C2%A7aRemodeled-Doors%C2%A78_%C2%A762.2.1.zip"
+hash-format = "sha512"
+hash = "efe81850001ef80bed6dc880df1084f5e607c6ed295c88e6fbd2834e273101e275b1275c53cf2b2c40a1e6a98ead268d57873acdfc782ae4773e2151df34c6ce"
+
+[update]
+[update.modrinth]
+mod-id = "emO4C1kf"
+version = "aBO2dU79"
