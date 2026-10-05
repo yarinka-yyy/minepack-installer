@@ -2,191 +2,66 @@
 
 [English](README.md) · Русский · [简体中文](README.zh-CN.md)
 
-MinePack помогает установить готовый набор модов для **Minecraft: Java Edition** без ручной настройки каждого мода. Он скачивает выбранные файлы, проверяет их и размещает игру в отдельной папке MinePack.
+MinePack устанавливает готовую сборку для **Minecraft: Java Edition 26.2**: моды, ресурспаки и шейдер уже подобраны и настроены. Не нужно скачивать и устанавливать каждый из них вручную.
 
-MinePack работает в Windows и устанавливает сборки для Minecraft: Java Edition версии 26.2. Для игры нужен поддерживаемый лаунчер и аккаунт с доступом к Java Edition. Опубликованный установщик 1.5.0 поддерживает официальный Minecraft Launcher; локальная версия 1.6.2 поддерживает официальный Minecraft Launcher и Prism Launcher.
+Работает на **Windows x64** с **официальным Minecraft Launcher** и **Prism Launcher**. Для установки нужен интернет, для игры — аккаунт с доступом к Minecraft: Java Edition. Отдельно устанавливать .NET не требуется.
 
-## Выберите сборку
+**[Скачать MinePack](https://github.com/yarinka-yyy/minepack-installer/releases/tag/v1.6.0)**
 
-**Vanilla Plus** включает 62 мода, 13 ресурспаков и 1 шейдер. Существа и жители двигаются выразительнее, а шейдер и визуальные дополнения меняют освещение, воду, растения и частицы. Voxy показывает уже исследованный ландшафт далеко за обычной дальностью прорисовки; моды производительности помогают игре работать плавнее. Карта мира, сортировка инвентаря, подсказки о предметах, переработанный экран статистики и более объёмное звучание делают повседневную игру удобнее. Новые моды генерации мира добавляют улучшенные деревни, руины, башни, постройки Незера, лагеря разбойников и переработанные YUNG's подземелья, храмы, шахты и крепости. В деревнях появляются жители-охранники. Новые постройки генерируются в неисследованных областях, поэтому для полного эффекта нужны новый мир или новые чанки.
+## Какую сборку выбрать
 
-**Frontier** включает общую базу Vanilla Plus: всего 67 модов, 13 ресурспаков и 1 шейдер. В ней есть только пять дополнительных строительных модов Macaw: окна, заборы и стены, мосты, двери и новые варианты лестниц. Генерация мира общая для обеих сборок и затрагивает неисследованные области; один только MVS заявляет [более 130 видов построек](https://modrinth.com/mod/moogs-voyager-structures). Пауки могут лазать по стенам и потолку, а в списке миров видно время игры. Неофициальная адаптация xali's Enhanced Vanilla для MinePack включена по умолчанию вместе с Continuity и CIT Resewn Continuation; в ZIP указан автор xalixilax и лицензия CC BY-NC 4.0. Закреплены Tree Harvester и его зависимость Collective; Remodeled Doors 3D включён поверх xali's вместе со встроенным ZIP совместимости моделей дверей.
+### Vanilla Plus
 
-Публичный MinePack Installer 1.5.0 включает Vanilla Plus 0.18.1 и Frontier 0.19.6. Локальный кандидат Installer 1.6.2 включает Vanilla Plus 0.18.2 и Frontier 0.19.8; прежние архивы 0.18.1 и 0.19.7 сохранены для существующих установок. Low On Fire исключён из обеих сборок.
+Основная сборка для исследования мира и повседневной игры. В неё входят **62 мода, 13 ресурспаков и один шейдер**.
 
-Новая общая база Vanilla Plus добавляет Better Statistics Screen с TCDCommons и закреплённый 3D Default. Frontier 0.19.8 содержит ту же базу и пять строительных модов Macaw. 3D Default включается ниже xali's, Remodeled Doors и ZIP совместимости. Новый ZIP `.2` сохраняет все записи `.1` и добавляет три минимальные модели-родителя (`door_bottom`, `door_top`, `door_bottom_rh`) для Minecraft 26.2. Он воспроизводимо собирается через `tools/Build-DoorCompatibility.ps1`; SHA-256: `791B1A98A8B973DE01EC9D1EBC10CBBB1D1D1D94782D3AE8CEC9F23F5227E0D7`. Проверка на точном клиенте с форматом ресурсов 88.0 прошла: разрешаются 18 blockstate дверей/люков и все 54 затронутые модели Remodeled Doors (52 block и 2 item), а 3D Default остаётся ниже исправлений. SHA-512 архивов 0.18.2 и 0.19.8: `9B756275D14380848C06183CE8E693C8519ACDBD1EC13EBB3D65E1154F4E57E9EB3D03321A535FD1C5230797C3D093F925C1C24DE5B0E95D7B0B92722E4E3061` и `EEAB43179B7EE9B6C4A0BC1D20F2AC7E7C09F9CBDD632493D03A015B30543CECED00B96ED474B1F3420DBAA4E970FB0046BF76EC9CF201C21F514E59D59200AB`. Offline Smoke и strict Install → Repair → Uninstall с прямой загрузкой прошли для обеих сборок; проверка рендеринга ресурсов и игровая приёмка ещё ожидаются.
+- **Больше интересных мест:** улучшенные деревни, руины, башни, лагеря разбойников и новые постройки в Незере. Храмы, шахты, подземелья и крепости становятся разнообразнее.
+- **Более красивая картинка:** освещение, вода и облака с шейдером Complementary Reimagined, обновлённые текстуры, объёмные детали и более живые анимации существ.
+- **Дальние пейзажи и оптимизация:** Voxy показывает уже исследованный ландшафт за пределами обычной прорисовки, а моды производительности помогают игре работать плавнее.
+- **Удобство:** карта мира, сортировка инвентаря, подсказки о предметах, подробная статистика, время игры для каждого мира и удобная рубка деревьев.
+- **Больше атмосферы:** объёмное звучание, эффекты дождя и частиц, охранники деревень и пауки, которые лазают по стенам и потолку.
 
-## Документы и исходники офлайн-комплекта
+Новые постройки появляются в ещё не исследованных областях. Чтобы увидеть изменения, создайте новый мир или отправляйтесь туда, где раньше не бывали.
 
-Локальный комплект 1.6.2 включает [лицензию установщика 0BSD](LICENSE), [историю архивов Vanilla Plus](releases/test-pack/README.md), [описание выпусков Frontier](releases/vanilla-2-plus/README.md) и [заметки об исходниках и сборке сторонних проектов](third-party/README.md). Соответствующие исходники YUNG's находятся в `third-party/yungs-sources/`: там восемь версионированных снимков семи форков, точное сопоставление с JAR, файлы сборки и лицензии. Версия 1.6.2 собрана из `main`, поддерживает только Vanilla Plus и Frontier; экспериментальная сборка Test больше не поддерживается. GitHub Release для 1.6.2 не создавался.
+### Frontier
 
-## Установка
+**Всё из Vanilla Plus плюс пять строительных модов Macaw's:** новые окна, заборы и стены, мосты, двери и варианты лестниц. Выбирайте Frontier, если хотите больше деталей для своих построек.
 
-**Статус релиза:** опубликованный ZIP Installer 1.5.0 поддерживает официальный Minecraft Launcher. Локальный комплект Installer 1.6.2 поддерживает официальный Launcher и Prism Launcher; GitHub Release для версии 1.6.2 не создавался.
+Всего: **67 модов, 13 ресурспаков и один шейдер**. Остальное содержимое обеих сборок одинаково.
 
-1. Скачайте [MinePack-Installer-1.5.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.5.0/MinePack-Installer-1.5.0-win-x64.zip) и полностью распакуйте его в папку. Не перемещайте файлы отдельно друг от друга.
-2. Запустите `MinePack.Installer.exe`, выберите **Vanilla Plus** или **Frontier**, затем нажмите **«Установить сборку»**. MinePack подготовит сборку и обновит свой профиль Launcher. Во время установки он может закрыть запущенный официальный Launcher, а по завершении попробует открыть его снова.
-3. В официальном Minecraft Launcher выберите профиль **MinePack** и нажмите **«Играть»**. При первом запуске Launcher может скачать базовые файлы Minecraft. Если Launcher не открылся сам, запустите его вручную и выберите MinePack.
+## Как установить
 
-EXE пока не подписан цифровой подписью: Windows может показать предупреждение SmartScreen. Скачивайте ZIP только с указанной страницы релиза.
+1. Скачайте [MinePack-Installer-1.6.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.6.0/MinePack-Installer-1.6.0-win-x64.zip) и **полностью распакуйте** архив в папку. Все файлы комплекта должны оставаться вместе.
+2. Запустите **MinePack.Installer.exe**, выберите **Vanilla Plus** или **Frontier** и нажмите **«Установить сборку»**.
+3. Если найден один поддерживаемый лаунчер, MinePack выберет его автоматически. Если найдены оба, выберите нужный. Дождитесь сообщения **«Сборка установлена»**.
+4. Откройте выбранный лаунчер, выберите **MinePack for 26.2** и запустите игру. В Prism это отдельный экземпляр, в официальном лаунчере — отдельный профиль.
 
-Элемент **«Куда установить»** находится сразу под кнопкой **«Установить сборку»**. В локальной версии 1.6.2 MinePack автоматически выбирает единственный найденный лаунчер. Если установлены оба, установщик спрашивает, куда поставить сборку. Прогресс появляется после подтверждения лаунчера и папки установки. Щелчок по фону или Escape скрывает плашку, не отменяя операцию; кнопка **«Показать прогресс»** открывает её снова. После полного успеха появляется **«Сборка установлена»** с инструкциями запуска; готовый результат также закрывается щелчком по фону или Escape. Для Prism создаётся отдельный instance **MinePack for 26.2**; такое же название используется в официальном Launcher и не переводится в других языках интерфейса.
+Если Prism не найден, нажмите **«Указать Prism Launcher»** и выберите программу или её папку данных. **«Повторить поиск лаунчеров»** запускает автоматический поиск ещё раз.
 
-У нового instance VSync по умолчанию выключен; Repair и повторная установка сохраняют существующий `options.txt`. Если Prism переносной или не зарегистрирован, нажмите **«Указать Prism Launcher»**, чтобы выбрать EXE или папку данных, либо **«Повторить поиск лаунчеров»**. Установщик не сканирует диски.
+Установщик может закрыть официальный лаунчер во время установки, а затем открыть его снова. При первом запуске лаунчер может дополнительно скачать файлы Minecraft.
 
-## Папки игры и миры
+Приложение пока без цифровой подписи, поэтому Windows может показать предупреждение SmartScreen. Скачивайте его с указанной страницы GitHub Release.
 
-По умолчанию MinePack хранит файлы в `%LOCALAPPDATA%\MinePack`; в установщике можно выбрать другую папку. Для каждой сборки есть отдельная папка игры. При переключении прежняя папка и миры в ней сохраняются. MinePack не копирует миры между сборками автоматически.
+## Дополнительные действия
 
-Проверка и исправление, а также удаление сборки сохраняют миры и другие личные файлы. Удаление убирает файлы, которыми управляет MinePack, и его профиль Launcher. Команда **«Импортировать миры»** копирует миры в активную сборку, не удаляя оригиналы. Перед открытием мира в другой версии Minecraft сделайте резервную копию. Обычная папка `.minecraft` и другие профили Launcher не затрагиваются.
+- **«Проверить и исправить»** — восстанавливает отсутствующие или повреждённые файлы сборки.
+- **«Импортировать миры»** — копирует ваши миры в текущую сборку, сохраняя оригиналы.
+- **«Восстановить профиль Launcher»** — повторно настраивает профиль или экземпляр в лаунчере, если он пропал или установка завершилась без него.
+- **«Удалить сборку»** — открывает список установленных сборок и оставшихся данных. Выберите нужную запись; перед удалением приложение покажет, что будет удалено.
 
-## Состав сборки
+## Миры и настройки
 
-<details>
-<summary>Производительность и дальность (8)</summary>
+Сборки устанавливаются в отдельные папки. По умолчанию используется `%LOCALAPPDATA%\MinePack`; другое место можно выбрать в пункте **«Куда установить»**. Обычный Minecraft и чужие профили лаунчера не затрагиваются.
 
-- [Sodium](https://modrinth.com/mod/AANobbMI)
-- [Voxy](https://modrinth.com/mod/fxxUqruK)
-- [C2ME](https://modrinth.com/mod/VSNURh3q)
-- [ImmediatelyFast](https://modrinth.com/mod/5ZwdcRci)
-- [FerriteCore](https://modrinth.com/mod/uXXizFIs)
-- [Entity Culling](https://modrinth.com/mod/NNAgCjsB)
-- [Better Block Entities](https://modrinth.com/mod/ONZm0H7Y)
-- [Clumps](https://modrinth.com/mod/Wnxd13zP)
+Проверка и исправление и обычное удаление сборки сохраняют миры, скриншоты и другие личные файлы. Удаление оставшихся данных — отдельное действие с подтверждением. Между сборками миры автоматически не переносятся; для этого есть **«Импортировать миры»**. Перед сменой сборки или версии Minecraft сделайте резервную копию мира.
 
-</details>
-<details>
-<summary>Графика и анимации (9)</summary>
+Для новых установок VSync выключен. При повторной установке и исправлении ваши существующие настройки игры сохраняются. Шейдеры можно настроить или отключить в игре; плавность зависит от компьютера и выбранных настроек.
 
-- [Iris](https://modrinth.com/mod/YL57xq9U)
-- [EMF](https://modrinth.com/mod/4I1XuqiY)
-- [ETF](https://modrinth.com/mod/BVzZfTc1)
-- [Punchy!](https://modrinth.com/mod/8aoMKplv)
-- [Explosive Enhancement](https://modrinth.com/mod/OSQ8mw2r)
-- [Dense Flowers](https://modrinth.com/mod/Ud3A1Fat)
-- [Inventory Particles](https://modrinth.com/mod/XYnKrsxH)
-- [Advancement Plaques](https://modrinth.com/mod/9NM0dXub)
-- [Subtle Effects](https://modrinth.com/mod/4q8UOK1d) — настраиваемые частицы и визуальные эффекты
+Для игры на внешнем сервере моды, добавляющие постройки, существ или строительные блоки, должны быть установлены и на сервере.
 
-</details>
+## Авторы и лицензии
 
-<details>
-<summary>Инструменты и удобство (9)</summary>
+Код и оригинальная документация MinePack доступны по лицензии [0BSD](LICENSE). Моды, ресурспаки, шейдер и шрифт сохраняют лицензии своих авторов.
 
-- [Chunky](https://modrinth.com/mod/fALzjamp)
-- [Inventory Sorting](https://modrinth.com/mod/5ibSyLAz)
-- [Held Item Info](https://modrinth.com/mod/tEcWzCZz)
-- [Pick Up Notifier](https://modrinth.com/mod/ZX66K16c)
-- [Xaero's World Map](https://modrinth.com/mod/NcUtCpym)
-- [Cherished Worlds](https://modrinth.com/mod/3azQ6p0W)
-- [Leaf Me Alone](https://modrinth.com/mod/ppMUvsIg)
-- [InvMove](https://modrinth.com/mod/REfW2AEX)
-- [Mod Menu](https://modrinth.com/mod/mOgUt4GM)
+Ссылки на моды и ресурспаки доступны в установщике в разделе **«Что входит в сборку»**. Дополнения Frontier созданы Macaw: [окна](https://modrinth.com/mod/macaws-windows), [заборы и стены](https://modrinth.com/mod/macaws-fences-and-walls), [мосты](https://modrinth.com/mod/macaws-bridges), [двери](https://modrinth.com/mod/macaws-doors), [лестницы](https://modrinth.com/mod/macaws-stairs). Сведения о локальных адаптациях и их исходниках — в [документации сторонних проектов](third-party/README.md).
 
-</details>
-
-<details>
-<summary>Звук (2)</summary>
-
-- [Cool Rain](https://modrinth.com/mod/iDyqnQLT)
-- [Sound Physics Remastered](https://modrinth.com/mod/qyVF9oeo)
-
-</details>
-
-<details>
-<summary>Техническая основа (9)</summary>
-
-- [Fabric API](https://modrinth.com/mod/P7dR8mSH)
-- [Cloth Config API](https://modrinth.com/mod/9s6osm5g)
-- [Forge Config API Port](https://modrinth.com/mod/ohNO6lps)
-- [MossyLib](https://modrinth.com/mod/ffLDUGbm)
-- [Puzzles Lib](https://modrinth.com/mod/QAGBst4M)
-- [Iceberg](https://modrinth.com/mod/5faXoLqX)
-- [Text Placeholder API](https://modrinth.com/mod/eXts2L7r)
-- [Fzzy Config](https://modrinth.com/mod/hYykXjDp)
-- [Fabric Language Kotlin](https://modrinth.com/mod/Ha28R6CL)
-
-</details>
-
-<details>
-<summary>Ресурспаки (7)</summary>
-
-- [Fresh Animations](https://modrinth.com/resourcepack/50dA9Sha)
-- [Fresh Animations: Extensions](https://modrinth.com/resourcepack/YAVTU8mK)
-- [Fancy Crops](https://modrinth.com/resourcepack/UGEVQ6t9)
-- [Better Flame Particles](https://modrinth.com/resourcepack/ivUZsvzp)
-- [Os' Colorful Grasses](https://modrinth.com/resourcepack/O2zhH8n8)
-- [GUI Retextures — Dark](https://modrinth.com/resourcepack/ZM5PH9W6)
-- [Better Click Sounds](https://modrinth.com/resourcepack/XWQ6jMjk)
-
-</details>
-
-<details>
-<summary>Шейдер (1)</summary>
-
-- [Complementary Reimagined](https://modrinth.com/shader/HVnmMxH1)
-
-</details>
-
-<details>
-<summary>Дополнения Frontier — строительные моды (5)</summary>
-
-Они добавляются ко всему составу Vanilla Plus выше.
-
-- [Macaw's Windows](https://modrinth.com/mod/C7I0BCni)
-- [Macaw's Fences and Walls](https://modrinth.com/mod/GmwLse2I)
-- [Macaw's Bridges](https://modrinth.com/mod/GURcjz8O)
-- [Macaw's Doors](https://modrinth.com/mod/kNxa8z3e)
-- [Macaw's Stairs](https://modrinth.com/mod/iP3wH1ha)
-
-Для игры на внешнем многопользовательском сервере эти моды блоков нужно установить и на сервере. В одиночной игре используется встроенный сервер.
-
-</details>
-
-<details>
-<summary>Дополнения Frontier — мир и структуры (11)</summary>
-
-Они добавляются ко всему составу Vanilla Plus и пяти модам Macaw's выше.
-
-- [Better Villages](https://modrinth.com/mod/dGVX5JbJ)
-- [MNS — Moog's Nether Structures](https://modrinth.com/mod/nGUXvjTa)
-- [MVS — Moog's Voyager Structures](https://modrinth.com/mod/OQAgZMH1)
-- [Structory](https://modrinth.com/datapack/aKCwCJlY) (вариант мода для Fabric)
-- [It Takes a Pillage Continuation](https://modrinth.com/mod/QOJOg1gE)
-- [YUNG's Better Desert Temples](https://github.com/YUNG-GANG/YUNGs-Better-Desert-Temples)
-- [YUNG's Better Dungeons](https://github.com/YUNG-GANG/YUNGs-Better-Dungeons)
-- [YUNG's Better Jungle Temples](https://github.com/YUNG-GANG/YUNGs-Better-Jungle-Temples)
-- [YUNG's Better Mineshafts](https://github.com/YUNG-GANG/YUNGs-Better-Mineshafts)
-- [YUNG's Better Nether Fortresses](https://github.com/YUNG-GANG/YUNGs-Better-Fortresses)
-- [YUNG's Better Strongholds](https://github.com/YUNG-GANG/YUNGs-Better-Strongholds)
-
-Сборка также добавляет [Voxy WorldGen](https://modrinth.com/mod/xT0lnNE9) и обязательные библиотеки [Library Ferret](https://modrinth.com/mod/DOB2l4oJ), [Moog's Structure Lib](https://modrinth.com/mod/1oUDhxuy), [Resourceful Lib](https://modrinth.com/mod/G1hIVOrD) и [YUNG's API](https://github.com/YUNG-GANG/YUNGs-API). Семь файлов YUNG's включены в архив как форки для Minecraft 26.2. Новые структуры появляются в ещё не исследованных чанках. Для игры на внешнем сервере эти моды генерации и библиотеки нужны также на сервере; одиночная игра использует встроенный сервер.
-
-</details>
-
-<details>
-<summary>Дополнение Frontier — жители (1)</summary>
-
-- [Guard Villagers (Fabric/Quilt)](https://modrinth.com/mod/59rkB3YY) — охранники деревень
-
-Subtle Effects входит в обе сборки вместе с Fzzy Config и Fabric Language Kotlin. Для охранников на внешнем сервере требуется серверная установка Guard Villagers.
-
-Frontier также включает [F.M.R.P](https://modrinth.com/resourcepack/freshly-modded) с моделями охранников и [Semos Animations Lib](https://modrinth.com/resourcepack/semos-animations-lib) с подробными движениями. Оба ресурспака работают на стороне игрока; их внешний вид ещё нужно проверить в игре.
-
-</details>
-
-<details>
-<summary>Дополнения Frontier — пауки и время игры (2)</summary>
-
-- [Nyf's Spiders](https://modrinth.com/mod/nyfs-spiders) от Nyfaria — форк для Minecraft 26.2, позволяющий паукам лазать по стенам и потолку.
-- [World Play Time](https://modrinth.com/mod/world-play-time) — форк для Minecraft 26.2, показывающий время игры в каждом мире в списке миров.
-
-Оба JAR входят в Frontier. World Play Time работает на клиенте; для поведения пауков на внешнем сервере нужен Nyf's Spiders и на сервере.
-
-</details>
-
-## Лицензия
-
-Исходный код и оригинальная документация MinePack доступны по лицензии [0BSD](LICENSE): их можно использовать, изменять и распространять без обязательного указания авторства. Моды, ресурспаки, шейдер, шрифт и Minecraft принадлежат своим правообладателям; 0BSD не меняет их условия.
-
-Форк Nyf's Spiders включён с разрешения Nyfaria только для этого репозитория. Для публикации форка в другом публичном репозитории или коммерческой сборке нужно отдельное разрешение Nyfaria.
+Адаптация [Nyf's Spiders](https://modrinth.com/mod/nyfs-spiders) включена с разрешения автора Nyfaria для этого репозитория. Для публикации адаптации в другом публичном репозитории или коммерческой сборке требуется отдельное разрешение автора.
