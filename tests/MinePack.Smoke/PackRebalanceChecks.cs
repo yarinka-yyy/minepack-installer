@@ -2,6 +2,7 @@ using MinePack.Core;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 internal static class PackRebalanceChecks
 {
@@ -9,10 +10,24 @@ internal static class PackRebalanceChecks
     {
         var vanilla = Open(TestPackRelease.ArtifactRelativePath, TestPackRelease.ArtifactSha512);
         var frontier = Open(Vanilla2PlusRelease.ArtifactRelativePath, Vanilla2PlusRelease.ArtifactSha512);
-        check(vanilla.VersionId == "0.18.2" && frontier.VersionId == "0.19.8" &&
+        var formerVanilla = Open("releases/test-pack/" + TestPackRelease.FormerCurrentArtifactFileName,
+            TestPackRelease.FormerCurrentArtifactSha512);
+        var formerFrontier = Open("releases/vanilla-2-plus/" + Vanilla2PlusRelease.FormerCurrentArtifactFileName,
+            Vanilla2PlusRelease.FormerCurrentArtifactSha512);
+        var formerOptimizedVanilla = Open("releases/test-pack/" + TestPackRelease.FormerOptimizedArtifactFileName,
+            TestPackRelease.FormerOptimizedArtifactSha512);
+        var formerOptimizedFrontier = Open("releases/vanilla-2-plus/" + Vanilla2PlusRelease.FormerOptimizedArtifactFileName,
+            Vanilla2PlusRelease.FormerOptimizedArtifactSha512);
+        check(vanilla.VersionId == "0.18.4" && frontier.VersionId == "0.19.10" &&
+              formerOptimizedVanilla.VersionId == "0.18.3" && formerOptimizedFrontier.VersionId == "0.19.9" &&
               vanilla.MinecraftVersion == "26.2" && frontier.MinecraftVersion == vanilla.MinecraftVersion &&
               vanilla.FabricLoaderVersion == "0.19.5" && frontier.FabricLoaderVersion == vanilla.FabricLoaderVersion,
             "new pack pins preserve Minecraft 26.2 and Fabric 0.19.5");
+        check(SameVersionOnlyExport(formerOptimizedVanilla, vanilla,
+                  "releases/test-pack/" + TestPackRelease.FormerOptimizedArtifactFileName, TestPackRelease.ArtifactRelativePath) &&
+              SameVersionOnlyExport(formerOptimizedFrontier, frontier,
+                  "releases/vanilla-2-plus/" + Vanilla2PlusRelease.FormerOptimizedArtifactFileName, Vanilla2PlusRelease.ArtifactRelativePath),
+            "new Vanilla Plus and Frontier exports differ from their 1.6.3 pins only by pack version");
 
         var vanillaFiles = vanilla.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
         var frontierFiles = frontier.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
@@ -24,11 +39,24 @@ internal static class PackRebalanceChecks
             "mods/mcw-doors-1.1.5-mc26.2fabric.jar",
             "mods/mcw-stairs-1.0.2-mc26.2fabric.jar"
         };
-        check(vanilla.Files.Count == 65 && frontier.Files.Count == 70 &&
+        check(vanilla.Files.Count == 68 && frontier.Files.Count == 73 &&
               vanilla.Overrides.Count == 14 && frontier.Overrides.Count == 14 &&
               !vanillaFiles.Keys.Any(path => path.Contains("mcw-", StringComparison.OrdinalIgnoreCase)) &&
               frontierFiles.Keys.Except(vanillaFiles.Keys, StringComparer.Ordinal).ToHashSet(StringComparer.Ordinal).SetEquals(macawPaths),
             "Frontier adds exactly the five Macaw downloads to the shared Vanilla Plus base");
+        var optimizedPaths = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "mods/BadOptimizations-2.4.1-26.2-fabric.jar",
+            "mods/moreculling-fabric-26.2-1.8.1.jar",
+            "mods/lithium-fabric-0.25.3+mc26.2.jar"
+        };
+        check(AddedPaths(formerVanilla, vanilla).SetEquals(optimizedPaths) &&
+              AddedPaths(formerFrontier, frontier).SetEquals(optimizedPaths) &&
+              RemovedPaths(formerVanilla, vanilla).Count == 0 && RemovedPaths(formerFrontier, frontier).Count == 0 &&
+              SameFiles(formerVanilla, vanilla, optimizedPaths) && SameFiles(formerFrontier, frontier, optimizedPaths),
+            "each new current archive adds only the three pinned performance downloads and retains every former-current pin");
+        VerifyPerformancePins(check, vanilla, TestPackRelease.ArtifactRelativePath);
+        VerifyPerformancePins(check, frontier, Vanilla2PlusRelease.ArtifactRelativePath);
         check(vanillaFiles.All(pair => frontierFiles.TryGetValue(pair.Key, out var other) &&
               pair.Value.Sha512 == other.Sha512 && pair.Value.Size == other.Size &&
               pair.Value.Downloads.Select(uri => uri.AbsoluteUri).SequenceEqual(other.Downloads.Select(uri => uri.AbsoluteUri))),
@@ -40,8 +68,8 @@ internal static class PackRebalanceChecks
 
         var vanillaCatalog = PackCatalog.VanillaPlusGroups.SelectMany(group => group.Items).ToArray();
         var frontierCatalog = PackCatalog.Vanilla2PlusGroups.SelectMany(group => group.Items).ToArray();
-        check(Counts(vanillaCatalog) == (62, 13, 1) && Counts(frontierCatalog) == (67, 13, 1),
-            "localized pack catalogs represent 62/13/1 and 67/13/1 files");
+        check(Counts(vanillaCatalog) == (65, 13, 1) && Counts(frontierCatalog) == (70, 13, 1),
+            "localized pack catalogs represent 65/13/1 and 70/13/1 files");
         check(CatalogPaths(vanillaCatalog).SetEquals(ManagedCatalogPaths(vanilla)) &&
               CatalogPaths(frontierCatalog).SetEquals(ManagedCatalogPaths(frontier)),
             "both visible catalogs match their archive files and local pack overrides");
@@ -66,6 +94,67 @@ internal static class PackRebalanceChecks
             "both new releases share the same 13-entry initial resource-pack order with 3D Default first");
 
         VerifyDoorResourceLayers(check);
+    }
+
+    private static void VerifyPerformancePins(Action<bool, string> check, PackArchive pack, string relativePath)
+    {
+        var expected = new[]
+        {
+            (Path: "mods/BadOptimizations-2.4.1-26.2-fabric.jar", Hash: "f91c409d4ce68d027ac0a11b6d2828c5f6d057e749ff0ce596f3a84a65fc1e3905b08f4d97a21a7302e2bfaf4ff865907272bd9c7ffa8487701b22e40dfe2f97", Url: "https://cdn.modrinth.com/data/g96Z4WVZ/versions/JmPs4Wie/BadOptimizations-2.4.1-26.2-fabric.jar", Server: "unsupported"),
+            (Path: "mods/moreculling-fabric-26.2-1.8.1.jar", Hash: "9c331ba5f2ce9c322c41aa577f1029f3420d5507d0d942aadbb43fb9bd82e7da6f72e3a0b26c4ad96394669a99a7feb512b5119b3095fde2e0a437bf68c08b40", Url: "https://cdn.modrinth.com/data/51shyZVL/versions/D5oVCouK/moreculling-fabric-26.2-1.8.1.jar", Server: "unsupported"),
+            (Path: "mods/lithium-fabric-0.25.3+mc26.2.jar", Hash: "148b638f3c6229fbaf487120a2344a0af5e411a5aa6533d5db9d75da0a8c0d8304f63eb4cca13f4d03b2c9b4c23d559dd74c1d832422ef8a3087bd005e62a8bd", Url: "https://cdn.modrinth.com/data/gvQqBUqZ/versions/f7vZ0VWU/lithium-fabric-0.25.3%2Bmc26.2.jar", Server: "required")
+        };
+        var files = pack.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
+        var path = Path.Combine(AppContext.BaseDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        using var archive = ZipFile.OpenRead(path);
+        using var indexStream = archive.GetEntry("modrinth.index.json")!.Open();
+        using var index = JsonDocument.Parse(indexStream);
+        var indexed = index.RootElement.GetProperty("files").EnumerateArray()
+            .ToDictionary(item => item.GetProperty("path").GetString()!, StringComparer.Ordinal);
+        foreach (var pin in expected)
+        {
+            var exactDownload = files.TryGetValue(pin.Path, out var file) && file.Sha512.Equals(pin.Hash, StringComparison.OrdinalIgnoreCase) &&
+                                file.Downloads.Select(uri => uri.AbsoluteUri).SequenceEqual([pin.Url], StringComparer.Ordinal);
+            var exactEnvironment = indexed.TryGetValue(pin.Path, out var item) &&
+                                   item.GetProperty("env").GetProperty("client").GetString() == "required" &&
+                                   item.GetProperty("env").GetProperty("server").GetString() == pin.Server;
+            check(exactDownload && exactEnvironment, $"{pack.VersionId} has the exact pinned {pin.Path} hash, URL, and client/server side");
+        }
+    }
+
+    private static HashSet<string> AddedPaths(PackArchive before, PackArchive after) =>
+        after.Files.Select(file => file.Path).Except(before.Files.Select(file => file.Path), StringComparer.Ordinal).ToHashSet(StringComparer.Ordinal);
+
+    private static HashSet<string> RemovedPaths(PackArchive before, PackArchive after) =>
+        before.Files.Select(file => file.Path).Except(after.Files.Select(file => file.Path), StringComparer.Ordinal).ToHashSet(StringComparer.Ordinal);
+
+    private static bool SameFiles(PackArchive before, PackArchive after, IReadOnlySet<string> excluded) =>
+        before.Files.Where(file => !excluded.Contains(file.Path)).All(file => after.Files.Any(other => other.Path == file.Path &&
+            other.Sha512 == file.Sha512 && other.Size == file.Size &&
+            other.Downloads.Select(uri => uri.AbsoluteUri).SequenceEqual(file.Downloads.Select(uri => uri.AbsoluteUri)))) &&
+        before.Overrides.All(file => after.Overrides.Any(other => other.Path == file.Path && other.Sha512 == file.Sha512 && other.Size == file.Size));
+
+    private static bool SameVersionOnlyExport(PackArchive before, PackArchive after,
+        string beforeRelativePath, string afterRelativePath)
+    {
+        if (before.Files.Count != after.Files.Count || before.Overrides.Count != after.Overrides.Count ||
+            !SameFiles(before, after, new HashSet<string>(StringComparer.Ordinal))) return false;
+
+        var root = FindRepositoryRoot();
+        using var beforeArchive = ZipFile.OpenRead(Path.Combine(root, beforeRelativePath.Replace('/', Path.DirectorySeparatorChar)));
+        using var afterArchive = ZipFile.OpenRead(Path.Combine(root, afterRelativePath.Replace('/', Path.DirectorySeparatorChar)));
+        var beforeNames = beforeArchive.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal).ToArray();
+        var afterNames = afterArchive.Entries.Select(entry => entry.FullName).Order(StringComparer.Ordinal).ToArray();
+        if (!beforeNames.SequenceEqual(afterNames, StringComparer.Ordinal)) return false;
+        foreach (var name in beforeNames.Where(name => name != "modrinth.index.json"))
+            if (!ReadEntry(beforeArchive, name).AsSpan().SequenceEqual(ReadEntry(afterArchive, name))) return false;
+
+        var beforeIndex = JsonNode.Parse(ReadEntry(beforeArchive, "modrinth.index.json"))!.AsObject();
+        var afterIndex = JsonNode.Parse(ReadEntry(afterArchive, "modrinth.index.json"))!.AsObject();
+        if (beforeIndex["versionId"]?.GetValue<string>() != before.VersionId ||
+            afterIndex["versionId"]?.GetValue<string>() != after.VersionId) return false;
+        afterIndex["versionId"] = beforeIndex["versionId"]?.DeepClone();
+        return JsonNode.DeepEquals(beforeIndex, afterIndex);
     }
 
     private static void VerifyDoorResourceLayers(Action<bool, string> check)

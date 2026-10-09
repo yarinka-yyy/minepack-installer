@@ -11,7 +11,7 @@ using System.Windows.Threading;
 using MinePack.Core;
 using MinePack.Installer;
 
-internal static class Program
+internal static partial class Program
 {
     private static Application? _application;
     private static bool _reportedDpi;
@@ -25,13 +25,14 @@ internal static class Program
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(dispatcher));
             _application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             var repositoryRoot = FindRepositoryRoot();
-            var output = Path.Combine(repositoryRoot, "artifacts", "build-1.6.2", "ui-smoke");
+            var output = Path.Combine(repositoryRoot, "artifacts", "build-1.7.0", "ui-smoke");
             Directory.CreateDirectory(output);
 
             VerifyPackCatalogUi(output);
             VerifyDeleteListGeometryAndPreviews(output);
             VerifyOverlayDismissalAndStaleResults(output);
             VerifyOperationProgressLifecycle(output);
+            VerifyOperationAdmissionAndPendingRecovery(output);
             SaveChooserPreviews(output);
             SaveOperationProgressPreviews(output);
             Console.WriteLine("All WPF UI smoke scenarios passed.");
@@ -64,7 +65,7 @@ internal static class Program
                         $"{cultureName} shows the current Vanilla Plus count");
                     var vanillaGroups = ReadCatalogGroups(window);
                     Require(vanillaGroups.Length == 8 &&
-                            vanillaGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 62 &&
+                            vanillaGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 65 &&
                             vanillaGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("resourcepacks/", StringComparison.Ordinal)) == 13 &&
                             vanillaGroups.Single(group => group.Key == "CatalogWorldgen").Items.Count == 12 &&
                             vanillaGroups.Single(group => group.Key == "CatalogTools").Items.Any(item => item.ProjectId == "n6PXGAoM") &&
@@ -85,7 +86,7 @@ internal static class Program
                         $"{cultureName} shows the current Frontier count");
                     var frontierGroups = ReadCatalogGroups(window);
                     Require(frontierGroups.Length == 9 &&
-                            frontierGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 67 &&
+                            frontierGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 70 &&
                             frontierGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("resourcepacks/", StringComparison.Ordinal)) == 13 &&
                             frontierGroups.Single(group => group.Key == "CatalogBuilding").Items.Count == 5 &&
                             frontierGroups.Single(group => group.Key == "CatalogWorldgen").Items.Count == 12,
@@ -127,14 +128,14 @@ internal static class Program
                         $"{cultureName} single short delete-list row is rendered");
                     var shortUnselectedInsets = MeasureListBoundaryInsets(window, 0, 0);
                     LogListInsets(cultureName, width, height, "single-short-unselected", shortUnselectedInsets);
-                    AssertBalancedInsets(shortUnselectedInsets, $"{cultureName} single short unselected row is vertically centered in its ListBox");
+                    AssertListViewportGeometry(window, 0, 0, shortUnselectedInsets, $"{cultureName} single short unselected row");
                     SaveWindowPng(window, Path.Combine(output, $"delete-list-single-short-unselected-{cultureName}-{width:0}x{height:0}.png"));
                     window.DeleteInstanceListBox.SelectedIndex = 0;
                     WaitForCleanupStatus(window, $"{cultureName} single short-row selection");
                     window.UpdateLayout();
                     var shortSelectedInsets = MeasureListBoundaryInsets(window, 0, 0);
                     LogListInsets(cultureName, width, height, "single-short-selected", shortSelectedInsets);
-                    AssertBalancedInsets(shortSelectedInsets, $"{cultureName} single short selected row is vertically centered in its ListBox");
+                    AssertListViewportGeometry(window, 0, 0, shortSelectedInsets, $"{cultureName} single short selected row");
                     SaveWindowPng(window, Path.Combine(output, $"delete-list-single-short-selected-{cultureName}-{width:0}x{height:0}.png"));
 
                     window.ShowDeleteOverlayForUiSmoke(shortEntry, longEntry);
@@ -146,7 +147,7 @@ internal static class Program
                         $"{cultureName} delete-list rows are rendered");
                     var multiInsets = MeasureListBoundaryInsets(window, 0, 1);
                     LogListInsets(cultureName, width, height, "multi-unselected", multiInsets);
-                    AssertBalancedInsets(multiInsets, $"{cultureName} non-overflow multi-list has symmetric outer padding");
+                    AssertListViewportGeometry(window, 0, 1, multiInsets, $"{cultureName} multi-list");
 
                     window.DeleteInstanceListBox.SelectedIndex = 0;
                     WaitForCleanupStatus(window, $"{cultureName} short-row selection");
@@ -154,9 +155,7 @@ internal static class Program
                     AssertSelectionInsets(window, 0, 1, $"{cultureName} selected short row");
                     var afterShortSelection = MeasureListBoundaryInsets(window, 0, 1);
                     LogListInsets(cultureName, width, height, "multi-short-selected", afterShortSelection);
-                    AssertBalancedInsets(afterShortSelection, $"{cultureName} multi-list remains balanced after selecting the short row");
-                    AssertInsetsWithinOnePixel(multiInsets, afterShortSelection,
-                        $"{cultureName} selecting a short row does not change the multi-list boundary insets");
+                    AssertListViewportGeometry(window, 0, 1, afterShortSelection, $"{cultureName} selected short row");
                     SaveWindowPng(window, Path.Combine(output, $"delete-list-selected-short-{cultureName}-{width:0}x{height:0}.png"));
 
                     window.DeleteInstanceListBox.SelectedIndex = 1;
@@ -165,9 +164,7 @@ internal static class Program
                     AssertSelectionInsets(window, 1, 0, $"{cultureName} selected wrapped row");
                     var afterLongSelection = MeasureListBoundaryInsets(window, 0, 1);
                     LogListInsets(cultureName, width, height, "multi-long-selected", afterLongSelection);
-                    AssertBalancedInsets(afterLongSelection, $"{cultureName} multi-list remains balanced after selecting the wrapped row");
-                    AssertInsetsWithinOnePixel(multiInsets, afterLongSelection,
-                        $"{cultureName} selecting a wrapped row does not change the multi-list boundary insets");
+                    AssertListViewportGeometry(window, 0, 1, afterLongSelection, $"{cultureName} selected wrapped row");
                     SaveWindowPng(window, Path.Combine(output, $"delete-list-selected-long-{cultureName}-{width:0}x{height:0}.png"));
 
                     window.ShowDeleteOverlayForUiSmoke(longEntry);
@@ -178,14 +175,14 @@ internal static class Program
                         $"{cultureName} single delete-list row is rendered");
                     var singleInsets = MeasureListBoundaryInsets(window, 0, 0);
                     LogListInsets(cultureName, width, height, "single-long-unselected", singleInsets);
-                    AssertBalancedInsets(singleInsets, $"{cultureName} single wrapped unselected row is vertically centered in its ListBox");
+                    AssertListViewportGeometry(window, 0, 0, singleInsets, $"{cultureName} single wrapped unselected row");
                     SaveWindowPng(window, Path.Combine(output, $"delete-list-single-long-unselected-{cultureName}-{width:0}x{height:0}.png"));
                     window.DeleteInstanceListBox.SelectedIndex = 0;
                     WaitForCleanupStatus(window, $"{cultureName} single-row selection");
                     window.UpdateLayout();
                     var selectedSingleInsets = MeasureListBoundaryInsets(window, 0, 0);
                     LogListInsets(cultureName, width, height, "single-long-selected", selectedSingleInsets);
-                    AssertBalancedInsets(selectedSingleInsets, $"{cultureName} single wrapped selected row is vertically centered in its ListBox");
+                    AssertListViewportGeometry(window, 0, 0, selectedSingleInsets, $"{cultureName} single wrapped selected row");
                     var row = GetDeleteListItem(window, 0);
                     var frameInsets = MeasureInsets(row, FindSelectionFrame(row), VisualTreeHelper.GetDpi(window).DpiScaleY);
                     Require(Math.Abs(frameInsets.Top - frameInsets.Bottom) <= 1.0,
@@ -208,6 +205,9 @@ internal static class Program
                     window.DeleteInstanceListBox.SelectedIndex = 0;
                     WaitForCleanupStatus(window, $"{cultureName} overflow list selection");
                     window.UpdateLayout();
+                    AssertListViewportGeometry(window, 0, overflowEntries.Length - 1,
+                        MeasureListBoundaryInsets(window, 0, overflowEntries.Length - 1),
+                        $"{cultureName} overflowing list first and last row");
                     RequireInsideCard(window.DeleteInstanceCard, window.DeleteOverlayCancelButton,
                         $"{cultureName} overflow cancel button remains inside the dialog card");
                     RequireInsideCard(window.DeleteInstanceCard, window.DeleteRemainingDataButton,
@@ -288,9 +288,36 @@ internal static class Program
         Require(Math.Abs(expected.Top - actual.Top) <= 1.0 && Math.Abs(expected.Bottom - actual.Bottom) <= 1.0,
             $"{message}: expected top/bottom {expected.Top:0.0}/{expected.Bottom:0.0}px, actual {actual.Top:0.0}/{actual.Bottom:0.0}px");
 
-    private static void AssertBalancedInsets((double Top, double Bottom) insets, string message) =>
-        Require(Math.Abs(insets.Top - insets.Bottom) <= 1.0,
-            $"{message}: top/bottom {insets.Top:0.0}/{insets.Bottom:0.0}px");
+    private static void AssertListViewportGeometry(MainWindow window, int firstIndex, int lastIndex,
+        (double Top, double Bottom) insets, string message)
+    {
+        var viewer = FindVisualChild<ScrollViewer>(window.DeleteInstanceListBox)
+            ?? throw new InvalidOperationException("The delete list has no ScrollViewer.");
+        if (viewer.ScrollableHeight <= 1)
+        {
+            Require(Math.Abs(insets.Top - insets.Bottom) <= 1.0,
+                $"{message} fits with symmetric padding: top/bottom {insets.Top:0.0}/{insets.Bottom:0.0}px");
+            return;
+        }
+
+        // Selection reveals details and can shrink the viewport without changing row padding.
+        var viewport = FindVisualChild<ScrollContentPresenter>(viewer)
+            ?? throw new InvalidOperationException("The delete list has no scrolling viewport.");
+        var originalOffset = viewer.VerticalOffset;
+        foreach (var index in new[] { firstIndex, lastIndex }.Distinct())
+        {
+            window.DeleteInstanceListBox.ScrollIntoView(window.DeleteInstanceListBox.Items[index]);
+            PumpOnce();
+            window.UpdateLayout();
+            var frame = FindSelectionFrame(GetDeleteListItem(window, index));
+            var visibleInsets = MeasureInsets(viewport, frame, VisualTreeHelper.GetDpi(window).DpiScaleY);
+            Require(visibleInsets.Top >= -1 && visibleInsets.Bottom >= -1,
+                $"{message}: row {index} can be brought entirely into the scrolling viewport");
+        }
+        viewer.ScrollToVerticalOffset(originalOffset);
+        PumpOnce();
+        window.UpdateLayout();
+    }
 
     private static void RequireInsideCard(FrameworkElement card, FrameworkElement child, string message)
     {
@@ -752,8 +779,9 @@ internal static class Program
             Width = width,
             Height = height,
             WindowStartupLocation = WindowStartupLocation.Manual,
-            Left = 100,
-            Top = 100
+            ShowActivated = false,
+            Left = -30000,
+            Top = -30000
         };
         if (cultureName == "zh-CN") window.FontFamily = new FontFamily("Microsoft YaHei UI, Microsoft YaHei, SimSun");
         window.Show();

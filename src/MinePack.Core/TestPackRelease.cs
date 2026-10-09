@@ -4,9 +4,13 @@ namespace MinePack.Core;
 
 public static class TestPackRelease
 {
-    public const string ArtifactFileName = "test-pack-0.18.2.mrpack";
+    public const string ArtifactFileName = "test-pack-0.18.4.mrpack";
     public const string ArtifactRelativePath = "releases/test-pack/" + ArtifactFileName;
-    public const string ArtifactSha512 = "9B756275D14380848C06183CE8E693C8519ACDBD1EC13EBB3D65E1154F4E57E9EB3D03321A535FD1C5230797C3D093F925C1C24DE5B0E95D7B0B92722E4E3061";
+    public const string ArtifactSha512 = "789C9D3E0D712715A8E515F782657E373AF0E76605E46EB285F81C4883E7304BC23BCE2FC8C0860B44610F02D34405FF52096F22D189665019CADD55C14D303C";
+    public const string FormerOptimizedArtifactFileName = "test-pack-0.18.3.mrpack";
+    public const string FormerOptimizedArtifactSha512 = "FD1FAB8CAF26DA8F038743B2553A14923C57903FBB6911B583051D2B3BDEF0973E16B2E23F055ADD7BEA9B2D12274B377B1E01BDD82321BC8F85B8ED86216FAA";
+    public const string FormerCurrentArtifactFileName = "test-pack-0.18.2.mrpack";
+    public const string FormerCurrentArtifactSha512 = "9B756275D14380848C06183CE8E693C8519ACDBD1EC13EBB3D65E1154F4E57E9EB3D03321A535FD1C5230797C3D093F925C1C24DE5B0E95D7B0B92722E4E3061";
     public const string PreviousCurrentArtifactFileName = "test-pack-0.18.1.mrpack";
     public const string PreviousCurrentArtifactSha512 = "2E259CEE78A2022CDE78012BA95E6EE5E789C3F0DA45D3C51B1D7E4FC689865E0D981FD784C850EF74492F02F8AF8497943394ADC15DBE9135718918FAFB9906";
     public const string SmoothArtifactFileName = "test-pack-0.15.0.mrpack";
@@ -31,7 +35,7 @@ public static class TestPackRelease
     public const string PreviousArtifactSha512 = "76320C3EBB6B32D53EB0E58B8E4DD3FF721CEB2F718E2D18CB976A020DC2C4104F2E586277314DCC24227DC0DEA18CF6661835F01E04F61AEB51D22F88A8FF83";
     public const string LegacyArtifactFileName = "test-pack-0.1.0.mrpack";
     public const string LegacyArtifactSha512 = "453fc54446e6d7b379c7c07ca6f995998d6cba01791b0749d6929fce98bce59561aaa598b255344b342396251877a0e7aceccc3100ea179484d0a967ceba0ff5";
-    public const string PackVersion = "0.18.2";
+    public const string PackVersion = "0.18.4";
     public const string LowFireArtifactFileName = "test-pack-0.18.0.mrpack";
     public const string LowFireArtifactSha512 = "C7469A3820A4B9BF75132BD016FB99F5B18F3E6FF66CDF0DCFBCE937E5BA8309AD4062C813457B8F95401F6D2F3326ABDBCDBA067B911795B6C574CD9D525776";
     public const string MinecraftVersion = "26.2";
@@ -69,9 +73,9 @@ public static class TestPackRelease
         "Remodeled-Doors-26.2-xalis-blockstates.2.zip"
     ];
 
-    public static string InitialOptions => BuildInitialOptions(InitialResourcePacks);
+    public static string InitialOptions => BuildInitialOptions(InitialResourcePacks, optimizedDefaults: true);
 
-    public static string BuildInitialOptions(IEnumerable<string> resourcePacks) =>
+    public static string BuildInitialOptions(IEnumerable<string> resourcePacks, bool optimizedDefaults = false) =>
         "version:4903" + Environment.NewLine +
         "enableVsync:false" + Environment.NewLine +
         "resourcePacks:" + JsonSerializer.Serialize(new[] { "vanilla" }
@@ -82,5 +86,11 @@ public static class TestPackRelease
         "fov:0.25" + Environment.NewLine +
         "fullscreen:true" + Environment.NewLine +
         "exclusiveFullscreen:true" + Environment.NewLine +
-        "guiScale:4" + Environment.NewLine;
+        "guiScale:4" + Environment.NewLine +
+        (optimizedDefaults
+            // CUSTOM prevents Minecraft's startup preset from overwriting these two values.
+            ? "graphicsPreset:" + JsonSerializer.Serialize("custom") + Environment.NewLine +
+              "renderDistance:9" + Environment.NewLine +
+              "entityDistanceScaling:2.0" + Environment.NewLine
+            : string.Empty);
 }

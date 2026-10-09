@@ -192,7 +192,7 @@ public sealed class FabricLauncherService : IDisposable
             if (updateProfile)
             {
                 UpdateProfile(profilePath, json => LauncherProfile.BuildFixtureCandidate(json, gameDirectory,
-                    _minecraftVersion, TestPackRelease.FabricLoaderVersion));
+                    _minecraftVersion, TestPackRelease.FabricLoaderVersion, GetCurrentDefaultJavaArgs(gameDirectory)));
                 operationLog.Write("profile", "completed", "fabric_profile_configured");
             }
         }
@@ -220,7 +220,7 @@ public sealed class FabricLauncherService : IDisposable
                     updateProfile: false).ConfigureAwait(false);
                 candidate = Encoding.UTF8.GetBytes(LauncherProfile.BuildFixtureCandidate(
                     Encoding.UTF8.GetString(original), gameDirectory, _minecraftVersion,
-                    TestPackRelease.FabricLoaderVersion));
+                    TestPackRelease.FabricLoaderVersion, GetCurrentDefaultJavaArgs(gameDirectory)));
                 cancellationToken.ThrowIfCancellationRequested();
                 instanceUse.Recheck();
                 if (!ReadActivationProfile(profilePath).AsSpan().SequenceEqual(original))
@@ -285,6 +285,16 @@ public sealed class FabricLauncherService : IDisposable
                 throw;
             }
         }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string? GetCurrentDefaultJavaArgs(string gameDirectory)
+    {
+        InstallationManifest manifest;
+        try { manifest = InstallationManifest.Load(gameDirectory); }
+        catch (InstallerException) { return null; }
+        return InstalledInstanceCatalog.UsesCurrentPerformanceDefaults(manifest.PackVersion,
+            manifest.MinecraftVersion, manifest.FabricLoaderVersion, manifest.PackArchiveSha512)
+            ? "-Xmx8G" : null;
     }
 
     private byte[] ReadActivationProfile(string profilePath)

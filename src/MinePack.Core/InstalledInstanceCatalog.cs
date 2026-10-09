@@ -44,6 +44,8 @@ public static class InstalledInstanceCatalog
     private static readonly KnownPackRelease[] Releases =
     [
         Test(TestPackRelease.PackVersion, TestPackRelease.ArtifactFileName, TestPackRelease.ArtifactSha512),
+        Test("0.18.3", TestPackRelease.FormerOptimizedArtifactFileName, TestPackRelease.FormerOptimizedArtifactSha512),
+        Test("0.18.2", TestPackRelease.FormerCurrentArtifactFileName, TestPackRelease.FormerCurrentArtifactSha512),
         Test("0.18.1", TestPackRelease.PreviousCurrentArtifactFileName, TestPackRelease.PreviousCurrentArtifactSha512),
         Test("0.18.0", TestPackRelease.LowFireArtifactFileName, TestPackRelease.LowFireArtifactSha512),
         Test("0.15.0", TestPackRelease.SmoothArtifactFileName, TestPackRelease.SmoothArtifactSha512),
@@ -58,6 +60,8 @@ public static class InstalledInstanceCatalog
         Test("0.2.0", TestPackRelease.PreviousArtifactFileName, TestPackRelease.PreviousArtifactSha512, "26.3"),
         Test("0.1.0", TestPackRelease.LegacyArtifactFileName, TestPackRelease.LegacyArtifactSha512, "26.3"),
         Frontier(Vanilla2PlusRelease.PackVersion, Vanilla2PlusRelease.ArtifactFileName, Vanilla2PlusRelease.ArtifactSha512),
+        Frontier("0.19.9", Vanilla2PlusRelease.FormerOptimizedArtifactFileName, Vanilla2PlusRelease.FormerOptimizedArtifactSha512),
+        Frontier("0.19.8", Vanilla2PlusRelease.FormerCurrentArtifactFileName, Vanilla2PlusRelease.FormerCurrentArtifactSha512),
         Frontier("0.19.7", Vanilla2PlusRelease.PreviousCurrentArtifactFileName, Vanilla2PlusRelease.PreviousCurrentArtifactSha512),
         Frontier("0.19.6", Vanilla2PlusRelease.PreviousCandidateArtifactFileName, Vanilla2PlusRelease.PreviousCandidateArtifactSha512),
         Frontier("0.19.5", Vanilla2PlusRelease.DoorsArtifactFileName, Vanilla2PlusRelease.DoorsArtifactSha512),
@@ -75,6 +79,21 @@ public static class InstalledInstanceCatalog
     ];
 
     public static IReadOnlyList<KnownPackRelease> KnownReleases => Releases;
+
+    public static bool UsesCurrentPerformanceDefaults(string packVersion, string minecraftVersion,
+        string fabricLoaderVersion, string archiveSha512) =>
+        packVersion == TestPackRelease.PackVersion && minecraftVersion == TestPackRelease.MinecraftVersion &&
+        fabricLoaderVersion == TestPackRelease.FabricLoaderVersion &&
+        archiveSha512.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        packVersion == "0.18.3" && minecraftVersion == TestPackRelease.MinecraftVersion &&
+        fabricLoaderVersion == TestPackRelease.FabricLoaderVersion &&
+        archiveSha512.Equals(TestPackRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        packVersion == Vanilla2PlusRelease.PackVersion && minecraftVersion == Vanilla2PlusRelease.MinecraftVersion &&
+        fabricLoaderVersion == TestPackRelease.FabricLoaderVersion &&
+        archiveSha512.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        packVersion == "0.19.9" && minecraftVersion == Vanilla2PlusRelease.MinecraftVersion &&
+        fabricLoaderVersion == TestPackRelease.FabricLoaderVersion &&
+        archiveSha512.Equals(Vanilla2PlusRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase);
 
     public static bool TryGetRelease(string packVersion, out KnownPackRelease release)
     {

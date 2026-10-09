@@ -6,17 +6,19 @@ MinePack 为 **Minecraft: Java Edition 26.2** 安装开箱即玩的整合包。�
 
 支持 **Windows x64**、**官方 Minecraft Launcher** 和 **Prism Launcher**。安装需要联网，游玩需要拥有 Minecraft: Java Edition 使用权的账号。无须单独安装 .NET。
 
-**[下载 MinePack](https://github.com/yarinka-yyy/minepack-installer/releases/tag/v1.6.0)**
+**[下载 MinePack](https://github.com/yarinka-yyy/minepack-installer/releases/tag/v1.7.0)**
+
+Installer `1.7.0` 包含下文介绍的三个额外性能优化模组和更新后的默认设置，也改进了中断操作恢复和重复操作处理：Repair 可以进入未完成操作的恢复流程，启动器选择不会再让之前的请求一直等待。本次发布包含 Vanilla Plus `0.18.4` 和 Frontier `0.19.10`。
 
 ## 选择哪个整合包？
 
 ### Vanilla Plus
 
-适合探索世界和日常游玩的主要整合包，包含 **62 个模组、13 个资源包和一个光影包**。
+适合探索世界和日常游玩的主要整合包。版本 `0.18.4` 包含 **65 个模组、13 个资源包和一个光影包**。
 
 - **更多值得探索的地方：**改进的村庄、遗迹、高塔、掠夺者营地和新的下界建筑。神庙、矿井、地牢和要塞也更加丰富多样。
 - **更丰富的画面：**Complementary Reimagined 带来光照、水面和云层效果，还有更新的纹理、立体细节和更加生动的生物动画。
-- **远景与性能优化：**Voxy 可以显示普通视距之外已经探索过的地形，性能模组则帮助游戏运行得更流畅。
+- **远景与性能优化：**Voxy 可以显示普通视距之外已经探索过的地形。[BadOptimizations](https://modrinth.com/mod/badoptimizations)、[More Culling](https://modrinth.com/mod/moreculling) 和 [Lithium](https://modrinth.com/mod/lithium) 提供针对客户端和游戏逻辑的优化。
 - **更方便的操作：**世界地图、物品栏整理、物品提示、详细统计、每个世界的游玩时长，以及更方便的伐木功能。
 - **更有氛围的世界：**空间音效、雨水与粒子效果、村庄守卫，以及能够攀爬墙壁和天花板的蜘蛛。
 
@@ -26,11 +28,11 @@ MinePack 为 **Minecraft: Java Edition 26.2** 安装开箱即玩的整合包。�
 
 **Vanilla Plus 的全部内容，加上五个 Macaw's 建筑模组：**新的窗户、栅栏与围墙、桥梁、门和楼梯样式。想为自己的建筑添加更多细节，可以选择 Frontier。
 
-总计 **67 个模组、13 个资源包和一个光影包**。两个整合包的其他内容完全相同。
+Frontier `0.19.10` 包含 **70 个模组、13 个资源包和一个光影包**。其余内容与 Vanilla Plus 共用。
 
 ## 如何安装
 
-1. 下载 [MinePack-Installer-1.6.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.6.0/MinePack-Installer-1.6.0-win-x64.zip)，并将**整个压缩包解压**到一个文件夹中。请将安装包内的所有文件保留在一起。
+1. 下载 [MinePack-Installer-1.7.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.7.0/MinePack-Installer-1.7.0-win-x64.zip)，并将**整个压缩包解压**到一个文件夹中。请将安装包内的所有文件保留在一起。
 2. 运行 **MinePack.Installer.exe**，选择 **Vanilla Plus** 或 **Frontier**，然后点击**安装整合包**。
 3. 如果只找到一个受支持的启动器，MinePack 会自动选择它。如果两个启动器都找到了，请选择要使用的启动器。等待出现**整合包已安装**。
 4. 打开所选启动器，选择 **MinePack for 26.2**，然后启动游戏。Prism 中会创建独立实例，官方启动器中会创建独立配置。
@@ -54,7 +56,7 @@ MinePack 为 **Minecraft: Java Edition 26.2** 安装开箱即玩的整合包。�
 
 修复和正常卸载整合包会保留世界、截图和其他个人文件。移除残留数据是需要单独确认的操作。世界不会自动在整合包之间转移；请使用**导入存档**。切换整合包或 Minecraft 版本前，请先备份世界。
 
-新安装默认关闭 VSync。重新安装和修复会保留已有的游戏设置。可以在游戏中调整或关闭光影；流畅程度取决于电脑和所选设置。
+Installer `1.7.0` 为新的 Vanilla Plus `0.18.4` 和 Frontier `0.19.10` 实例使用 Custom 图形预设、9 区块视距、200% 实体距离和 8 GiB Java 最大堆内存；模拟距离保留 Minecraft 默认值，并关闭 VSync。修复和重新安装会保留已有游戏设置、启动器内存值及 JVM 参数。可在游戏中调整或关闭光影；流畅程度取决于电脑和所选设置。
 
 在外部多人服务器上游玩时，添加建筑结构、生物或建筑方块的模组也需要安装在服务器上。
 
@@ -62,6 +64,6 @@ MinePack 为 **Minecraft: Java Edition 26.2** 安装开箱即玩的整合包。�
 
 MinePack 的原创代码和文档使用 [0BSD 许可证](LICENSE)。模组、资源包、光影包和字体保留各自作者的许可证。
 
-模组和资源包的链接位于安装程序的**整合包内容**中。Frontier 的附加模组由 Macaw 制作：[窗户](https://modrinth.com/mod/macaws-windows)、[栅栏与围墙](https://modrinth.com/mod/macaws-fences-and-walls)、[桥梁](https://modrinth.com/mod/macaws-bridges)、[门](https://modrinth.com/mod/macaws-doors)和[楼梯](https://modrinth.com/mod/macaws-stairs)。本地适配版本及其源代码信息见[第三方文档](third-party/README.md)。
+模组和资源包的链接位于安装程序的**整合包内容**中。Frontier 的附加模组由 Macaw 制作：[窗户](https://modrinth.com/mod/macaws-windows)、[栅栏与围墙](https://modrinth.com/mod/macaws-fences-and-walls)、[桥梁](https://modrinth.com/mod/macaws-bridges)、[门](https://modrinth.com/mod/macaws-doors)和[楼梯](https://modrinth.com/mod/macaws-stairs)。性能优化模组：[BadOptimizations](https://modrinth.com/mod/badoptimizations)、[More Culling](https://modrinth.com/mod/moreculling)、[Lithium](https://modrinth.com/mod/lithium)。本地适配版本及其源代码信息见[第三方文档](third-party/README.md)。
 
 [Nyf's Spiders](https://modrinth.com/mod/nyfs-spiders) 适配版本获作者 Nyfaria 许可用于此仓库。在其他公开仓库或商业整合包中发布该适配版本，需要另行获得作者许可。

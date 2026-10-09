@@ -9,6 +9,7 @@ internal static class PrismLauncherChecks
         VerifyTargetDeduplication();
         VerifyComponentPins();
         await VerifyCurrentPinnedPacksAsync(smokeRoot);
+        VerifyMemoryDefaults(smokeRoot);
         VerifySelectedLauncherLifecycle(smokeRoot);
         Console.WriteLine("PASS: Prism discovery, pinned pack inventory/defaults, launcher metadata, and selected-target lifecycle");
     }
@@ -151,6 +152,8 @@ internal static class PrismLauncherChecks
         var releases = new[]
         {
             (TestPackRelease.PackVersion, TestPackRelease.ArtifactSha512, TestPackRelease.InitialResourcePacks),
+            ("0.18.3", TestPackRelease.FormerOptimizedArtifactSha512, TestPackRelease.InitialResourcePacks),
+            ("0.19.9", Vanilla2PlusRelease.FormerOptimizedArtifactSha512, Vanilla2PlusRelease.InitialResourcePacks),
             (Vanilla2PlusRelease.PackVersion, Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.InitialResourcePacks)
         };
         foreach (var (packVersion, archiveHash, resourcePacks) in releases)
@@ -192,8 +195,12 @@ internal static class PrismLauncherChecks
             await pack.ExtractOverridesAsync(stage, CancellationToken.None);
             var initial = InitialConfiguration.Create(pack, stage);
             var options = System.Text.Encoding.UTF8.GetString(initial.Single(file => file.Path == "options.txt").Contents);
-            Equal(TestPackRelease.BuildInitialOptions(resourcePacks), options,
+            Equal(TestPackRelease.BuildInitialOptions(resourcePacks, optimizedDefaults: true), options,
                 $"{packVersion} Prism initial options match the pinned resource pack order");
+            VerifyOptimizedGraphicsOptions(options, $"{packVersion} Prism options");
+            var instanceConfig = System.Text.Encoding.UTF8.GetString(PrismLauncherService.BuildInstanceConfig(pack));
+            True(instanceConfig.Contains("OverrideMemory=true\r\nMaxMemAlloc=8192\r\nMinMemAlloc=512\r\n", StringComparison.Ordinal),
+                $"{packVersion} fresh Prism instance sets the pinned 8 GiB heap limit");
             Equal(1, options.Split("enableVsync:false", StringSplitOptions.None).Length - 1,
                 $"{packVersion} Prism initial options disable VSync exactly once");
             True(InitialConfiguration.GetInitialPaths(pack).Contains("options.txt"),
@@ -207,6 +214,90 @@ internal static class PrismLauncherChecks
             Equal(pack.FabricLoaderVersion, components[1].GetProperty("version").GetString(),
                 $"{packVersion} Prism metadata pins Fabric");
         }
+    }
+
+    private static void VerifyOptimizedGraphicsOptions(string options, string context)
+    {
+        var lines = options.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var (key, value) in new[]
+                 {
+                     ("graphicsPreset", "\"custom\""),
+                     ("renderDistance", "9"),
+                     ("entityDistanceScaling", "2.0")
+                 })
+        {
+            var matches = lines.Where(line => line.StartsWith(key + ":", StringComparison.Ordinal)).ToArray();
+            Equal(1, matches.Length, $"{context} writes {key} exactly once");
+            Equal(key + ":" + value, matches[0], $"{context} sets {key}");
+        }
+        using var preset = System.Text.Json.JsonDocument.Parse(
+            lines.Single(line => line.StartsWith("graphicsPreset:", StringComparison.Ordinal))["graphicsPreset:".Length..]);
+        Equal("custom", preset.RootElement.GetString(), $"{context} uses the JSON string custom");
+        Equal(0, lines.Count(line => line.StartsWith("simulationDistance:", StringComparison.Ordinal)),
+            $"{context} leaves simulation distance at the Minecraft default");
+    }
+
+    private static void VerifyMemoryDefaults(string smokeRoot)
+    {
+        var optimizedReleases = new[]
+        {
+            (TestPackRelease.ArtifactRelativePath, TestPackRelease.ArtifactSha512),
+            ("releases/test-pack/" + TestPackRelease.FormerOptimizedArtifactFileName, TestPackRelease.FormerOptimizedArtifactSha512),
+            (Vanilla2PlusRelease.ArtifactRelativePath, Vanilla2PlusRelease.ArtifactSha512),
+            ("releases/vanilla-2-plus/" + Vanilla2PlusRelease.FormerOptimizedArtifactFileName, Vanilla2PlusRelease.FormerOptimizedArtifactSha512)
+        };
+        foreach (var (relativePath, hash) in optimizedReleases)
+        {
+            var pack = PackArchive.Open(Path.Combine(AppContext.BaseDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar)), hash);
+            var config = PrismLauncherService.BuildInstanceConfig(pack);
+            True(System.Text.Encoding.UTF8.GetString(config).Contains(
+                    "OverrideMemory=true\r\nMaxMemAlloc=8192\r\nMinMemAlloc=512\r\n", StringComparison.Ordinal),
+                $"{pack.VersionId} retains the pinned Prism memory defaults");
+            VerifyMissingMemoryMetadataRepair(pack, config, smokeRoot);
+        }
+        var formerPath = Path.Combine(AppContext.BaseDirectory, "releases", "test-pack",
+            TestPackRelease.FormerCurrentArtifactFileName);
+        var former = PackArchive.Open(formerPath, TestPackRelease.FormerCurrentArtifactSha512);
+        var formerConfig = System.Text.Encoding.UTF8.GetString(PrismLauncherService.BuildInstanceConfig(former));
+        True(!formerConfig.Contains("OverrideMemory=", StringComparison.Ordinal) &&
+             !formerConfig.Contains("MaxMemAlloc=", StringComparison.Ordinal) &&
+             !formerConfig.Contains("MinMemAlloc=", StringComparison.Ordinal),
+            "former-current Prism release does not receive the new memory policy");
+    }
+
+    private static void VerifyMissingMemoryMetadataRepair(PackArchive pack, byte[] expectedConfig, string smokeRoot)
+    {
+        var fixtureRoot = Path.Combine(smokeRoot, "Prism missing optimized metadata " + pack.VersionId);
+        var appDirectory = Path.Combine(fixtureRoot, "PrismLauncher");
+        var dataRoot = Path.Combine(fixtureRoot, "data root");
+        var instancesRoot = Path.Combine(dataRoot, "instances");
+        var stateRoot = Path.Combine(fixtureRoot, "state");
+        Directory.CreateDirectory(appDirectory);
+        Directory.CreateDirectory(instancesRoot);
+        File.WriteAllText(Path.Combine(dataRoot, "prismlauncher.cfg"), "[General]\r\nInstanceDir = instances\r\n");
+        var executable = Path.Combine(appDirectory, "prismlauncher.exe");
+        File.WriteAllBytes(executable, [0x4D, 0x5A]);
+        var target = new PrismLauncherTarget(executable, dataRoot, instancesRoot,
+            InstallationLayout.ComputePrismFingerprint(dataRoot, instancesRoot), "fixture");
+        var release = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == pack.VersionId);
+        var layout = InstallationLayout.PrismForTesting(target, release.InstanceDirectoryPrefix, stateRoot, release);
+        Directory.CreateDirectory(layout.GameDirectory);
+        new InstallationManifest
+        {
+            PackVersion = pack.VersionId,
+            MinecraftVersion = pack.MinecraftVersion,
+            FabricLoaderVersion = pack.FabricLoaderVersion,
+            PackArchiveSha512 = pack.ArchiveSha512,
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = []
+        }.SaveAtomic(layout.GameDirectory);
+        PrismLauncherService.PrepareFreshInstance(layout.InstanceDirectory, layout, pack);
+        PrismLauncherService.WriteLocalOwnershipRecord(layout, pack);
+        File.Delete(Path.Combine(layout.InstanceDirectory, "instance.cfg"));
+        var repaired = PrismLauncherService.CreateRepairMetadata(layout, pack)
+            .Single(change => change.Path == "instance.cfg").ReplacementBytes;
+        True(repaired.AsSpan().SequenceEqual(expectedConfig),
+            $"Prism Repair restores missing {pack.VersionId} instance metadata from exact release defaults");
     }
 
     private static void VerifySelectedLauncherLifecycle(string smokeRoot)

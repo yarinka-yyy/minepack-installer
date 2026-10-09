@@ -6,17 +6,19 @@ MinePack installs a ready-to-play pack for **Minecraft: Java Edition 26.2**, wit
 
 Works on **Windows x64** with the **official Minecraft Launcher** and **Prism Launcher**. Installation needs an internet connection; playing needs an account with access to Minecraft: Java Edition. No separate .NET installation is required.
 
-**[Download MinePack](https://github.com/yarinka-yyy/minepack-installer/releases/tag/v1.6.0)**
+**[Download MinePack](https://github.com/yarinka-yyy/minepack-installer/releases/tag/v1.7.0)**
+
+Installer `1.7.0` includes the three additional optimization mods and updated defaults described below. It also improves interrupted-operation recovery and repeated-action handling: Repair can enter pending-operation recovery, and launcher selection no longer leaves a previous request waiting. This release contains Vanilla Plus `0.18.4` and Frontier `0.19.10`.
 
 ## Which pack should you choose?
 
 ### Vanilla Plus
 
-The main pack for exploring the world and everyday play. It includes **62 mods, 13 resource packs, and one shader**.
+The main pack for exploring the world and everyday play. Version `0.18.4` includes **65 mods, 13 resource packs, and one shader**.
 
 - **More places to discover:** improved villages, ruins, towers, pillager camps, and new Nether structures. Temples, mineshafts, dungeons, strongholds, and fortresses become more varied.
 - **Richer visuals:** lighting, water, and clouds with Complementary Reimagined, refreshed textures, 3D details, and more expressive creature animations.
-- **Distant views and optimization:** Voxy displays explored terrain beyond the normal render distance, while performance mods help the game run more smoothly.
+- **Distant views and optimization:** Voxy displays explored terrain beyond the normal render distance. [BadOptimizations](https://modrinth.com/mod/badoptimizations), [More Culling](https://modrinth.com/mod/moreculling), and [Lithium](https://modrinth.com/mod/lithium) add targeted client and game-logic optimizations.
 - **Convenience:** a world map, inventory sorting, item hints, detailed statistics, play time for each world, and easier tree harvesting.
 - **More atmosphere:** richer spatial sound, rain and particle effects, village guards, and spiders that climb walls and ceilings.
 
@@ -26,11 +28,11 @@ New structures appear in unexplored areas. Create a new world or explore somewhe
 
 **Everything in Vanilla Plus plus five Macaw's building mods:** new windows, fences and walls, bridges, doors, and stair designs. Choose Frontier if you want more details for your builds.
 
-Total: **67 mods, 13 resource packs, and one shader**. All other content is the same in both packs.
+Frontier `0.19.10` has **70 mods, 13 resource packs, and one shader**. All other content is shared with Vanilla Plus.
 
 ## How to install
 
-1. Download [MinePack-Installer-1.6.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.6.0/MinePack-Installer-1.6.0-win-x64.zip) and **extract the entire archive** into a folder. Keep all package files together.
+1. Download [MinePack-Installer-1.7.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.7.0/MinePack-Installer-1.7.0-win-x64.zip) and **extract the entire archive** into a folder. Keep all package files together.
 2. Run **MinePack.Installer.exe**, choose **Vanilla Plus** or **Frontier**, and click **Install pack**.
 3. If one supported launcher is found, MinePack selects it automatically. If both are found, choose the one you want. Wait for **Pack installed**.
 4. Open the selected launcher, choose **MinePack for 26.2**, and start the game. Prism gets a separate instance; the official launcher gets a separate profile.
@@ -54,7 +56,7 @@ Packs are installed in separate folders. The default location is `%LOCALAPPDATA%
 
 Repair and normal pack removal keep worlds, screenshots, and other personal files. Removing leftover data is a separate action with confirmation. Worlds are not moved between packs automatically; use **Import worlds** for that. Back up a world before switching packs or Minecraft versions.
 
-VSync is disabled for new installations. Reinstalling and repairing keep your existing game settings. You can adjust or disable shaders in the game; performance depends on your computer and chosen settings.
+Installer `1.7.0` creates new Vanilla Plus `0.18.4` and Frontier `0.19.10` instances with the Custom graphics preset, 9-chunk render distance, 200% entity distance, and an 8 GiB maximum Java heap. It leaves simulation distance at Minecraft's default and disables VSync. Repair and reinstall keep existing game settings, launcher memory values, and JVM arguments. You can adjust or disable shaders in the game; performance depends on your computer and chosen settings.
 
 For an external multiplayer server, mods that add structures, creatures, or building blocks also need to be installed on the server.
 

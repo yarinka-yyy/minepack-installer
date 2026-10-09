@@ -46,6 +46,11 @@ hash = "250f6f7cda563380af599db2609966c401296d2a01a15b132bf74a5966b70c5d"
 metafile = true
 
 [[files]]
+file = "mods/badoptimizations.pw.toml"
+hash = "3635aff985b59e95eabf5ca9be77d20d25c9d4e2b20f97df42639ea794eda1f3"
+metafile = true
+
+[[files]]
 file = "mods/better-block-entities.pw.toml"
 hash = "549f571b8a25fa25e39490c37eb412af36c75afc7ce21304cfed0cc8549bb2bd"
 metafile = true
@@ -211,6 +216,11 @@ hash = "264f69ceffa9b062ad4fe250ae40e5694dc0ff07f96c2d1044bb115df7ca5d88"
 metafile = true
 
 [[files]]
+file = "mods/lithium.pw.toml"
+hash = "a5ee497ec151dd6e6b946091e12e2c56362e5c772c4b8ea175b2e81277cc708d"
+metafile = true
+
+[[files]]
 file = "mods/macaws-bridges.pw.toml"
 hash = "f1372eece13795d52785470bab0e16f9a31db9a34ab522b2845d2946af6c2138"
 metafile = true
@@ -253,6 +263,11 @@ metafile = true
 [[files]]
 file = "mods/moogs-voyager-structures.pw.toml"
 hash = "48f5f92618ff0a13d6c9bd4b848eb8dc53b1dc476217c75c78e450113fe59030"
+metafile = true
+
+[[files]]
+file = "mods/moreculling.pw.toml"
+hash = "a7038f7260b128480f8a62b12e5583240c2a94bd782c1b60e2356ec7a3843e4c"
 metafile = true
 
 [[files]]

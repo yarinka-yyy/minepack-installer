@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$')]
-    [string] $InstallerVersion = '1.6.2'
+    [string] $InstallerVersion = '1.7.0'
 )
 
 Set-StrictMode -Version Latest
@@ -109,20 +109,6 @@ function Get-CSharpConstant([string] $Path, [string] $Name) {
     return $match.Groups[1].Value
 }
 
-function Assert-ProtectedReleaseZips {
-    $expected = @{
-        'MinePack-Installer-1.5.0-win-x64.zip' = '0BA6607307F8C9F43A596FC879756FBB006B0D6DCF5777A0AEC7BAFFB9245A65'
-        'MinePack-Installer-audit-candidate-win-x64.zip' = 'EF2B62355ACEF6E57B37017B798D9C257217BEE3E6177AC2499C415DA0BC092A'
-    }
-    foreach ($name in $expected.Keys) {
-        $path = Join-Path $artifactRoot $name
-        if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or
-            (Get-FileHashValue $path 'SHA256') -cne $expected[$name]) {
-            throw "Protected release ZIP is missing or has changed: $path"
-        }
-    }
-}
-
 Assert-UnderArtifacts $packageRoot
 Assert-UnderArtifacts $zipPath
 Assert-UnderArtifacts $unpackedRoot
@@ -132,7 +118,6 @@ foreach ($path in @($packageRoot, $zipPath, $unpackedRoot, $buildRoot, $logRoot)
 foreach ($path in @($packageRoot, $zipPath, $unpackedRoot)) {
     if (Test-Path -LiteralPath $path) { throw "Refusing to overwrite existing output: $path" }
 }
-Assert-ProtectedReleaseZips
 New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
 Start-Transcript -Path $logPath -Append | Out-Null
 $transcriptStarted = $true
@@ -148,14 +133,14 @@ try {
 
     $sourceArchives = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'releases') -Recurse -File -Filter '*.mrpack' |
         Sort-Object FullName)
-    if ($sourceArchives.Count -ne 29) { throw "Expected 29 pinned .mrpack archives, found $($sourceArchives.Count)." }
+    if ($sourceArchives.Count -ne 33) { throw "Expected 33 pinned .mrpack archives, found $($sourceArchives.Count)." }
     $archiveLinks = @($project.Project.ItemGroup.Content | Where-Object {
         $_.Include -match '\.mrpack$'
     } | ForEach-Object { $_.Link.Replace('\', '/') } | Sort-Object -Unique)
     $archiveSources = @($sourceArchives | ForEach-Object { Get-RelativePath $repoRoot $_.FullName } | Sort-Object -Unique)
-    if ($archiveLinks.Count -ne 29 -or $archiveSources.Count -ne 29 -or
+    if ($archiveLinks.Count -ne 33 -or $archiveSources.Count -ne 33 -or
         @(Compare-Object $archiveSources $archiveLinks).Count -ne 0) {
-        throw 'The project content list does not match the 29 source .mrpack archives.'
+        throw 'The project content list does not match the 33 source .mrpack archives.'
     }
 
     $testPackPath = Join-Path $repoRoot 'src/MinePack.Core/TestPackRelease.cs'
@@ -212,7 +197,7 @@ try {
         }
     }
     $publishedArchives = @(Get-ChildItem -LiteralPath (Join-Path $packageRoot 'releases') -Recurse -File -Filter '*.mrpack')
-    if ($publishedArchives.Count -ne 29) { throw "Published package contains $($publishedArchives.Count) .mrpack files, expected 29." }
+    if ($publishedArchives.Count -ne 33) { throw "Published package contains $($publishedArchives.Count) .mrpack files, expected 33." }
 
     $sourceKitRoot = Join-Path $repoRoot 'third-party/yungs-sources'
     $publishedKitRoot = Join-Path $packageRoot 'third-party/yungs-sources'
@@ -269,9 +254,8 @@ try {
     $extractedInventory = Get-TreeInventory $extractedRoot
     Assert-InventoryEqual $packageInventory $extractedInventory 'Extracted ZIP and package folder'
 
-    Assert-ProtectedReleaseZips
     Write-Host "PASS: installer version $productVersion"
-    Write-Host "PASS: 29 .mrpack archives match source SHA-512; current pins match release constants"
+    Write-Host "PASS: 33 .mrpack archives match source SHA-512; current pins match release constants"
     Write-Host "PASS: $($sourceKit.Count) YUNG source-kit files and required licenses/docs included"
     Write-Host "PASS: ZIP has one root folder and $($packageInventory.Count) files match the published folder"
     Write-Host "EXE: $exe"

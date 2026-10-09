@@ -302,7 +302,11 @@ public static class PrismLauncherService
                       "InstanceType=OneSix\r\n" +
                       $"name={profileName}\r\n" +
                       $"notes=MinePack Installer; pack {pack.VersionId}\r\n" +
-                      "iconKey=default\r\n";
+                      "iconKey=default\r\n" +
+                      (InstalledInstanceCatalog.UsesCurrentPerformanceDefaults(pack.VersionId, pack.MinecraftVersion,
+                          pack.FabricLoaderVersion, pack.ArchiveSha512)
+                          ? "OverrideMemory=true\r\nMaxMemAlloc=8192\r\nMinMemAlloc=512\r\n"
+                          : string.Empty);
         return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(content);
     }
 

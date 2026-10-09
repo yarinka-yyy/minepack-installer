@@ -10,7 +10,8 @@ public static class LauncherProfile
 
     public static string ProfileName(string minecraftVersion) => $"MinePack for {minecraftVersion}";
 
-    public static string BuildFixtureCandidate(string existingJson, string gameDirectory, string minecraftVersion, string loaderVersion)
+    public static string BuildFixtureCandidate(string existingJson, string gameDirectory, string minecraftVersion,
+        string loaderVersion, string? defaultJavaArgs = null)
     {
         JsonObject root;
         try { root = JsonNode.Parse(existingJson) as JsonObject ?? throw new JsonException(); }
@@ -37,6 +38,8 @@ public static class LauncherProfile
         profile["gameDir"] = Path.GetFullPath(gameDirectory);
         profile["created"] ??= DateTimeOffset.UtcNow.ToString("O");
         profile["lastUsed"] ??= DateTimeOffset.UtcNow.ToString("O");
+        if (defaultJavaArgs is not null && !profile.ContainsKey("javaArgs"))
+            profile["javaArgs"] = defaultJavaArgs;
         profiles[ProfileKey] = profile;
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }

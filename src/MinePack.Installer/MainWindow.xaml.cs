@@ -190,7 +190,8 @@ public partial class MainWindow : Window
     private async Task<LauncherInstallSelection?> ShowLauncherChoiceAsync(LauncherInventory inventory,
         LauncherKind? preferredKind, string status)
     {
-        _launcherChoiceReturnFocus = Keyboard.FocusedElement;
+        if (_launcherChoiceCompletion is null) _launcherChoiceReturnFocus = Keyboard.FocusedElement;
+        _launcherChoiceCompletion?.TrySetResult(null);
         var completion = new TaskCompletionSource<LauncherInstallSelection?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var generation = ++_launcherChoiceGeneration;
         _launcherChoiceCompletion = completion;
@@ -213,6 +214,7 @@ public partial class MainWindow : Window
             else LocatePrismButton.Focus();
         }));
         LauncherInstallSelection? result;
+        using var cancellationRegistration = _operationCancellation?.Token.Register(() => completion.TrySetResult(null));
         try
         {
             result = await completion.Task;
@@ -649,20 +651,7 @@ public partial class MainWindow : Window
 
     private async void Configure_Click(object sender, RoutedEventArgs e) => await RunOperationAsync(Operation.ConfigureLauncher);
 
-    private async void ImportWorlds_Click(object sender, RoutedEventArgs e)
-    {
-        var target = await ResolveActiveOperationTargetAsync();
-        if (target is null) return;
-        var vanillaSaves = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft", "saves");
-        var picker = new OpenFolderDialog
-        {
-            Title = LocalizedText.Get("UiWorldFolderDialogTarget", target.Release?.PackName ?? LocalizedText.Get("UiInstalledInstance"),
-                target.Release?.PackVersion ?? Path.GetFileName(target.Path)),
-            InitialDirectory = Directory.Exists(vanillaSaves) ? vanillaSaves : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-        };
-        if (picker.ShowDialog(this) == true)
-            await RunOperationAsync(Operation.ImportWorlds, picker.FolderName, target);
-    }
+    private async void ImportWorlds_Click(object sender, RoutedEventArgs e) => await RunOperationAsync(Operation.ImportWorlds);
 
     private void Uninstall_Click(object sender, RoutedEventArgs e)
     {
@@ -1183,20 +1172,12 @@ public partial class MainWindow : Window
         ? entry.Layout.StateRoot
         : Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(entry.Path)))!;
 
-    private async Task<InstalledInstanceEntry?> ResolveActiveOperationTargetAsync(bool allowSingleTrustedFallback = false)
+    private async Task<InstalledInstanceEntry?> ResolveActiveOperationTargetAsync(bool allowSingleTrustedFallback = false,
+        bool allowPendingRecovery = false)
     {
-        LauncherInventory inventory;
-        try
-        {
-            inventory = await ScanLaunchersAsync();
-            ApplyLauncherInventory(inventory);
-            _ = RefreshRootState(persist: false);
-        }
-        catch (Exception ex) when (ex is InstallerException or IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            ShowInlineNotice(ex.Message);
-            return null;
-        }
+        var inventory = await ScanLaunchersAsync();
+        ApplyLauncherInventory(inventory);
+        _ = RefreshRootState(persist: false);
 
         var hasUnknown = inventory.OfficialUnknown || inventory.PrismScan.State == LauncherDiscoveryState.Unknown;
         LauncherInstallSelection? selection;
@@ -1219,6 +1200,15 @@ public partial class MainWindow : Window
         if (selection.Kind == LauncherKind.Prism && selection.PrismTarget is { } prismTarget)
         {
             var layout = InstallationLayout.Prism(prismTarget, "minepack-target-validation");
+            if (allowPendingRecovery)
+            {
+                foreach (var candidate in InstalledInstanceCatalog.Enumerate(layout, AppContext.BaseDirectory))
+                {
+                    if (candidate.Layout is not { IsPrism: true } candidateLayout ||
+                        !candidateLayout.Fingerprint.Equals(layout.Fingerprint, StringComparison.OrdinalIgnoreCase)) continue;
+                    if (_installer.GetPendingOperation(candidateLayout) is not null) return candidate;
+                }
+            }
             var marker = _installer.InspectActiveMarker(layout);
             activePath = marker.State == ActiveMarkerState.Valid ? marker.InstancePath : null;
             var entry = activePath is null ? null : _instanceChoices.Select(choice => choice.Entry).SingleOrDefault(candidate =>
@@ -1242,6 +1232,9 @@ public partial class MainWindow : Window
             var root = RefreshRootState(persist: false);
             if (root is not null)
             {
+                if (allowPendingRecovery && _installer.GetPendingOperation(root) is { } pending)
+                    return new InstalledInstanceEntry(pending.InstancePath, Path.GetFileName(pending.InstancePath),
+                        InstalledInstanceState.Residue, null, "TRANSACTION_RECOVERY_REQUIRED");
                 var marker = _installer.InspectActiveMarker(root);
                 activePath = marker.State == ActiveMarkerState.Valid ? marker.InstancePath : null;
                 var entry = activePath is null ? null : _instanceChoices.Select(choice => choice.Entry).SingleOrDefault(candidate =>
@@ -1295,14 +1288,6 @@ public partial class MainWindow : Window
         InstalledInstanceEntry? operationTarget = null, InstanceCleanupRequest? cleanupRequest = null)
     {
         if (_operationCancellation is not null) return;
-        if ((operation is Operation.Repair or Operation.ConfigureLauncher or Operation.ImportWorlds) && operationTarget is null)
-            operationTarget = await ResolveActiveOperationTargetAsync(allowSingleTrustedFallback: operation == Operation.ConfigureLauncher);
-        if (operation is not Operation.Install && operationTarget is null)
-        {
-            if (operation is Operation.Uninstall or Operation.RemoveResidue)
-                ShowInlineNotice(LocalizedText.Get("UiSelectTrustedInstance"));
-            return;
-        }
         _operationTargetEntry = operationTarget;
         var cancellation = new CancellationTokenSource();
         _operationCancellation = cancellation;
@@ -1329,6 +1314,25 @@ public partial class MainWindow : Window
         {
             await OperationGuard.RunAsync(async () =>
             {
+            if ((operation is Operation.Repair or Operation.ConfigureLauncher or Operation.ImportWorlds) && operationTarget is null)
+                operationTarget = await ResolveActiveOperationTargetAsync(
+                    allowSingleTrustedFallback: operation == Operation.ConfigureLauncher,
+                    allowPendingRecovery: operation == Operation.Repair);
+            cancellation.Token.ThrowIfCancellationRequested();
+            if (operation is not Operation.Install && operationTarget is null)
+            {
+                if (operation is Operation.Uninstall or Operation.RemoveResidue)
+                    ShowInlineNotice(LocalizedText.Get("UiSelectTrustedInstance"));
+                operationOutcome = "cancelled";
+                operationFailureCode = "CANCELLED";
+                StatusBox.Text = string.IsNullOrWhiteSpace(InlineNoticeText.Text)
+                    ? LocalizedText.Get("OperationStoppedStatus") : InlineNoticeText.Text;
+                return;
+            }
+            _operationTargetEntry = operationTarget;
+            if (operationTarget?.Release is { } targetRelease)
+                operationLog.SetRelease(targetRelease.PackVersion, targetRelease.MinecraftVersion,
+                    targetRelease.FabricLoaderVersion, targetRelease.ArchiveSha512);
             var root = operationTarget is not null
                 ? GetEntryRoot(operationTarget)
                 : operation == Operation.Install ? null : RefreshRootState(persist: true);
@@ -1356,6 +1360,24 @@ public partial class MainWindow : Window
                     root = RefreshRootState(persist: false);
             }
             if (root is null) throw new InstallerException("ROOT_UNAVAILABLE", LocalizedText.Get("UiSavedRootUnavailable"));
+            if (operation == Operation.ImportWorlds && sourceWorlds is null)
+            {
+                var vanillaSaves = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), ".minecraft", "saves");
+                var picker = new OpenFolderDialog
+                {
+                    Title = LocalizedText.Get("UiWorldFolderDialogTarget", operationTarget!.Release?.PackName ?? LocalizedText.Get("UiInstalledInstance"),
+                        operationTarget.Release?.PackVersion ?? Path.GetFileName(operationTarget.Path)),
+                    InitialDirectory = Directory.Exists(vanillaSaves) ? vanillaSaves : Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
+                };
+                if (picker.ShowDialog(this) != true)
+                {
+                    operationOutcome = "cancelled";
+                    operationFailureCode = "CANCELLED";
+                    StatusBox.Text = LocalizedText.Get("OperationStoppedStatus");
+                    return;
+                }
+                sourceWorlds = picker.FolderName;
+            }
             PresentOperationProgress();
             operationLog.Write("preflight", "started", "ui_operation_started");
 

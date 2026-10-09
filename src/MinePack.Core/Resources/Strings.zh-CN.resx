@@ -11,8 +11,8 @@
   <data name="UiBuildInfo" xml:space="preserve"><value>Minecraft 26.2 · Fabric 加载器 0.19.5 · Fabric API 0.161.0+26.2</value></data>
   <data name="UiPackVersion" xml:space="preserve"><value>整合包版本 {0}</value></data>
   <data name="UiInstallerVersion" xml:space="preserve"><value>安装程序版本 {0}</value></data>
-  <data name="UiPackCountsVanillaPlus" xml:space="preserve"><value>62 个模组 · 13 个资源包 · 1 个光影包</value></data>
-  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>67 个模组 · 13 个资源包 · 1 个光影包</value></data>
+  <data name="UiPackCountsVanillaPlus" xml:space="preserve"><value>65 个模组 · 13 个资源包 · 1 个光影包</value></data>
+  <data name="UiPackCountsVanilla2Plus" xml:space="preserve"><value>70 个模组 · 13 个资源包 · 1 个光影包</value></data>
   <data name="UiChoosePack" xml:space="preserve"><value>选择要安装的整合包</value></data>
   <data name="UiCatalogTitle" xml:space="preserve"><value>整合包内容</value></data>
   <data name="UiOpenOnModrinth" xml:space="preserve"><value>在 Modrinth 上查看</value></data>

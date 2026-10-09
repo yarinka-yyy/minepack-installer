@@ -78,7 +78,13 @@ public static class PackCatalog
 
     public static IReadOnlyList<CatalogGroup> VanillaPlusGroups { get; } = CoreGroups
         .Select(group => group.Key == "CatalogPerformance"
-            ? group with { Items = group.Items.Append(new CatalogItem("Voxy WorldGen", "CatalogPerformance", "mod", "xT0lnNE9", "mods/Voxy World Gen V2-fabric-26.2-2.4.3.jar")).ToArray() }
+            ? group with { Items = group.Items.Concat(new[]
+                {
+                    new CatalogItem("BadOptimizations", "CatalogPerformance", "mod", "g96Z4WVZ", "mods/BadOptimizations-2.4.1-26.2-fabric.jar"),
+                    new CatalogItem("More Culling", "CatalogPerformance", "mod", "51shyZVL", "mods/moreculling-fabric-26.2-1.8.1.jar"),
+                    new CatalogItem("Lithium", "CatalogPerformance", "mod", "gvQqBUqZ", "mods/lithium-fabric-0.25.3+mc26.2.jar"),
+                    new CatalogItem("Voxy WorldGen", "CatalogPerformance", "mod", "xT0lnNE9", "mods/Voxy World Gen V2-fabric-26.2-2.4.3.jar")
+                }).ToArray() }
             : group.Key == "CatalogGraphics"
             ? group with { Items = group.Items.Concat(new[]
                 {

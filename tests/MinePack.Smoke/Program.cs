@@ -86,6 +86,8 @@ internal static class Smoke
                 VerifyLauncherFixture(tempRoot);
                 await VerifyLauncherLifecycleAsync(tempRoot);
                 await VerifyAutomaticFabricProfileAsync(tempRoot);
+                await VerifyCurrentPerformanceLauncherDefaultsAsync(tempRoot);
+                await VerifyVersionedInstallLifecycleAsync();
                 await VerifyOfflineFabricProfileAsync(tempRoot);
             }
             await VerifyNetworkGateProcessFixturesAsync();
@@ -855,7 +857,20 @@ internal static class Smoke
 
     private static void VerifyInstalledInstanceCatalogAndPreferences(string tempRoot)
     {
-        Equal(29, InstalledInstanceCatalog.KnownReleases.Count, "shared catalog retains all historical releases plus both new current candidates");
+        Equal(33, InstalledInstanceCatalog.KnownReleases.Count, "shared catalog retains all historical releases plus both new current releases");
+        True(InstalledInstanceCatalog.UsesCurrentPerformanceDefaults(TestPackRelease.PackVersion,
+                 TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, TestPackRelease.ArtifactSha512) &&
+             InstalledInstanceCatalog.UsesCurrentPerformanceDefaults("0.18.3",
+                 TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, TestPackRelease.FormerOptimizedArtifactSha512) &&
+             InstalledInstanceCatalog.UsesCurrentPerformanceDefaults(Vanilla2PlusRelease.PackVersion,
+                 Vanilla2PlusRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, Vanilla2PlusRelease.ArtifactSha512) &&
+             InstalledInstanceCatalog.UsesCurrentPerformanceDefaults("0.19.9",
+                 Vanilla2PlusRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, Vanilla2PlusRelease.FormerOptimizedArtifactSha512) &&
+             !InstalledInstanceCatalog.UsesCurrentPerformanceDefaults("0.18.2", TestPackRelease.MinecraftVersion,
+                 TestPackRelease.FabricLoaderVersion, TestPackRelease.FormerCurrentArtifactSha512) &&
+             !InstalledInstanceCatalog.UsesCurrentPerformanceDefaults(TestPackRelease.PackVersion,
+                 TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, new string('A', 128)),
+            "performance defaults require an exact current release version and archive hash");
         True(InstalledInstanceCatalog.TryGetRelease("0.1.0", out var legacy) && legacy.MinecraftVersion == "26.3" &&
              InstalledInstanceCatalog.TryGetRelease("0.2.0", out var prior) && prior.MinecraftVersion == "26.3",
             "catalog preserves the two historical Minecraft 26.3 resolver targets");
@@ -865,19 +880,35 @@ internal static class Smoke
         Directory.CreateDirectory(instancesRoot);
         var plusRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == TestPackRelease.PackVersion);
         var frontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == Vanilla2PlusRelease.PackVersion);
+        var formerOptimizedFrontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == "0.19.9");
         var previousFrontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == "0.19.6");
-        Equal("MinePack-26.2-VanillaPlus-0.18.2", InstanceDirectoryNaming.CreateBaseName(plusRelease),
+        Equal("MinePack-26.2-VanillaPlus-0.18.4", InstanceDirectoryNaming.CreateBaseName(plusRelease),
             "new VanillaPlus folder name includes pinned Minecraft and pack versions");
-        Equal("MinePack-26.2-Frontier-0.19.8", InstanceDirectoryNaming.Allocate(instancesRoot, frontierRelease),
+        var formerFrontierInstance = WriteCatalogManifest(instancesRoot, formerOptimizedFrontierRelease, AppContext.BaseDirectory,
+            InstanceDirectoryNaming.CreateBaseName(formerOptimizedFrontierRelease));
+        var formerOptionsPath = Path.Combine(formerFrontierInstance, "options.txt");
+        var formerOptions = Bytes("version:4903\ngraphicsPreset:\"fancy\"\nrenderDistance:16\nentityDistanceScaling:1.0\n");
+        File.WriteAllBytes(formerOptionsPath, formerOptions);
+        var formerWorldPath = Path.Combine(formerFrontierInstance, "saves", "unchanged-world", "level.dat");
+        var formerWorld = Bytes("fixture world data");
+        Directory.CreateDirectory(Path.GetDirectoryName(formerWorldPath)!);
+        File.WriteAllBytes(formerWorldPath, formerWorld);
+        var newFrontierInstanceName = InstanceDirectoryNaming.Allocate(instancesRoot, frontierRelease);
+        Equal("MinePack-26.2-Frontier-0.19.10", newFrontierInstanceName,
             "new Frontier folder name is preferred when available");
+        True(!Path.GetFullPath(Path.Combine(instancesRoot, newFrontierInstanceName))
+                .Equals(Path.GetFullPath(formerFrontierInstance), StringComparison.OrdinalIgnoreCase) &&
+             File.ReadAllBytes(formerOptionsPath).SequenceEqual(formerOptions) &&
+             File.ReadAllBytes(formerWorldPath).SequenceEqual(formerWorld),
+            "installing the new Frontier version allocates alongside the 0.19.9 fixture and preserves its options and world bytes");
         Directory.CreateDirectory(Path.Combine(instancesRoot, InstanceDirectoryNaming.CreateBaseName(frontierRelease)));
-        Equal("MinePack-26.2-Frontier-0.19.8-02", InstanceDirectoryNaming.Allocate(instancesRoot, frontierRelease),
+        Equal("MinePack-26.2-Frontier-0.19.10-02", InstanceDirectoryNaming.Allocate(instancesRoot, frontierRelease),
             "new instance collision receives the first stable ordinal suffix");
-        True(InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.8", frontierRelease) &&
-             InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.8-02", frontierRelease) &&
-             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.8-01", frontierRelease) &&
-             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.7", frontierRelease) &&
-             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-VanillaPlus-0.19.8", frontierRelease),
+        True(InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.10", frontierRelease) &&
+             InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.10-02", frontierRelease) &&
+             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.10-01", frontierRelease) &&
+             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.9", frontierRelease) &&
+             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-VanillaPlus-0.19.10", frontierRelease),
             "new folder parsing accepts only the exact pinned pack name/version and valid suffixes");
         var frontierNewName = WriteCatalogManifest(instancesRoot, frontierRelease, AppContext.BaseDirectory,
             InstanceDirectoryNaming.CreateBaseName(frontierRelease));
@@ -908,6 +939,8 @@ internal static class Smoke
             "current Vanilla Plus manifest and pinned archive grant trusted instance status");
         True(entries.Single(entry => entry.Path == frontierInstance).IsTrusted,
             "known reinstall GUID suffix remains a trusted instance directory");
+        True(entries.Single(entry => entry.Path == formerFrontierInstance).IsTrusted,
+            "former optimized Frontier 0.19.9 remains a trusted instance beside the new release");
         True(entries.Single(entry => entry.Path == frontierNewName).IsTrusted,
             "new exact short folder name still requires and passes the pinned manifest/archive checks");
         True(entries.Single(entry => entry.Path == previousFrontierInstance).IsTrusted &&
@@ -1007,7 +1040,14 @@ internal static class Smoke
             "SubtleEffects-fabric-26.2-1.14.3.jar",
             "fzzy_config-0.7.6+26.2.jar", "fabric-language-kotlin-1.14.1+kotlin.2.4.20.jar"
         };
-        True(pack.Files.Count == 65 && sharedNewMods.All(name => previousCurrent.Files.Any(file => file.Path == "mods/" + name)) &&
+        var currentPerformanceMods = new[]
+        {
+            "BadOptimizations-2.4.1-26.2-fabric.jar",
+            "moreculling-fabric-26.2-1.8.1.jar",
+            "lithium-fabric-0.25.3+mc26.2.jar"
+        };
+        True(pack.Files.Count == 68 && sharedNewMods.All(name => previousCurrent.Files.Any(file => file.Path == "mods/" + name)) &&
+             currentPerformanceMods.All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
              pack.Files.Any(file => file.Path == "mods/betterstats-5.5.6+fn-26.2.jar") &&
              pack.Files.Any(file => file.Path == "mods/tcdcommons-5.5.6+fn-26.2.jar") &&
              !pack.Files.Any(file => file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase)) &&
@@ -1139,7 +1179,7 @@ internal static class Smoke
         Equal("MinePack Vanilla 2 Plus", vanilla2Plus.Name, "Vanilla 2 Plus archive name");
         Equal(TestPackRelease.MinecraftVersion, vanilla2Plus.MinecraftVersion, "Vanilla 2 Plus Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, vanilla2Plus.FabricLoaderVersion, "Vanilla 2 Plus Fabric Loader version");
-        True(vanilla2Plus.Files.Count == 70 &&
+        True(vanilla2Plus.Files.Count == 73 &&
              previousCurrentVanilla2Plus.Files.All(oldFile => vanilla2Plus.Files.Any(file => file.Path == oldFile.Path &&
                  file.Sha512 == oldFile.Sha512 && file.Downloads.SequenceEqual(oldFile.Downloads))) &&
              worldgenVanilla2Plus.Files.Where(file => !file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase) &&
@@ -1190,11 +1230,11 @@ internal static class Smoke
             .Concat(["resourcepacks/xalis-enhanced-vanilla-26.2-minepack.2.zip", "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.2.zip"]);
         var testPackPath = Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var testPackForCatalog = PackArchive.Open(testPackPath, TestPackRelease.ArtifactSha512);
-        True(catalog.Length == 76 && catalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 62 &&
+        True(catalog.Length == 79 && catalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 65 &&
              catalog.Count(item => item.Kind == "resourcepack") == 13 && catalog.Count(item => item.Kind == "shader") == 1 &&
              catalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal)
                  .SetEquals(testPackForCatalog.Files.Select(file => file.Path).Concat(localCatalogPaths)) &&
-             vanilla2PlusCatalog.Count == 81 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 67 &&
+             vanilla2PlusCatalog.Count == 84 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 70 &&
              vanilla2PlusCatalog.Count(item => item.Kind == "resourcepack") == 13 &&
              vanilla2PlusCatalog.Count(item => item.Kind == "datapack") == 1 &&
              vanilla2PlusCatalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal)
@@ -1204,6 +1244,7 @@ internal static class Smoke
                  : item.ModrinthUrl.Scheme == Uri.UriSchemeHttps && item.ModrinthUrl.Host == "modrinth.com" && !string.IsNullOrWhiteSpace(item.ProjectId)),
             "Vanilla Plus and Frontier catalogs exactly match their pinned releases");
         var initialOptions = TestPackRelease.InitialOptions.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        AssertOptimizedGraphicsOptions(TestPackRelease.InitialOptions, "new options generator");
         True(initialOptions[0] == "version:4903" && new[]
         {
             "key_key.sprint:key.keyboard.left.shift", "key_key.sneak:key.keyboard.left.control",
@@ -1221,6 +1262,34 @@ internal static class Smoke
              TestPackRelease.InitialOptions.Contains("Freshly Modded", StringComparison.Ordinal),
             "the shared resource-pack order is enabled for both new pack installations");
         Pass("pinned .mrpack opens and matches its SHA-512");
+    }
+
+    private static void AssertOptimizedGraphicsOptions(string options, string context)
+    {
+        var lines = options.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var (key, value) in new[]
+                 {
+                     ("graphicsPreset", "\"custom\""),
+                     ("renderDistance", "9"),
+                     ("entityDistanceScaling", "2.0")
+                 })
+        {
+            var matches = lines.Where(line => line.StartsWith(key + ":", StringComparison.Ordinal)).ToArray();
+            Equal(1, matches.Length, $"{context} writes {key} exactly once");
+            Equal(key + ":" + value, matches[0], $"{context} sets {key} to its optimized value");
+        }
+        using var preset = JsonDocument.Parse(lines.Single(line => line.StartsWith("graphicsPreset:", StringComparison.Ordinal))["graphicsPreset:".Length..]);
+        Equal("custom", preset.RootElement.GetString(), $"{context} encodes graphicsPreset as the JSON string custom");
+        Equal(0, lines.Count(line => line.StartsWith("simulationDistance:", StringComparison.Ordinal)),
+            $"{context} leaves simulation distance at the Minecraft default");
+    }
+
+    private static void AssertNoOptimizedGraphicsOptions(string options, string context)
+    {
+        var lines = options.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var key in new[] { "graphicsPreset", "renderDistance", "entityDistanceScaling", "simulationDistance" })
+            Equal(0, lines.Count(line => line.StartsWith(key + ":", StringComparison.Ordinal)),
+                $"{context} does not add {key}");
     }
 
     private static void VerifyInstallProgressProjection()
@@ -1265,7 +1334,7 @@ internal static class Smoke
             True(InitialConfiguration.IsInitialUserConfig(pack, irisPath), "every pinned archive with Iris has hash-bound initial config ownership");
             irisArchives++;
         }
-        Equal(28, irisArchives, "all pinned Iris archive hashes are classified");
+        Equal(32, irisArchives, "all pinned Iris archive hashes are classified");
 
         var unknownArchivePath = Path.Combine(tempRoot, "unknown-iris.mrpack");
         CreatePack(unknownArchivePath, "0.1.0", [], [new TestOverride(irisPath, Bytes("unknown archive"))]);
@@ -1274,6 +1343,10 @@ internal static class Smoke
 
         var previousResourcePackCases = new[]
         {
+            ("0.19.9", Vanilla2PlusRelease.FormerOptimizedArtifactFileName, Vanilla2PlusRelease.FormerOptimizedArtifactSha512,
+                Vanilla2PlusRelease.InitialResourcePacks),
+            ("0.19.8", Vanilla2PlusRelease.FormerCurrentArtifactFileName, Vanilla2PlusRelease.FormerCurrentArtifactSha512,
+                Vanilla2PlusRelease.InitialResourcePacks),
             ("0.19.7", Vanilla2PlusRelease.PreviousCurrentArtifactFileName, Vanilla2PlusRelease.PreviousCurrentArtifactSha512,
                 Vanilla2PlusRelease.LegacyCurrentResourcePacks),
             ("0.19.4", Vanilla2PlusRelease.XalisArtifactFileName, Vanilla2PlusRelease.XalisArtifactSha512,
@@ -1291,9 +1364,16 @@ internal static class Smoke
             Directory.CreateDirectory(stage);
             await pack.ExtractOverridesAsync(stage, CancellationToken.None);
             var defaults = InitialConfiguration.Create(pack, stage);
-            Equal(TestPackRelease.BuildInitialOptions(expectedPacks),
+            var optimizedDefaults = version == "0.19.9";
+            Equal(TestPackRelease.BuildInitialOptions(expectedPacks, optimizedDefaults),
                 System.Text.Encoding.UTF8.GetString(defaults.Single(file => file.Path == "options.txt").Contents),
                 $"Frontier {version} retains its exact pinned initial resource-pack order");
+            if (optimizedDefaults)
+                AssertOptimizedGraphicsOptions(System.Text.Encoding.UTF8.GetString(defaults.Single(file => file.Path == "options.txt").Contents),
+                    $"former optimized Frontier {version} Repair defaults");
+            else
+                AssertNoOptimizedGraphicsOptions(System.Text.Encoding.UTF8.GetString(defaults.Single(file => file.Path == "options.txt").Contents),
+                    $"legacy Frontier {version} Repair defaults");
             True(InitialConfiguration.IsInitialUserConfig(pack, irisPath) &&
                  InitialConfiguration.IsInitialUserConfig(pack, "config/guardvillagers.json") &&
                  InitialConfiguration.IsInitialUserConfig(pack, "config/voxyworldgenv2.json"),
@@ -1309,6 +1389,18 @@ internal static class Smoke
             }
         }
 
+        var formerOptimizedTestPack = PackArchive.Open(
+            Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.FormerOptimizedArtifactFileName),
+            TestPackRelease.FormerOptimizedArtifactSha512);
+        var formerOptimizedTestStage = Path.Combine(tempRoot, "initial-config-vanilla-plus-0.18.3-stage");
+        Directory.CreateDirectory(formerOptimizedTestStage);
+        await formerOptimizedTestPack.ExtractOverridesAsync(formerOptimizedTestStage, CancellationToken.None);
+        var formerOptimizedTestDefaults = InitialConfiguration.Create(formerOptimizedTestPack, formerOptimizedTestStage);
+        var formerOptimizedTestOptions = System.Text.Encoding.UTF8.GetString(formerOptimizedTestDefaults.Single(file => file.Path == "options.txt").Contents);
+        Equal(TestPackRelease.BuildInitialOptions(TestPackRelease.InitialResourcePacks, optimizedDefaults: true), formerOptimizedTestOptions,
+            "former optimized Vanilla Plus 0.18.3 retains its curated order and corrected graphics defaults");
+        AssertOptimizedGraphicsOptions(formerOptimizedTestOptions, "former optimized Vanilla Plus 0.18.3 Repair defaults");
+
         var previousTestPack = PackArchive.Open(
             Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.PreviousCurrentArtifactFileName),
             TestPackRelease.PreviousCurrentArtifactSha512);
@@ -1319,6 +1411,21 @@ internal static class Smoke
         Equal(TestPackRelease.BuildInitialOptions(TestPackRelease.LegacyCurrentResourcePacks),
             System.Text.Encoding.UTF8.GetString(previousTestDefaults.Single(file => file.Path == "options.txt").Contents),
             "legacy Vanilla Plus 0.18.1 keeps its 7-item default instead of inheriting the new list");
+        AssertNoOptimizedGraphicsOptions(System.Text.Encoding.UTF8.GetString(previousTestDefaults.Single(file => file.Path == "options.txt").Contents),
+            "legacy Vanilla Plus 0.18.1 Repair defaults");
+
+        var formerTestPack = PackArchive.Open(
+            Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.FormerCurrentArtifactFileName),
+            TestPackRelease.FormerCurrentArtifactSha512);
+        var formerTestStage = Path.Combine(tempRoot, "initial-config-vanilla-plus-0.18.2-stage");
+        Directory.CreateDirectory(formerTestStage);
+        await formerTestPack.ExtractOverridesAsync(formerTestStage, CancellationToken.None);
+        var formerTestDefaults = InitialConfiguration.Create(formerTestPack, formerTestStage);
+        Equal(TestPackRelease.BuildInitialOptions(TestPackRelease.InitialResourcePacks),
+            System.Text.Encoding.UTF8.GetString(formerTestDefaults.Single(file => file.Path == "options.txt").Contents),
+            "former-current Vanilla Plus 0.18.2 retains its 13-item order without new performance defaults");
+        AssertNoOptimizedGraphicsOptions(System.Text.Encoding.UTF8.GetString(formerTestDefaults.Single(file => file.Path == "options.txt").Contents),
+            "legacy Vanilla Plus 0.18.2 Repair defaults");
 
         var testPackPath = Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var frontierPackPath = Path.Combine(AppContext.BaseDirectory, Vanilla2PlusRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -1347,6 +1454,7 @@ internal static class Smoke
                 $"{pack.Name} initial options do not enable VSync");
             True(options.StartsWith("version:4903" + Environment.NewLine, StringComparison.Ordinal),
                 $"{pack.Name} initial options keep the required version line first");
+            AssertOptimizedGraphicsOptions(options, $"{pack.Name} production-generated options");
         }
         using var bbe = JsonDocument.Parse(testDefaults.Single(file => file.Path == "config/BBEConfig.json").Contents);
         True(bbe.RootElement.GetProperty("bbe.config.storage.main").EnumerateArray().All(item => !item.GetProperty("value").GetBoolean()),
@@ -1360,9 +1468,9 @@ internal static class Smoke
         var frontierPaths = frontierDefaults.Select(file => file.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
         True(frontierPaths.SetEquals(["options.txt", "config/BBEConfig.json", irisPath, "config/guardvillagers.json", "config/voxyworldgenv2.json"]),
             "Frontier creates Iris, Guard, Voxy, options, and BBE defaults for its pinned release");
-        Equal(TestPackRelease.BuildInitialOptions(Vanilla2PlusRelease.InitialResourcePacks),
+        Equal(Vanilla2PlusRelease.InitialOptions,
             System.Text.Encoding.UTF8.GetString(frontierDefaults.Single(file => file.Path == "options.txt").Contents),
-            "Frontier preserves resource pack order and its Low On Fire exclusion");
+            "Frontier preserves resource pack order, its Low On Fire exclusion, and optimized defaults");
         foreach (var file in frontierPack.Overrides.Where(item => InitialConfiguration.IsInitialUserConfig(frontierPack, item.Path)))
             Equal(HashFile(FixturePath(frontierStage, file.Path)), HashBytes(frontierDefaults.Single(item => item.Path == file.Path).Contents),
                 $"Frontier initial override is copied from its pinned archive: {file.Path}");
@@ -1544,11 +1652,11 @@ internal static class Smoke
             Equal("World & Structures — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "English Vanilla 2 Plus worldgen category");
             Equal("Technical Foundation — 15", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Frontier dependencies");
             Equal("Resource Packs — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Frontier resource packs");
-            Equal("Pack version 0.19.8", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
+            Equal("Pack version 0.19.10", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
             Equal("Installer version 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "English installer version");
-            Equal("67 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
-            Equal("62 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
-            Equal("Performance & Render Distance — 9|Graphics & Animations — 12|Tools & Quality of Life — 12|Sound — 2|Technical Foundation — 15|Resource Packs — 13|Shader — 1|World & Structures — 12",
+            Equal("70 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
+            Equal("65 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
+            Equal("Performance & Render Distance — 12|Graphics & Animations — 12|Tools & Quality of Life — 12|Sound — 2|Technical Foundation — 15|Resource Packs — 13|Shader — 1|World & Structures — 12",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "English catalog headings and counts");
             Equal("Copied worlds: 2. Skipped existing names: 1; missing session.lock: 2; locked or unverified session.lock: 3.",
                 LocalizedText.Get("WorldImportSummary", 2, 1, 2, 3), "English formatted world import summary");
@@ -1560,10 +1668,10 @@ internal static class Smoke
             Equal("整合包文件已安装。", LocalizedText.Get("PackFilesInstalled"), "Chinese success text");
             Equal("未找到整合包文件。", LocalizedText.Get("PackFileMissing"), "Chinese error text");
             Equal("性能与区块渲染距离", LocalizedText.Get("CatalogPerformance"), "Chinese catalog text");
-            Equal("整合包版本 0.19.8", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
+            Equal("整合包版本 0.19.10", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
             Equal("安装程序版本 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Chinese installer version");
-            Equal("67 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
-            Equal("62 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
+            Equal("70 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
+            Equal("65 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
             Equal("已复制存档：2。因名称已存在而跳过：1；缺少 session.lock：2；session.lock 已锁定或无法验证：3。",
                 LocalizedText.Get("WorldImportSummary", 2, 1, 2, 3), "Chinese formatted world import summary");
             Equal("建筑方块 — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Chinese Vanilla 2 Plus building category");
@@ -1581,11 +1689,11 @@ internal static class Smoke
             Equal("Мир и структуры — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Russian Vanilla 2 Plus worldgen category");
             Equal("Техническая основа — 15", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Frontier dependencies");
             Equal("Ресурспаки — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Frontier resource packs");
-            Equal("Версия сборки 0.19.8", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
+            Equal("Версия сборки 0.19.10", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
             Equal("Версия установщика 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Russian installer version");
-            Equal("67 модов · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
-            Equal("62 мода · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
-            Equal("Производительность и дальность — 9|Графика и анимации — 12|Инструменты и удобство — 12|Звук — 2|Техническая основа — 15|Ресурспаки — 13|Шейдер — 1|Мир и структуры — 12",
+            Equal("70 модов · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
+            Equal("65 модов · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
+            Equal("Производительность и дальность — 12|Графика и анимации — 12|Инструменты и удобство — 12|Звук — 2|Техническая основа — 15|Ресурспаки — 13|Шейдер — 1|Мир и структуры — 12",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "Russian catalog headings and counts");
             Equal("Скопировано миров: 2. Пропущено совпадений имён: 1; нет session.lock: 2; session.lock занят или не проверен: 3.",
                 LocalizedText.Get("WorldImportSummary", 2, 1, 2, 3), "Russian formatted world import summary");
@@ -2333,7 +2441,7 @@ internal static class Smoke
         var userOptions = Bytes("version:4903\nenableVsync:true\ncustom:preserve\n");
         File.WriteAllBytes(options, userOptions);
 
-        var userConfig = Bytes("[General]\r\nConfigVersion=1.2\r\nInstanceType=OneSix\r\nname=Manual local title\r\nnotes=keep these notes\r\nJavaPath=C:\\Java\\custom\\bin\\javaw.exe\r\nMaxMemAlloc=8192\r\n");
+        var userConfig = Bytes("[General]\r\nConfigVersion=1.2\r\nInstanceType=OneSix\r\nname=Manual local title\r\nnotes=keep these notes\r\nJavaPath=C:\\Java\\custom\\bin\\javaw.exe\r\nOverrideMemory=false\r\nMaxMemAlloc=4096\r\nMinMemAlloc=256\r\n");
         File.WriteAllBytes(prismConfig, userConfig);
         var userComponentNode = JsonNode.Parse(File.ReadAllText(prismComponents))!.AsObject();
         userComponentNode["customSetting"] = "keep component note";
@@ -2365,7 +2473,9 @@ internal static class Smoke
         True(normalizedConfig.Contains("name=MinePack for 26.2", StringComparison.Ordinal) &&
              normalizedConfig.Contains("notes=keep these notes", StringComparison.Ordinal) &&
              normalizedConfig.Contains("JavaPath=C:\\Java\\custom\\bin\\javaw.exe", StringComparison.Ordinal) &&
-             normalizedConfig.Contains("MaxMemAlloc=8192", StringComparison.Ordinal),
+             normalizedConfig.Contains("OverrideMemory=false", StringComparison.Ordinal) &&
+             normalizedConfig.Contains("MaxMemAlloc=4096", StringComparison.Ordinal) &&
+             normalizedConfig.Contains("MinMemAlloc=256", StringComparison.Ordinal),
             "Prism Repair normalizes only its owned profile name and preserves Java, memory, and notes fields");
         using (var normalizedComponents = JsonDocument.Parse(File.ReadAllBytes(prismComponents)))
         {
@@ -2896,19 +3006,11 @@ internal static class Smoke
 
     private static (string JavaPath, string ClassDirectory) CompileMinecraftSessionLockProbe()
     {
-        var current = new DirectoryInfo(Environment.CurrentDirectory);
-        string? jdkBin = null;
-        while (current is not null)
-        {
-            var candidate = Path.Combine(current.FullName, "mods", "_work", "_tools", "jdk-25.0.4.1+1", "bin");
-            if (File.Exists(Path.Combine(candidate, "java.exe")) && File.Exists(Path.Combine(candidate, "javac.exe")))
-            {
-                jdkBin = candidate;
-                break;
-            }
-            current = current.Parent;
-        }
-        if (jdkBin is null) throw new InvalidOperationException("The pinned Java 25 smoke fixture tools were not found.");
+        True(IsJava25Version("javac 25.0.1") && IsJava25Version("openjdk version \"25.0.1\""),
+            "Java 25 prerequisite accepts compiler and runtime version banners");
+        True(!IsJava25Version("javac 21.0.25") && !IsJava25Version("java version \"250.0.1\""),
+            "Java 25 prerequisite rejects a different compiler or runtime major version");
+        var jdkBin = FindJava25Bin();
 
         var classDirectory = Path.Combine(AppContext.BaseDirectory, "world-session-lock-probe");
         Directory.CreateDirectory(classDirectory);
@@ -2950,6 +3052,68 @@ internal static class Smoke
         Equal(0, compiler.ExitCode, "Java 25 session.lock probe compiles");
         return (Path.Combine(jdkBin, "java.exe"), classDirectory);
     }
+
+    private static string FindJava25Bin()
+    {
+        foreach (var variable in new[] { "MINEPACK_TEST_JAVA_HOME", "JAVA_HOME" })
+        {
+            var configured = Environment.GetEnvironmentVariable(variable);
+            if (string.IsNullOrWhiteSpace(configured)) continue;
+            var bin = Path.GetFullPath(Path.Combine(configured, "bin"));
+            if (HasJava25Tools(bin)) return bin;
+            throw new InvalidOperationException($"{variable} must name a JDK with Java 25 java.exe and javac.exe: {configured}");
+        }
+
+        var candidates = new List<string>();
+        for (var current = new DirectoryInfo(Environment.CurrentDirectory); current is not null; current = current.Parent)
+            candidates.Add(Path.Combine(current.FullName, "mods", "_work", "_tools", "jdk-25.0.4.1+1", "bin"));
+        candidates.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "PrismLauncher", "java", "java-runtime-epsilon", "bin"));
+        candidates.AddRange((Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        foreach (var candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+            if (HasJava25Tools(candidate)) return candidate;
+        throw new InvalidOperationException("Java 25 smoke prerequisites were not found. Set MINEPACK_TEST_JAVA_HOME to an installed Java 25 JDK.");
+    }
+
+    private static bool HasJava25Tools(string bin)
+    {
+        foreach (var executable in new[] { "java.exe", "javac.exe" })
+        {
+            var path = Path.Combine(bin, executable);
+            if (!File.Exists(path)) return false;
+            var start = new ProcessStartInfo(path)
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            start.ArgumentList.Add("-version");
+            try
+            {
+                using var process = Process.Start(start);
+                if (process is null) return false;
+                var stdout = process.StandardOutput.ReadToEndAsync();
+                var stderr = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(15000))
+                {
+                    process.Kill(entireProcessTree: true);
+                    return false;
+                }
+                if (process.ExitCode != 0 || !IsJava25Version(stdout.GetAwaiter().GetResult() + "\n" + stderr.GetAwaiter().GetResult()))
+                    return false;
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static bool IsJava25Version(string banner) =>
+        Regex.IsMatch(banner, @"\b(?:openjdk|java|javac)(?:\s+version)?\s+""?25(?:[.\s""]|$)", RegexOptions.CultureInvariant);
 
     private static int RunMinecraftSessionLockProbe(string tempRoot, (string JavaPath, string ClassDirectory) probe,
         string lockPath)
@@ -3284,9 +3448,22 @@ internal static class Smoke
         Equal(Path.GetFullPath(instance), installer.GetActiveInstancePath(installRoot),
             "successful composed activation selects the requested trusted instance");
         using (var document = JsonDocument.Parse(File.ReadAllBytes(profilePath)))
+        {
             Equal(Path.GetFullPath(instance), document.RootElement.GetProperty("profiles")
                 .GetProperty(LauncherProfile.ProfileKey).GetProperty("gameDir").GetString(),
                 "successful composed activation points the Launcher profile at the selected instance");
+            Equal("-Xmx8G", document.RootElement.GetProperty("profiles")
+                .GetProperty(LauncherProfile.ProfileKey).GetProperty("javaArgs").GetString(),
+                "activation applies the fixed heap default to the trusted current release");
+        }
+        var customProfile = JsonNode.Parse(File.ReadAllBytes(profilePath))!.AsObject();
+        customProfile["profiles"]![LauncherProfile.ProfileKey]!["javaArgs"] = "-Xmx4G -XX:+UseG1GC";
+        File.WriteAllText(profilePath, customProfile.ToJsonString());
+        _ = await installer.ActivateExistingInstanceAsync(installRoot, instance, packPath, packHash, launcher);
+        using (var custom = JsonDocument.Parse(File.ReadAllBytes(profilePath)))
+            Equal("-Xmx4G -XX:+UseG1GC", custom.RootElement.GetProperty("profiles")
+                .GetProperty(LauncherProfile.ProfileKey).GetProperty("javaArgs").GetString(),
+                "repeated activation preserves explicit custom JVM arguments without adding another Xmx");
         Equal(1, Directory.GetFiles(launcherRoot, ".minepack-activation-*.profile-backup").Length,
             "successful activation removes its own rollback backup and leaves only the earlier recovery backup");
         Pass("activation profile and marker update share one lease and scoped rollback");
@@ -3853,6 +4030,158 @@ internal static class Smoke
             content.Headers.ContentLength = new FileInfo(path).Length;
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
         })));
+    }
+
+    private static async Task VerifyVersionedInstallLifecycleAsync()
+    {
+        var sourceRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "MinePack", "instances", "MinePack-26.2-VanillaPlus-0.18.3");
+        if (!Directory.Exists(sourceRoot))
+        {
+            Console.WriteLine("NOT RUN: the former optimized Vanilla Plus managed-file cache is unavailable for the versioned install lifecycle fixture.");
+            return;
+        }
+
+        var oldPackPath = Path.Combine(AppContext.BaseDirectory, "releases", "test-pack", TestPackRelease.FormerOptimizedArtifactFileName);
+        var oldPack = PackArchive.Open(oldPackPath, TestPackRelease.FormerOptimizedArtifactSha512);
+        SafePath.EnsureNoReparsePoints(sourceRoot, sourceRoot);
+        var sourceManifest = InstallationManifest.Load(sourceRoot);
+        True(sourceManifest.PackVersion == oldPack.VersionId &&
+             sourceManifest.PackArchiveSha512.Equals(oldPack.ArchiveSha512, StringComparison.OrdinalIgnoreCase) &&
+             sourceManifest.MinecraftVersion == oldPack.MinecraftVersion &&
+             sourceManifest.FabricLoaderVersion == oldPack.FabricLoaderVersion,
+            "read-only lifecycle download source is the exact former optimized release");
+        foreach (var file in oldPack.Files)
+        {
+            var path = SafePath.Resolve(sourceRoot, file.Path);
+            SafePath.EnsureNoReparsePoints(sourceRoot, path);
+            if (!File.Exists(path)) throw new InvalidOperationException($"Lifecycle download source is missing managed file {file.Path}.");
+            True(file.Sha512.Equals(HashFile(path), StringComparison.OrdinalIgnoreCase),
+                $"read-only lifecycle source hash {file.Path}");
+        }
+
+        var fixtureRoot = Path.Combine(AppContext.BaseDirectory, "options-lifecycle-" + Guid.NewGuid().ToString("N"));
+        SafePath.EnsureNoReparsePoints(AppContext.BaseDirectory, fixtureRoot);
+        Directory.CreateDirectory(fixtureRoot);
+        try
+        {
+            var installRoot = Path.Combine(fixtureRoot, "install-root");
+            using var oldInstaller = CachedInstaller(oldPackPath, oldPack.ArchiveSha512, sourceRoot);
+            var oldInstall = await oldInstaller.InstallAsync(oldPackPath, oldPack.ArchiveSha512, installRoot);
+            True(oldInstall.Success, $"former optimized release installs in the isolated lifecycle fixture ({oldInstall.Code})");
+            var oldInstance = oldInstall.GameDirectory ?? throw new InvalidOperationException("Former optimized install did not return its isolated instance.");
+            Equal("MinePack-26.2-VanillaPlus-0.18.3", Path.GetFileName(oldInstance),
+                "lifecycle fixture starts with the existing 0.18.3 instance");
+
+            var oldOptionsPath = Path.Combine(oldInstance, "options.txt");
+            const string syntheticUserOptions = "version:4903\ngraphicsPreset:\"fancy\"\nrenderDistance:16\nsimulationDistance:12\nentityDistanceScaling:1.0\n";
+            File.WriteAllText(oldOptionsPath, syntheticUserOptions);
+            var oldOptionsHash = HashFile(oldOptionsPath);
+            var oldWorldPath = Path.Combine(oldInstance, "saves", "lifecycle-fixture-world", "level.dat");
+            Directory.CreateDirectory(Path.GetDirectoryName(oldWorldPath)!);
+            File.WriteAllText(oldWorldPath, "synthetic user world bytes for preservation check");
+            var oldWorldHash = HashFile(oldWorldPath);
+
+            var newPackPath = Path.Combine(AppContext.BaseDirectory,
+                TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
+            using var newInstaller = CachedInstaller(newPackPath, TestPackRelease.ArtifactSha512, sourceRoot);
+            var newInstall = await newInstaller.InstallAsync(newPackPath, TestPackRelease.ArtifactSha512, installRoot);
+            True(newInstall.Success, $"current release installs beside the former optimized instance ({newInstall.Code})");
+            var newInstance = newInstall.GameDirectory ?? throw new InvalidOperationException("Current install did not return its isolated instance.");
+            True(!newInstance.Equals(oldInstance, StringComparison.OrdinalIgnoreCase),
+                "new release does not route through the existing 0.18.3 instance");
+            Equal("MinePack-26.2-VanillaPlus-0.18.4", Path.GetFileName(newInstance),
+                "current release gets its own versioned instance name");
+            AssertOptimizedGraphicsOptions(File.ReadAllText(Path.Combine(newInstance, "options.txt")),
+                "InstallService-created 0.18.4 options");
+            CreateOptionsStartupProbeInput(newPackPath, newInstance);
+            Equal(oldOptionsHash, HashFile(oldOptionsPath), "existing 0.18.3 options remain byte-identical after current install");
+            Equal(oldWorldHash, HashFile(oldWorldPath), "existing 0.18.3 world remains byte-identical after current install");
+            Pass("InstallService creates a separate optimized instance and preserves the previous instance settings and world");
+        }
+        finally
+        {
+            DeleteBuildFixtureTree(fixtureRoot);
+        }
+    }
+
+    private static void CreateOptionsStartupProbeInput(string packPath, string installedInstance)
+    {
+        const string marker = "MinePack plan032 test-only startup probe input v1";
+        var root = Path.Combine(AppContext.BaseDirectory, "options-startup-probe-input");
+        if (Directory.Exists(root))
+        {
+            var markerPath = Path.Combine(root, ".minepack-options-startup-probe");
+            SafePath.EnsureNoReparsePoints(root, markerPath);
+            if (!File.Exists(markerPath) || File.ReadAllText(markerPath) != marker)
+                throw new InvalidOperationException("Refusing to replace an unrecognized startup probe input directory.");
+            EnsureNoReparseDescendants(root);
+            Directory.Delete(root, recursive: true);
+        }
+
+        Directory.CreateDirectory(root);
+        File.WriteAllText(Path.Combine(root, ".minepack-options-startup-probe"), marker);
+        var gameDirectory = Path.Combine(root, "game");
+        Directory.CreateDirectory(gameDirectory);
+        var pack = PackArchive.Open(packPath, TestPackRelease.ArtifactSha512);
+        foreach (var file in pack.Files)
+            CopyProbeInputFile(installedInstance, gameDirectory, file.Path, file.Sha512);
+        foreach (var file in pack.Overrides)
+            CopyProbeInputFile(installedInstance, gameDirectory, file.Path, file.Sha512);
+
+        var options = Path.Combine(installedInstance, "options.txt");
+        if (!File.Exists(options)) throw new InvalidOperationException("The production install omitted options.txt for the startup probe.");
+        File.Copy(options, Path.Combine(gameDirectory, "options.txt"));
+        File.Copy(options, Path.Combine(root, "production-options.txt"));
+        File.WriteAllText(Path.Combine(root, "input.json"), JsonSerializer.Serialize(new
+        {
+            packVersion = pack.VersionId,
+            packSha512 = pack.ArchiveSha512,
+            downloadedFiles = pack.Files.Count,
+            overrides = pack.Overrides.Count
+        }));
+    }
+
+    private static void CopyProbeInputFile(string sourceRoot, string targetRoot, string relativePath, string expectedSha512)
+    {
+        var source = SafePath.Resolve(sourceRoot, relativePath);
+        SafePath.EnsureNoReparsePoints(sourceRoot, source);
+        if (!File.Exists(source) || !expectedSha512.Equals(HashFile(source), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"A startup probe input is missing or unverified: {relativePath}.");
+        var target = SafePath.Resolve(targetRoot, relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        SafePath.EnsureNoReparsePoints(targetRoot, target);
+        File.Copy(source, target);
+        if (!expectedSha512.Equals(HashFile(target), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"A copied startup probe input failed SHA-512 verification: {relativePath}.");
+    }
+
+    private static void EnsureNoReparseDescendants(string root)
+    {
+        foreach (var path in Directory.EnumerateFileSystemEntries(root))
+        {
+            var attributes = File.GetAttributes(path);
+            if ((attributes & FileAttributes.ReparsePoint) != 0)
+                throw new InvalidOperationException("Refusing startup probe input cleanup across a reparse point.");
+            if ((attributes & FileAttributes.Directory) != 0) EnsureNoReparseDescendants(path);
+        }
+    }
+
+    private static void DeleteBuildFixtureTree(string path)
+    {
+        var resolved = Path.GetFullPath(path);
+        var buildRoot = Path.GetFullPath(AppContext.BaseDirectory);
+        var prefix = Path.EndsInDirectorySeparator(buildRoot) ? buildRoot : buildRoot + Path.DirectorySeparatorChar;
+        var leaf = Path.GetFileName(resolved);
+        const string namePrefix = "options-lifecycle-";
+        if (!resolved.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
+            !leaf.StartsWith(namePrefix, StringComparison.Ordinal) ||
+            !Guid.TryParseExact(leaf[namePrefix.Length..], "N", out _))
+            throw new InvalidOperationException("Refusing lifecycle fixture cleanup outside the generated build-output directory.");
+        if (!Directory.Exists(resolved)) return;
+        if ((File.GetAttributes(resolved) & FileAttributes.ReparsePoint) != 0)
+            throw new InvalidOperationException("Refusing lifecycle fixture cleanup of a reparse-point directory.");
+        Directory.Delete(resolved, recursive: true);
     }
 
     private static async Task<bool> VerifyActualReleaseAsync(string tempRoot, string? cachedRoot = null,
@@ -4609,6 +4938,76 @@ internal static class Smoke
         catch (InstallerException ex) when (ex.Code == "LAUNCHER_PROFILE_UNKNOWN") { }
         True(!guardUnexpected, "ambiguous profile files stop before process checks or mutation");
         Pass("Launcher lifecycle rechecks before profile writes and rejects ambiguous profile files");
+    }
+
+    private static async Task VerifyCurrentPerformanceLauncherDefaultsAsync(string tempRoot)
+    {
+        var currentGame = Path.Combine(tempRoot, "current-performance-game");
+        Directory.CreateDirectory(currentGame);
+        new InstallationManifest
+        {
+            PackVersion = TestPackRelease.PackVersion,
+            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+            PackArchiveSha512 = TestPackRelease.ArtifactSha512,
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = []
+        }.SaveAtomic(currentGame);
+        var currentRoot = Path.Combine(tempRoot, "current-performance-launcher");
+        File.WriteAllText(Path.Combine(Directory.CreateDirectory(currentRoot).FullName, "launcher_profiles.json"), "{\"profiles\":{}}");
+        using (var service = CreateOfflineFixtureLauncher(currentRoot))
+        {
+            await service.ConfigureAsync(currentGame);
+            using var first = JsonDocument.Parse(File.ReadAllText(Path.Combine(currentRoot, "launcher_profiles.json")));
+            Equal("-Xmx8G", first.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+                .GetProperty("javaArgs").GetString(), "ConfigureCoreAsync applies the heap default only to the exact current release manifest");
+            await service.ConfigureAsync(currentGame);
+            var configured = File.ReadAllText(Path.Combine(currentRoot, "launcher_profiles.json"));
+            Equal(1, Regex.Matches(configured, "-Xmx8G", RegexOptions.CultureInvariant).Count,
+                "repeated profile configuration does not duplicate the current heap argument");
+            var custom = JsonNode.Parse(configured)!.AsObject();
+            custom["profiles"]![LauncherProfile.ProfileKey]!["javaArgs"] = "-Xmx5G -XX:+UseG1GC";
+            File.WriteAllText(Path.Combine(currentRoot, "launcher_profiles.json"), custom.ToJsonString());
+            await service.ConfigureAsync(currentGame);
+            using var preserved = JsonDocument.Parse(File.ReadAllText(Path.Combine(currentRoot, "launcher_profiles.json")));
+            Equal("-Xmx5G -XX:+UseG1GC", preserved.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+                .GetProperty("javaArgs").GetString(), "ConfigureCoreAsync preserves explicit custom JVM arguments on repair");
+        }
+
+        var legacyGame = Path.Combine(tempRoot, "former-current-performance-game");
+        Directory.CreateDirectory(legacyGame);
+        new InstallationManifest
+        {
+            PackVersion = "0.18.2",
+            MinecraftVersion = TestPackRelease.MinecraftVersion,
+            FabricLoaderVersion = TestPackRelease.FabricLoaderVersion,
+            PackArchiveSha512 = TestPackRelease.FormerCurrentArtifactSha512,
+            InstalledAt = DateTimeOffset.UtcNow,
+            Files = []
+        }.SaveAtomic(legacyGame);
+        var legacyRoot = Path.Combine(tempRoot, "former-current-performance-launcher");
+        File.WriteAllText(Path.Combine(Directory.CreateDirectory(legacyRoot).FullName, "launcher_profiles.json"), "{\"profiles\":{}}");
+        using (var service = CreateOfflineFixtureLauncher(legacyRoot))
+            await service.ConfigureAsync(legacyGame);
+        using var legacyProfile = JsonDocument.Parse(File.ReadAllText(Path.Combine(legacyRoot, "launcher_profiles.json")));
+        True(!legacyProfile.RootElement.GetProperty("profiles").GetProperty(LauncherProfile.ProfileKey)
+                .TryGetProperty("javaArgs", out _),
+            "former-current release Repair does not receive the new JVM default");
+        Pass("official Launcher defaults are release-bound and preserve explicit user JVM settings");
+    }
+
+    private static FabricLauncherService CreateOfflineFixtureLauncher(string launcherRoot)
+    {
+        var versionId = $"fabric-loader-{TestPackRelease.FabricLoaderVersion}-{TestPackRelease.MinecraftVersion}";
+        var versions = Path.Combine(launcherRoot, "versions", versionId);
+        Directory.CreateDirectory(versions);
+        File.WriteAllText(Path.Combine(versions, versionId + ".json"),
+            $"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"{TestPackRelease.MinecraftVersion}\",\"time\":\"fixture\",\"releaseTime\":\"fixture\"}}");
+        File.WriteAllBytes(Path.Combine(versions, versionId + ".jar"), []);
+        var expectedProfileHash = HashBytes(Bytes($"{{\"id\":\"{versionId}\",\"inheritsFrom\":\"{TestPackRelease.MinecraftVersion}\"}}"));
+        return new FabricLauncherService(launcherRoot, expectedSha512: expectedProfileHash,
+            expectedClientJarSha512: HashBytes([]), expectedClientJarSize: 0,
+            minecraftVersion: TestPackRelease.MinecraftVersion, ensureLauncherClosed: static () => { });
     }
 
     private static async Task VerifyLauncherLifecycleAsync(string tempRoot)

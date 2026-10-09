@@ -15,12 +15,14 @@ public static class InitialConfiguration
 
     private static readonly HashSet<string> IrisArchiveHashes = new(StringComparer.OrdinalIgnoreCase)
     {
-        TestPackRelease.ArtifactSha512, TestPackRelease.PreviousCurrentArtifactSha512,
+        TestPackRelease.ArtifactSha512, TestPackRelease.FormerOptimizedArtifactSha512, TestPackRelease.FormerCurrentArtifactSha512,
+        TestPackRelease.PreviousCurrentArtifactSha512,
         TestPackRelease.SmoothArtifactSha512, TestPackRelease.PriorArtifactSha512,
         TestPackRelease.MapArtifactSha512, TestPackRelease.AnimationArtifactSha512, TestPackRelease.GraphicsArtifactSha512,
         TestPackRelease.InventoryArtifactSha512, TestPackRelease.VisualArtifactSha512, TestPackRelease.C2meArtifactSha512,
         TestPackRelease.VoxyArtifactSha512, TestPackRelease.PreviousArtifactSha512, TestPackRelease.LowFireArtifactSha512,
-        Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.PreviousCurrentArtifactSha512,
+        Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.FormerOptimizedArtifactSha512, Vanilla2PlusRelease.FormerCurrentArtifactSha512,
+        Vanilla2PlusRelease.PreviousCurrentArtifactSha512,
         Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
         Vanilla2PlusRelease.DoorsArtifactSha512, Vanilla2PlusRelease.XalisArtifactSha512,
         Vanilla2PlusRelease.SpidersArtifactSha512, Vanilla2PlusRelease.YungsArtifactSha512, Vanilla2PlusRelease.TunedArtifactSha512,
@@ -31,10 +33,13 @@ public static class InitialConfiguration
 
     private static readonly HashSet<string> ResourceDefaultsArchiveHashes = new(StringComparer.OrdinalIgnoreCase)
     {
-        TestPackRelease.ArtifactSha512, TestPackRelease.PreviousCurrentArtifactSha512,
+        TestPackRelease.ArtifactSha512, TestPackRelease.FormerOptimizedArtifactSha512, TestPackRelease.FormerCurrentArtifactSha512,
+        TestPackRelease.PreviousCurrentArtifactSha512,
         TestPackRelease.LowFireArtifactSha512, TestPackRelease.SmoothArtifactSha512,
         TestPackRelease.PriorArtifactSha512, Vanilla2PlusRelease.ArtifactSha512,
-        Vanilla2PlusRelease.PreviousCurrentArtifactSha512, Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
+        Vanilla2PlusRelease.FormerOptimizedArtifactSha512, Vanilla2PlusRelease.FormerCurrentArtifactSha512,
+        Vanilla2PlusRelease.PreviousCurrentArtifactSha512,
+        Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
         Vanilla2PlusRelease.DoorsArtifactSha512,
         Vanilla2PlusRelease.XalisArtifactSha512, Vanilla2PlusRelease.SpidersArtifactSha512, Vanilla2PlusRelease.YungsArtifactSha512,
         Vanilla2PlusRelease.TunedArtifactSha512, Vanilla2PlusRelease.WorldgenArtifactSha512,
@@ -44,7 +49,9 @@ public static class InitialConfiguration
 
     private static readonly HashSet<string> GuardAnimationArchiveHashes = new(StringComparer.OrdinalIgnoreCase)
     {
-        Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
+        Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.FormerOptimizedArtifactSha512,
+        Vanilla2PlusRelease.FormerCurrentArtifactSha512,
+        Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
         Vanilla2PlusRelease.DoorsArtifactSha512, Vanilla2PlusRelease.XalisArtifactSha512,
         Vanilla2PlusRelease.SpidersArtifactSha512, Vanilla2PlusRelease.YungsArtifactSha512, Vanilla2PlusRelease.TunedArtifactSha512,
         Vanilla2PlusRelease.WorldgenArtifactSha512, Vanilla2PlusRelease.GuardArtifactSha512, Vanilla2PlusRelease.PriorArtifactSha512
@@ -79,7 +86,9 @@ public static class InitialConfiguration
         if (resourcePacks.Any(name => !packPaths.Contains("resourcepacks/" + name)))
             throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedResourcePackMissing"));
         files.Add(new InitialConfigurationFile(OptionsPath,
-            Encoding.UTF8.GetBytes(TestPackRelease.BuildInitialOptions(resourcePacks))));
+            Encoding.UTF8.GetBytes(TestPackRelease.BuildInitialOptions(resourcePacks,
+                InstalledInstanceCatalog.UsesCurrentPerformanceDefaults(pack.VersionId, pack.MinecraftVersion,
+                    pack.FabricLoaderVersion, pack.ArchiveSha512)))));
 
         if (!pack.Files.Any(file => file.Path.Equals("mods/bbe-fabric-1.3.7+mc26.2.jar", StringComparison.OrdinalIgnoreCase)))
             throw new InstallerException("PACK_INVALID", LocalizedText.Get("PinnedBbeMissing"));
@@ -153,7 +162,9 @@ public static class InitialConfiguration
     {
         var hash = pack.ArchiveSha512;
         if (!ResourceDefaultsArchiveHashes.Contains(hash)) return null;
-        if (hash.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase))
+        if (hash.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+            hash.Equals(Vanilla2PlusRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+            hash.Equals(Vanilla2PlusRelease.FormerCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase))
             return Vanilla2PlusRelease.InitialResourcePacks;
         if (hash.Equals(Vanilla2PlusRelease.PreviousCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase))
             return Vanilla2PlusRelease.LegacyCurrentResourcePacks;
@@ -165,7 +176,9 @@ public static class InitialConfiguration
             return Vanilla2PlusRelease.PreviousResourcePacks[..^2];
         if (GuardAnimationArchiveHashes.Contains(hash))
             return Vanilla2PlusRelease.PreviousResourcePacks[..^3];
-        if (hash.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase))
+        if (hash.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+            hash.Equals(TestPackRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+            hash.Equals(TestPackRelease.FormerCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase))
             return TestPackRelease.InitialResourcePacks;
         return hash.Equals(TestPackRelease.PreviousCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase)
             ? TestPackRelease.LegacyCurrentResourcePacks : TestPackRelease.PreviousResourcePacks;
@@ -173,7 +186,11 @@ public static class InitialConfiguration
 
     private static bool IsGuardAndVoxyArchive(string hash) =>
         hash.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        hash.Equals(TestPackRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        hash.Equals(TestPackRelease.FormerCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        hash.Equals(Vanilla2PlusRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        hash.Equals(Vanilla2PlusRelease.FormerCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(Vanilla2PlusRelease.PreviousCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(Vanilla2PlusRelease.PreviousCandidateArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(Vanilla2PlusRelease.DoorsArtifactSha512, StringComparison.OrdinalIgnoreCase) ||

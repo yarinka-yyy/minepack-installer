@@ -17,6 +17,8 @@
     <Content Include="..\..\releases\test-pack\test-pack-0.18.0.mrpack" Link="releases\test-pack\test-pack-0.18.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\test-pack\test-pack-0.18.1.mrpack" Link="releases\test-pack\test-pack-0.18.1.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\test-pack\test-pack-0.18.2.mrpack" Link="releases\test-pack\test-pack-0.18.2.mrpack" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.18.3.mrpack" Link="releases\test-pack\test-pack-0.18.3.mrpack" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.18.4.mrpack" Link="releases\test-pack\test-pack-0.18.4.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" CopyToOutputDirectory="PreserveNewest" />
@@ -32,6 +34,8 @@
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.6.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.6.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.7.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.7.mrpack" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.8.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.8.mrpack" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.9.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.9.mrpack" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.10.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.10.mrpack" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <PropertyGroup>
