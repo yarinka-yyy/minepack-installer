@@ -6,33 +6,37 @@ MinePack 为 **Minecraft: Java Edition 26.2** 安装开箱即玩的整合包。�
 
 支持 **Windows x64**、**官方 Minecraft Launcher** 和 **Prism Launcher**。安装需要联网，游玩需要拥有 Minecraft: Java Edition 使用权的账号。无须单独安装 .NET。
 
-**[下载 MinePack](https://github.com/yarinka-yyy/minepack-installer/releases/tag/v1.7.0)**
+**[下载 Windows 安装程序 ZIP](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.8.0/MinePack-Installer-1.8.0-win-x64.zip)**
 
-Installer `1.7.0` 包含下文介绍的三个额外性能优化模组和更新后的默认设置，也改进了中断操作恢复和重复操作处理：Repair 可以进入未完成操作的恢复流程，启动器选择不会再让之前的请求一直等待。本次发布包含 Vanilla Plus `0.18.4` 和 Frontier `0.19.10`。
+Installer `1.8.0` 将可选的 YUNG 源代码保留在嵌套压缩包内，解决 Windows 资源管理器的 ZIP 解压问题。请下载安装程序文件；GitHub 的 **Source code (zip)** 仅包含开发者源代码，没有可直接运行的 EXE。
+
+Installer `1.8.0` 包含下文介绍的三个额外性能优化模组和更新后的默认设置，也改进了中断操作恢复和重复操作处理：Repair 可以进入未完成操作的恢复流程，启动器选择不会再让之前的请求一直等待。本次发布包含 Vanilla Plus `0.18.6` 和 Frontier `0.19.11`。
+
+版本 `1.8.0` 为两个整合包添加 Spatial GUI、Smooth Loading Screen、Last World Panorama、Better Smoke、Fancy World Animations 及必需的 YACL。Spatial GUI `1.9.1+minepack.1` 回移植了作者的全景图完成修复，避免拍摄后界面效果一直关闭。未包含 Do a Barrel Roll 和 CICADA。Mouse Tweaks 仍仅包含在 Vanilla Plus 中。
 
 ## 选择哪个整合包？
 
 ### Vanilla Plus
 
-适合探索世界和日常游玩的主要整合包。版本 `0.18.4` 包含 **65 个模组、13 个资源包和一个光影包**。
+适合探索世界和日常游玩的主要整合包。版本 `0.18.6` 包含 **72 个模组、13 个资源包和一个光影包**。
 
 - **更多值得探索的地方：**改进的村庄、遗迹、高塔、掠夺者营地和新的下界建筑。神庙、矿井、地牢和要塞也更加丰富多样。
 - **更丰富的画面：**Complementary Reimagined 带来光照、水面和云层效果，还有更新的纹理、立体细节和更加生动的生物动画。
 - **远景与性能优化：**Voxy 可以显示普通视距之外已经探索过的地形。[BadOptimizations](https://modrinth.com/mod/badoptimizations)、[More Culling](https://modrinth.com/mod/moreculling) 和 [Lithium](https://modrinth.com/mod/lithium) 提供针对客户端和游戏逻辑的优化。
-- **更方便的操作：**世界地图、物品栏整理、物品提示、详细统计、每个世界的游玩时长，以及更方便的伐木功能。
+- **更方便的操作：**世界地图、物品栏整理、Mouse Tweaks 鼠标操作、物品提示、详细统计、每个世界的游玩时长，以及更方便的伐木功能。
 - **更有氛围的世界：**空间音效、雨水与粒子效果、村庄守卫，以及能够攀爬墙壁和天花板的蜘蛛。
 
 新建筑只会生成在尚未探索的区域。创建新世界或前往以前没有去过的地方，即可看到这些变化。
 
 ### Frontier
 
-**Vanilla Plus 的全部内容，加上五个 Macaw's 建筑模组：**新的窗户、栅栏与围墙、桥梁、门和楼梯样式。想为自己的建筑添加更多细节，可以选择 Frontier。
+**Vanilla Plus 的共用基础内容，加上五个 Macaw's 建筑模组：**新的窗户、栅栏与围墙、桥梁、门和楼梯样式。想为自己的建筑添加更多细节，可以选择 Frontier。
 
-Frontier `0.19.10` 包含 **70 个模组、13 个资源包和一个光影包**。其余内容与 Vanilla Plus 共用。
+Frontier `0.19.11` 包含 **76 个模组、13 个资源包和一个光影包**。它采用 Vanilla Plus `0.18.6` 的基础内容，不包含 Mouse Tweaks，并添加下文列出的五个 Macaw 模组。
 
 ## 如何安装
 
-1. 下载 [MinePack-Installer-1.7.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.7.0/MinePack-Installer-1.7.0-win-x64.zip)，并将**整个压缩包解压**到一个文件夹中。请将安装包内的所有文件保留在一起。
+1. 下载 [MinePack-Installer-1.8.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.8.0/MinePack-Installer-1.8.0-win-x64.zip)，并将**整个压缩包解压**到一个文件夹中。请将安装包内的所有文件保留在一起。保持 `third-party/yungs-sources.zip` 为压缩状态；运行安装程序无需解压它。
 2. 运行 **MinePack.Installer.exe**，选择 **Vanilla Plus** 或 **Frontier**，然后点击**安装整合包**。
 3. 如果只找到一个受支持的启动器，MinePack 会自动选择它。如果两个启动器都找到了，请选择要使用的启动器。等待出现**整合包已安装**。
 4. 打开所选启动器，选择 **MinePack for 26.2**，然后启动游戏。Prism 中会创建独立实例，官方启动器中会创建独立配置。
@@ -56,7 +60,7 @@ Frontier `0.19.10` 包含 **70 个模组、13 个资源包和一个光影包**�
 
 修复和正常卸载整合包会保留世界、截图和其他个人文件。移除残留数据是需要单独确认的操作。世界不会自动在整合包之间转移；请使用**导入存档**。切换整合包或 Minecraft 版本前，请先备份世界。
 
-Installer `1.7.0` 为新的 Vanilla Plus `0.18.4` 和 Frontier `0.19.10` 实例使用 Custom 图形预设、9 区块视距、200% 实体距离和 8 GiB Java 最大堆内存；模拟距离保留 Minecraft 默认值，并关闭 VSync。修复和重新安装会保留已有游戏设置、启动器内存值及 JVM 参数。可在游戏中调整或关闭光影；流畅程度取决于电脑和所选设置。
+Installer `1.8.0` 为新的 Vanilla Plus `0.18.6` 和 Frontier `0.19.11` 实例使用 Custom 图形预设、9 区块视距、200% 实体距离和 8 GiB Java 最大堆内存；模拟距离保留 Minecraft 默认值，并关闭 VSync。修复和重新安装会保留已有游戏设置、启动器内存值及 JVM 参数。可在游戏中调整或关闭光影；流畅程度取决于电脑和所选设置。
 
 在外部多人服务器上游玩时，添加建筑结构、生物或建筑方块的模组也需要安装在服务器上。
 

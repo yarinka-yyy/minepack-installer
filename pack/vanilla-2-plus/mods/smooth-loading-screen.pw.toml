@@ -1,0 +1,13 @@
+name = "Smooth Loading Screen"
+filename = "smoothloadingscreen-1.0.6+26.2.jar"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/LkxC6kKT/versions/tUscvsSM/smoothloadingscreen-1.0.6%2B26.2.jar"
+hash-format = "sha512"
+hash = "ed59dabb5400ff78422f99314cbfca126592600a94c70620f83f6cfea6aade45cdbcec26863a136f19e47df307878b02458a5f342620c646db4ff7e4085ab8ec"
+
+[update]
+[update.modrinth]
+mod-id = "LkxC6kKT"
+version = "tUscvsSM"

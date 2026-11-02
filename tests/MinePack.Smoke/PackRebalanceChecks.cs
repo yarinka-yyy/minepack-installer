@@ -10,6 +10,12 @@ internal static class PackRebalanceChecks
     {
         var vanilla = Open(TestPackRelease.ArtifactRelativePath, TestPackRelease.ArtifactSha512);
         var frontier = Open(Vanilla2PlusRelease.ArtifactRelativePath, Vanilla2PlusRelease.ArtifactSha512);
+        var previousVanilla = Open("releases/test-pack/" + TestPackRelease.PreviousReleaseArtifactFileName,
+            TestPackRelease.PreviousReleaseArtifactSha512);
+        var mouseVanilla = Open("releases/test-pack/" + TestPackRelease.MouseArtifactFileName,
+            TestPackRelease.MouseArtifactSha512);
+        var previousFrontier = Open("releases/vanilla-2-plus/" + Vanilla2PlusRelease.PreviousReleaseArtifactFileName,
+            Vanilla2PlusRelease.PreviousReleaseArtifactSha512);
         var formerVanilla = Open("releases/test-pack/" + TestPackRelease.FormerCurrentArtifactFileName,
             TestPackRelease.FormerCurrentArtifactSha512);
         var formerFrontier = Open("releases/vanilla-2-plus/" + Vanilla2PlusRelease.FormerCurrentArtifactFileName,
@@ -18,16 +24,24 @@ internal static class PackRebalanceChecks
             TestPackRelease.FormerOptimizedArtifactSha512);
         var formerOptimizedFrontier = Open("releases/vanilla-2-plus/" + Vanilla2PlusRelease.FormerOptimizedArtifactFileName,
             Vanilla2PlusRelease.FormerOptimizedArtifactSha512);
-        check(vanilla.VersionId == "0.18.4" && frontier.VersionId == "0.19.10" &&
+        check(vanilla.VersionId == "0.18.6" && previousVanilla.VersionId == "0.18.4" && frontier.VersionId == "0.19.11" &&
               formerOptimizedVanilla.VersionId == "0.18.3" && formerOptimizedFrontier.VersionId == "0.19.9" &&
               vanilla.MinecraftVersion == "26.2" && frontier.MinecraftVersion == vanilla.MinecraftVersion &&
               vanilla.FabricLoaderVersion == "0.19.5" && frontier.FabricLoaderVersion == vanilla.FabricLoaderVersion,
             "new pack pins preserve Minecraft 26.2 and Fabric 0.19.5");
-        check(SameVersionOnlyExport(formerOptimizedVanilla, vanilla,
-                  "releases/test-pack/" + TestPackRelease.FormerOptimizedArtifactFileName, TestPackRelease.ArtifactRelativePath) &&
-              SameVersionOnlyExport(formerOptimizedFrontier, frontier,
-                  "releases/vanilla-2-plus/" + Vanilla2PlusRelease.FormerOptimizedArtifactFileName, Vanilla2PlusRelease.ArtifactRelativePath),
+        check(SameVersionOnlyExport(formerOptimizedVanilla, previousVanilla,
+                  "releases/test-pack/" + TestPackRelease.FormerOptimizedArtifactFileName,
+                  "releases/test-pack/" + TestPackRelease.PreviousReleaseArtifactFileName) &&
+              SameVersionOnlyExport(formerOptimizedFrontier, previousFrontier,
+                  "releases/vanilla-2-plus/" + Vanilla2PlusRelease.FormerOptimizedArtifactFileName,
+                  "releases/vanilla-2-plus/" + Vanilla2PlusRelease.PreviousReleaseArtifactFileName),
             "new Vanilla Plus and Frontier exports differ from their 1.6.3 pins only by pack version");
+
+        foreach (var release in new[] { vanilla, mouseVanilla, previousVanilla, formerOptimizedVanilla,
+                     frontier, previousFrontier, formerOptimizedFrontier })
+            check(InstalledInstanceCatalog.UsesCurrentPerformanceDefaults(release.VersionId, release.MinecraftVersion,
+                    release.FabricLoaderVersion, release.ArchiveSha512),
+                $"{release.VersionId} retains its pinned graphics and memory defaults");
 
         var vanillaFiles = vanilla.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
         var frontierFiles = frontier.Files.ToDictionary(file => file.Path, StringComparer.Ordinal);
@@ -39,8 +53,8 @@ internal static class PackRebalanceChecks
             "mods/mcw-doors-1.1.5-mc26.2fabric.jar",
             "mods/mcw-stairs-1.0.2-mc26.2fabric.jar"
         };
-        check(vanilla.Files.Count == 68 && frontier.Files.Count == 73 &&
-              vanilla.Overrides.Count == 14 && frontier.Overrides.Count == 14 &&
+        check(vanilla.Files.Count == 74 && frontier.Files.Count == 78 &&
+              vanilla.Overrides.Count == 15 && frontier.Overrides.Count == 15 &&
               !vanillaFiles.Keys.Any(path => path.Contains("mcw-", StringComparison.OrdinalIgnoreCase)) &&
               frontierFiles.Keys.Except(vanillaFiles.Keys, StringComparer.Ordinal).ToHashSet(StringComparer.Ordinal).SetEquals(macawPaths),
             "Frontier adds exactly the five Macaw downloads to the shared Vanilla Plus base");
@@ -50,14 +64,31 @@ internal static class PackRebalanceChecks
             "mods/moreculling-fabric-26.2-1.8.1.jar",
             "mods/lithium-fabric-0.25.3+mc26.2.jar"
         };
-        check(AddedPaths(formerVanilla, vanilla).SetEquals(optimizedPaths) &&
-              AddedPaths(formerFrontier, frontier).SetEquals(optimizedPaths) &&
-              RemovedPaths(formerVanilla, vanilla).Count == 0 && RemovedPaths(formerFrontier, frontier).Count == 0 &&
-              SameFiles(formerVanilla, vanilla, optimizedPaths) && SameFiles(formerFrontier, frontier, optimizedPaths),
+        check(AddedPaths(formerVanilla, previousVanilla).SetEquals(optimizedPaths) &&
+              AddedPaths(formerFrontier, previousFrontier).SetEquals(optimizedPaths) &&
+              RemovedPaths(formerVanilla, previousVanilla).Count == 0 && RemovedPaths(formerFrontier, previousFrontier).Count == 0 &&
+              SameFiles(formerVanilla, previousVanilla, optimizedPaths) && SameFiles(formerFrontier, previousFrontier, optimizedPaths),
             "each new current archive adds only the three pinned performance downloads and retains every former-current pin");
         VerifyPerformancePins(check, vanilla, TestPackRelease.ArtifactRelativePath);
         VerifyPerformancePins(check, frontier, Vanilla2PlusRelease.ArtifactRelativePath);
-        check(vanillaFiles.All(pair => frontierFiles.TryGetValue(pair.Key, out var other) &&
+        const string mousePath = "mods/MouseTweaks-fabric-mc26.2-2.31.jar";
+        check(AddedPaths(previousVanilla, mouseVanilla).SetEquals([mousePath]) &&
+              RemovedPaths(previousVanilla, mouseVanilla).Count == 0 &&
+              SameFiles(previousVanilla, mouseVanilla, new HashSet<string>(StringComparer.Ordinal)) &&
+              mouseVanilla.Overrides.Count == previousVanilla.Overrides.Count && !frontierFiles.ContainsKey(mousePath),
+            "Vanilla Plus adds only Mouse Tweaks and preserves every prior download and override; Frontier is unchanged");
+        var mouse = vanillaFiles[mousePath];
+        using var mouseArchive = ZipFile.OpenRead(Path.Combine(FindRepositoryRoot(), TestPackRelease.ArtifactRelativePath));
+        using var mouseIndexStream = mouseArchive.GetEntry("modrinth.index.json")!.Open();
+        using var mouseIndex = JsonDocument.Parse(mouseIndexStream);
+        var mouseEnvironment = mouseIndex.RootElement.GetProperty("files").EnumerateArray()
+            .Single(item => item.GetProperty("path").GetString() == mousePath).GetProperty("env");
+        check(mouse.Size == 75872 && mouse.Sha512.Equals("bc77723465dc4aef7a3a8fa2fea3641df1e6ba7cc8a2d86cd2659ef65ca661f6a763d3997fdaed1f8ff6c78a4c6061f8074160ca3162a29021735779a6c55e46", StringComparison.OrdinalIgnoreCase) &&
+              mouseEnvironment.GetProperty("client").GetString() == "required" &&
+              mouseEnvironment.GetProperty("server").GetString() == "unsupported" &&
+              mouse.Downloads.Select(uri => uri.AbsoluteUri).SequenceEqual(["https://cdn.modrinth.com/data/aC3cM3Vq/versions/jOiTBIaB/MouseTweaks-fabric-mc26.2-2.31.jar"]),
+            "Mouse Tweaks 2.31 is pinned to the exact Fabric 26.2 release URL, hash, size and client-only environment");
+        check(vanillaFiles.Where(pair => pair.Key != mousePath).All(pair => frontierFiles.TryGetValue(pair.Key, out var other) &&
               pair.Value.Sha512 == other.Sha512 && pair.Value.Size == other.Size &&
               pair.Value.Downloads.Select(uri => uri.AbsoluteUri).SequenceEqual(other.Downloads.Select(uri => uri.AbsoluteUri))),
             "download metadata and hashes are identical for every shared file");
@@ -68,8 +99,11 @@ internal static class PackRebalanceChecks
 
         var vanillaCatalog = PackCatalog.VanillaPlusGroups.SelectMany(group => group.Items).ToArray();
         var frontierCatalog = PackCatalog.Vanilla2PlusGroups.SelectMany(group => group.Items).ToArray();
-        check(Counts(vanillaCatalog) == (65, 13, 1) && Counts(frontierCatalog) == (70, 13, 1),
-            "localized pack catalogs represent 65/13/1 and 70/13/1 files");
+        check(PackCatalog.Items.Count(item => item.FilePath == mousePath &&
+                  item.ModrinthUrl?.AbsoluteUri == "https://modrinth.com/mod/aC3cM3Vq") == 1,
+            "Mouse Tweaks is present once in the shared Modrinth link allowlist");
+        check(Counts(vanillaCatalog) == (72, 13, 1) && Counts(frontierCatalog) == (76, 13, 1),
+            "localized pack catalogs represent 72/13/1 and 76/13/1 files");
         check(CatalogPaths(vanillaCatalog).SetEquals(ManagedCatalogPaths(vanilla)) &&
               CatalogPaths(frontierCatalog).SetEquals(ManagedCatalogPaths(frontier)),
             "both visible catalogs match their archive files and local pack overrides");
@@ -93,7 +127,47 @@ internal static class PackRebalanceChecks
               TestPackRelease.InitialResourcePacks[0] == "3D Default 1.21.2+ v1.16.0.zip",
             "both new releases share the same 13-entry initial resource-pack order with 3D Default first");
 
+        VerifyVisualAdditions(check, mouseVanilla, vanilla, TestPackRelease.ArtifactRelativePath);
+        VerifyVisualAdditions(check, previousFrontier, frontier, Vanilla2PlusRelease.ArtifactRelativePath);
         VerifyDoorResourceLayers(check);
+    }
+
+    private static void VerifyVisualAdditions(Action<bool, string> check, PackArchive before, PackArchive after, string relativePath)
+    {
+        var pins = new[]
+        {
+            (Path: "mods/smoothloadingscreen-1.0.6+26.2.jar", Hash: "ed59dabb5400ff78422f99314cbfca126592600a94c70620f83f6cfea6aade45cdbcec26863a136f19e47df307878b02458a5f342620c646db4ff7e4085ab8ec", Version: "tUscvsSM"),
+            (Path: "mods/last-world-panorama-26.2.jar", Hash: "91e0cda63957f5663e4e1dba72b905b3be284d13db0f5895e5d58e682459049440aeae64cbfd003b9a9c72b0b1d79ddc4312d48773923edbae4c85bbb3988155", Version: "LFWsTg89"),
+            (Path: "mods/bettersmoke-0.1.2+26.2.jar", Hash: "4fbdaf85f3da2c6acbb09cb099410dc03cc36f003b0d8929046a092dc8027ff52b3f5109f7911b2ae4c607c8a15c7a33a061a1b2ab82dab4be7c9b60ae472045", Version: "8HF8DC7x"),
+            (Path: "mods/fwa+26.2-1.3.4.jar", Hash: "3c65f24eb900cecd60b7684268d7764fc8820a5db93685a36b713c34546feb7ca4c71019af9a61539260dee3250b5cb72415a651c840b94016543a8d9c5409c9", Version: "cSXDNo3Z"),
+            (Path: "mods/yet_another_config_lib_v3-3.9.7+26.2-fabric.jar", Hash: "f36d91a9506ad9addbaaeecaea01d2b0cb5b060f52486b17688746cb597f0f3b23a80f8441f7a73a9cb8cde85af8809fe54825984b56345325359d505a80e7f2", Version: "DoR7RYgi")
+        };
+        check(AddedPaths(before, after).SetEquals(pins.Select(pin => pin.Path)) &&
+              RemovedPaths(before, after).Count == 0 && SameFiles(before, after, new HashSet<string>(StringComparer.Ordinal)),
+            "visual update adds exactly the four requested downloads plus YACL and retains all previous file bytes");
+        using var archive = ZipFile.OpenRead(Path.Combine(FindRepositoryRoot(), relativePath));
+        using var indexStream = archive.GetEntry("modrinth.index.json")!.Open();
+        using var index = JsonDocument.Parse(indexStream);
+        foreach (var pin in pins)
+        {
+            var file = after.Files.Single(file => file.Path == pin.Path);
+            var environment = index.RootElement.GetProperty("files").EnumerateArray()
+                .Single(item => item.GetProperty("path").GetString() == pin.Path).GetProperty("env");
+            check(file.Sha512.Equals(pin.Hash, StringComparison.OrdinalIgnoreCase) &&
+                  file.Downloads.Count == 1 && file.Downloads[0].Host == "cdn.modrinth.com" &&
+                  file.Downloads[0].AbsoluteUri.Contains("/versions/" + pin.Version + "/", StringComparison.Ordinal) &&
+                  environment.GetProperty("client").GetString() == "required" && environment.GetProperty("server").GetString() == "unsupported",
+                "exact client-only visual/dependency pin: " + pin.Path);
+        }
+        const string spatialPath = "mods/spatial-gui-1.9.1+minepack.1+26.2-fabric.jar";
+        var addedOverrides = after.Overrides.Select(file => file.Path).Except(before.Overrides.Select(file => file.Path)).ToArray();
+        check(addedOverrides.SequenceEqual([spatialPath]) && after.Overrides.Count == before.Overrides.Count + 1 &&
+              after.Overrides.Single(file => file.Path == spatialPath).Sha512.Equals(
+                  "3F045187D8EE0FDEC49F8A7E5DC6E18F0C1B471D05540C0CF0DB4A883B389ECEC9F3A016A6AA38749E55584DA13C11F399514EF42D7B1A237E4B7A668B28E114", StringComparison.OrdinalIgnoreCase),
+            "only the fixed, hash-pinned Spatial GUI JAR is added to embedded overrides");
+        check(after.Files.Select(file => file.Path).Concat(after.Overrides.Select(file => file.Path)).All(path =>
+                  !path.Contains("do_a_barrel_roll", StringComparison.OrdinalIgnoreCase) && !path.Contains("cicada", StringComparison.OrdinalIgnoreCase)),
+            "Do a Barrel Roll and its exclusive CICADA dependency are excluded");
     }
 
     private static void VerifyPerformancePins(Action<bool, string> check, PackArchive pack, string relativePath)

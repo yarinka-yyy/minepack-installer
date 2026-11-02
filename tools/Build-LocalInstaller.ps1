@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$')]
-    [string] $InstallerVersion = '1.7.0'
+    [string] $InstallerVersion = '1.8.0'
 )
 
 Set-StrictMode -Version Latest
@@ -133,14 +133,14 @@ try {
 
     $sourceArchives = @(Get-ChildItem -LiteralPath (Join-Path $repoRoot 'releases') -Recurse -File -Filter '*.mrpack' |
         Sort-Object FullName)
-    if ($sourceArchives.Count -ne 33) { throw "Expected 33 pinned .mrpack archives, found $($sourceArchives.Count)." }
+    if ($sourceArchives.Count -ne 36) { throw "Expected 36 pinned .mrpack archives, found $($sourceArchives.Count)." }
     $archiveLinks = @($project.Project.ItemGroup.Content | Where-Object {
         $_.Include -match '\.mrpack$'
     } | ForEach-Object { $_.Link.Replace('\', '/') } | Sort-Object -Unique)
     $archiveSources = @($sourceArchives | ForEach-Object { Get-RelativePath $repoRoot $_.FullName } | Sort-Object -Unique)
-    if ($archiveLinks.Count -ne 33 -or $archiveSources.Count -ne 33 -or
+    if ($archiveLinks.Count -ne 36 -or $archiveSources.Count -ne 36 -or
         @(Compare-Object $archiveSources $archiveLinks).Count -ne 0) {
-        throw 'The project content list does not match the 33 source .mrpack archives.'
+        throw 'The project content list does not match the 36 source .mrpack archives.'
     }
 
     $testPackPath = Join-Path $repoRoot 'src/MinePack.Core/TestPackRelease.cs'
@@ -177,7 +177,9 @@ try {
 
     $requiredFiles = @(
         'README.md', 'README.ru.md', 'README.zh-CN.md', 'LICENSE', 'Assets/Monocraft-OFL.txt',
-        'releases/test-pack/README.md', 'releases/vanilla-2-plus/README.md', 'third-party/README.md'
+        'releases/test-pack/README.md', 'releases/vanilla-2-plus/README.md', 'third-party/README.md',
+        'third-party/spatial-gui-panorama-fix/Build.java', 'third-party/spatial-gui-panorama-fix/README.md',
+        'third-party/spatial-gui-panorama-fix/LICENSE.txt'
     )
     foreach ($relative in $requiredFiles) {
         $path = Join-Path $packageRoot ($relative -replace '/', '\')
@@ -197,26 +199,43 @@ try {
         }
     }
     $publishedArchives = @(Get-ChildItem -LiteralPath (Join-Path $packageRoot 'releases') -Recurse -File -Filter '*.mrpack')
-    if ($publishedArchives.Count -ne 33) { throw "Published package contains $($publishedArchives.Count) .mrpack files, expected 33." }
+    if ($publishedArchives.Count -ne 36) { throw "Published package contains $($publishedArchives.Count) .mrpack files, expected 36." }
 
     $sourceKitRoot = Join-Path $repoRoot 'third-party/yungs-sources'
-    $publishedKitRoot = Join-Path $packageRoot 'third-party/yungs-sources'
+    $publishedKitPath = Join-Path $packageRoot 'third-party/yungs-sources.zip'
     $excludedKitPath = '[\\/](?:\.git|\.gradle|build|bin|obj|cache|caches)(?:[\\/]|$)'
     $sourceKit = @(Get-ChildItem -LiteralPath $sourceKitRoot -Recurse -File | Where-Object {
         $_.FullName -notmatch $excludedKitPath -and $_.Extension -ine '.pdf'
     })
-    $publishedKit = @(Get-ChildItem -LiteralPath $publishedKitRoot -Recurse -File)
-    if ($sourceKit.Count -eq 0 -or $sourceKit.Count -ne $publishedKit.Count) {
-        throw 'The third-party YUNG source kit is missing or has a different file count.'
-    }
-    foreach ($file in $sourceKit) {
-        $relative = Get-RelativePath $sourceKitRoot $file.FullName
-        $published = Join-Path $publishedKitRoot $relative
-        if (-not (Test-Path -LiteralPath $published -PathType Leaf) -or
-            (Get-FileHashValue $published 'SHA256') -cne (Get-FileHashValue $file.FullName 'SHA256')) {
-            throw "Third-party source kit differs at $relative"
+    if ($sourceKit.Count -eq 0) { throw 'The third-party YUNG source kit is missing.' }
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $kitStream = [IO.File]::Open($publishedKitPath, [IO.FileMode]::CreateNew)
+    $kitArchive = [IO.Compression.ZipArchive]::new($kitStream, [IO.Compression.ZipArchiveMode]::Create, $false)
+    try {
+        foreach ($file in $sourceKit) {
+            [IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                $kitArchive, $file.FullName, (Get-RelativePath $sourceKitRoot $file.FullName),
+                [IO.Compression.CompressionLevel]::Optimal) | Out-Null
         }
     }
+    finally { $kitArchive.Dispose(); $kitStream.Dispose() }
+    $kitRead = [IO.Compression.ZipFile]::OpenRead($publishedKitPath)
+    try {
+        if ($kitRead.Entries.Count -ne $sourceKit.Count) { throw 'YUNG source archive file count differs.' }
+        foreach ($file in $sourceKit) {
+            $relative = Get-RelativePath $sourceKitRoot $file.FullName
+            $entry = $kitRead.GetEntry($relative)
+            if ($null -eq $entry) { throw "YUNG source archive entry missing: $relative" }
+            $entryStream = $entry.Open()
+            $sha = [Security.Cryptography.SHA256]::Create()
+            try { $entryHash = [BitConverter]::ToString($sha.ComputeHash($entryStream)).Replace('-', '') }
+            finally { $sha.Dispose(); $entryStream.Dispose() }
+            if ($entryHash -cne (Get-FileHashValue $file.FullName 'SHA256')) {
+                throw "Third-party source kit differs at $relative"
+            }
+        }
+    }
+    finally { $kitRead.Dispose() }
 
     $packageInventory = Get-TreeInventory $packageRoot
     Add-Type -AssemblyName System.IO.Compression
@@ -247,6 +266,8 @@ try {
     }
     finally { $zipRead.Dispose() }
 
+    & (Join-Path $PSScriptRoot 'Validate-InstallerZip.ps1') -ZipPath $zipPath
+
     New-Item -ItemType Directory -Path $unpackedRoot | Out-Null
     [IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $unpackedRoot)
     $extractedRoot = Join-Path $unpackedRoot $packageName
@@ -255,7 +276,7 @@ try {
     Assert-InventoryEqual $packageInventory $extractedInventory 'Extracted ZIP and package folder'
 
     Write-Host "PASS: installer version $productVersion"
-    Write-Host "PASS: 33 .mrpack archives match source SHA-512; current pins match release constants"
+    Write-Host "PASS: 36 .mrpack archives match source SHA-512; current pins match release constants"
     Write-Host "PASS: $($sourceKit.Count) YUNG source-kit files and required licenses/docs included"
     Write-Host "PASS: ZIP has one root folder and $($packageInventory.Count) files match the published folder"
     Write-Host "EXE: $exe"

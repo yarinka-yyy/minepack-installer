@@ -56,6 +56,11 @@ hash = "549f571b8a25fa25e39490c37eb412af36c75afc7ce21304cfed0cc8549bb2bd"
 metafile = true
 
 [[files]]
+file = "mods/better-smoke.pw.toml"
+hash = "c5a24d1ca44e5523c0b320e3ed16141398c66cf0d44a81f454fed6cbf341479d"
+metafile = true
+
+[[files]]
 file = "mods/better-stats.pw.toml"
 hash = "32373bc120e6b8c05c81afc3674ed10750a9d15fd8370ebc7203e26bef72967f"
 metafile = true
@@ -156,6 +161,11 @@ hash = "8c91080e610d7c8c40ae6445d36af1cf591fe1ebf70718b3e6d4714232b23592"
 metafile = true
 
 [[files]]
+file = "mods/fwa.pw.toml"
+hash = "c67fb361956914b688bc02541927f2f403d16291dbcb0c53b8e4d0997ccbbed7"
+metafile = true
+
+[[files]]
 file = "mods/fzzy-config.pw.toml"
 hash = "289599ac70b0f0a9a0055f1bd10fb7e2c38c540c3ef49db8779c5c3988a7455c"
 metafile = true
@@ -206,6 +216,11 @@ hash = "044ed525096b53f4f0f1140e98fdb16d13594f4b3d95b272c0f6dae5af3a0631"
 metafile = true
 
 [[files]]
+file = "mods/last-world-panorama.pw.toml"
+hash = "2e2a500e9cdf6909d5fb62ca8c911615dd6a4218bb476aa0053f6ab118c0790c"
+metafile = true
+
+[[files]]
 file = "mods/leaf-me-alone.pw.toml"
 hash = "93d7e285effc0163ef901fb27bf82027b0d907a501be88f4bca87ffed3ced6b7"
 metafile = true
@@ -251,6 +266,11 @@ hash = "c4c27f20592bbf7ff810662addbfa66580ddfc5d9ee838cb0d77c05df47e77b7"
 metafile = true
 
 [[files]]
+file = "mods/mouse-tweaks.pw.toml"
+hash = "e37b46af7cfa8f24e9895c37789b43d80d8abe519becf4f08d9e1ea1529fc126"
+metafile = true
+
+[[files]]
 file = "mods/nyfsspiders-fabric-26.2-3.0.0-minepack.1.jar"
 hash = "46ddc806f21758ee0f4af492cddc2b7956d917fcb894f4775a2d697b3dc5cd2a"
 
@@ -280,6 +300,11 @@ hash = "85abccaee90ea0b213687eaacafde09bcd30fb3fbcf6404e8e31245929f2e69b"
 metafile = true
 
 [[files]]
+file = "mods/smooth-loading-screen.pw.toml"
+hash = "0b7e3bd5873aca8cc0e78f181e4bd832de5aada8081557cc5796d1c0c14c10cf"
+metafile = true
+
+[[files]]
 file = "mods/sodium.pw.toml"
 hash = "a899b14d4bbab643586ac2734da162e9cae579d461f81776804c598a03297ebe"
 metafile = true
@@ -288,6 +313,10 @@ metafile = true
 file = "mods/sound-physics-remastered.pw.toml"
 hash = "cfd82363b33192a90d7f0e63dc6149f9b37507d8ee428fc1cfdea48063a91720"
 metafile = true
+
+[[files]]
+file = "mods/spatial-gui-1.9.1+minepack.1+26.2-fabric.jar"
+hash = "29687b61a53afb9a84cec5ce3a55b2b0c5613e74ae4b0c5cdcc2eeba99d5ad5b"
 
 [[files]]
 file = "mods/structory.pw.toml"
@@ -326,6 +355,11 @@ hash = "a940695d1cb3230d42c307e1a5ffe4422425413044732a3d3e37852caf55d700"
 [[files]]
 file = "mods/xaeros-world-map.pw.toml"
 hash = "02deec5980a738de5b9f79a4d80299717267f5526df838dceacb0a89e127edbc"
+metafile = true
+
+[[files]]
+file = "mods/yacl.pw.toml"
+hash = "01c795428c12fb2b53c4c44ab941b2a276775034a6a4f812f01e03fe3fff6719"
 metafile = true
 
 [[files]]

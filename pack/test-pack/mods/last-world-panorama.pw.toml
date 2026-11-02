@@ -1,0 +1,13 @@
+name = "Last World Panorama"
+filename = "last-world-panorama-26.2.jar"
+side = "client"
+
+[download]
+url = "https://cdn.modrinth.com/data/F1KVNatg/versions/LFWsTg89/last-world-panorama-26.2.jar"
+hash-format = "sha512"
+hash = "91e0cda63957f5663e4e1dba72b905b3be284d13db0f5895e5d58e682459049440aeae64cbfd003b9a9c72b0b1d79ddc4312d48773923edbae4c85bbb3988155"
+
+[update]
+[update.modrinth]
+mod-id = "F1KVNatg"
+version = "LFWsTg89"

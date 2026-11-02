@@ -1,0 +1,26 @@
+{
+  "date": "2026-11-02",
+  "release": "1.8.0",
+  "asset": "MinePack-Installer-1.8.0-win-x64.zip",
+  "sha256": "5E81192D680F5EC015262C82A4CB0A5C2C4D3CBCA858E084AC216BA66A7B82D2",
+  "bytes": 181135257,
+  "vanillaPlusVersion": "0.18.6",
+  "vanillaPlusMods": 72,
+  "frontierVersion": "0.19.11",
+  "frontierMods": 76,
+  "installerExeVersion": "1.8.0",
+  "packContent": "Same pinned packs validated in the preceding visual-mod update; five requested mods and YACL included in both variants; Do a Barrel Roll and CICADA excluded",
+  "retainedSpatialGuiFix": "1.9.1+minepack.1; upstream panorama-end TAIL -> RETURN fix, MIT license and build sources included",
+  "outerZipFiles": 51,
+  "pinnedMrpackArchivesVerifiedSha512": 36,
+  "nestedSourcesVerified": 2136,
+  "build": "PASS: self-contained win-x64; product version 1.8.0; no warnings or errors",
+  "packagingRegressionChecks": "PASS: rejects long paths, developer source archives, path traversal, reserved Windows names and duplicate paths",
+  "windowsExplorerExtraction": "PASS: all 51 files with matching SHA-256; EXE present",
+  "packagedStartup": "PASS: responsive MinePack window and normal exit 0 on an unactivated isolated desktop; user screen not switched",
+  "priorValidation": "The exact 0.18.6/0.19.11 packs passed dependency/conflict metadata checks, isolated Install/Repair/Uninstall and WPF smoke in Russian, English and Chinese before the installer version bump",
+  "limitations": [
+    "No Minecraft launch, Fabric initialization log, gameplay, FPS or animation-rendering validation; live Prism profile unchanged",
+    "Historical resource-resolution check still lacks its three exact inputs; resource files and their order are unchanged"
+  ]
+}

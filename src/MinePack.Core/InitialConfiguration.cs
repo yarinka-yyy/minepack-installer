@@ -15,13 +15,14 @@ public static class InitialConfiguration
 
     private static readonly HashSet<string> IrisArchiveHashes = new(StringComparer.OrdinalIgnoreCase)
     {
-        TestPackRelease.ArtifactSha512, TestPackRelease.FormerOptimizedArtifactSha512, TestPackRelease.FormerCurrentArtifactSha512,
+        TestPackRelease.PreviousReleaseArtifactSha512,
+        TestPackRelease.MouseArtifactSha512, TestPackRelease.ArtifactSha512, TestPackRelease.FormerOptimizedArtifactSha512, TestPackRelease.FormerCurrentArtifactSha512,
         TestPackRelease.PreviousCurrentArtifactSha512,
         TestPackRelease.SmoothArtifactSha512, TestPackRelease.PriorArtifactSha512,
         TestPackRelease.MapArtifactSha512, TestPackRelease.AnimationArtifactSha512, TestPackRelease.GraphicsArtifactSha512,
         TestPackRelease.InventoryArtifactSha512, TestPackRelease.VisualArtifactSha512, TestPackRelease.C2meArtifactSha512,
         TestPackRelease.VoxyArtifactSha512, TestPackRelease.PreviousArtifactSha512, TestPackRelease.LowFireArtifactSha512,
-        Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.FormerOptimizedArtifactSha512, Vanilla2PlusRelease.FormerCurrentArtifactSha512,
+        Vanilla2PlusRelease.PreviousReleaseArtifactSha512, Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.FormerOptimizedArtifactSha512, Vanilla2PlusRelease.FormerCurrentArtifactSha512,
         Vanilla2PlusRelease.PreviousCurrentArtifactSha512,
         Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
         Vanilla2PlusRelease.DoorsArtifactSha512, Vanilla2PlusRelease.XalisArtifactSha512,
@@ -33,10 +34,11 @@ public static class InitialConfiguration
 
     private static readonly HashSet<string> ResourceDefaultsArchiveHashes = new(StringComparer.OrdinalIgnoreCase)
     {
-        TestPackRelease.ArtifactSha512, TestPackRelease.FormerOptimizedArtifactSha512, TestPackRelease.FormerCurrentArtifactSha512,
+        TestPackRelease.PreviousReleaseArtifactSha512,
+        TestPackRelease.MouseArtifactSha512, TestPackRelease.ArtifactSha512, TestPackRelease.FormerOptimizedArtifactSha512, TestPackRelease.FormerCurrentArtifactSha512,
         TestPackRelease.PreviousCurrentArtifactSha512,
         TestPackRelease.LowFireArtifactSha512, TestPackRelease.SmoothArtifactSha512,
-        TestPackRelease.PriorArtifactSha512, Vanilla2PlusRelease.ArtifactSha512,
+        TestPackRelease.PriorArtifactSha512, Vanilla2PlusRelease.PreviousReleaseArtifactSha512, Vanilla2PlusRelease.ArtifactSha512,
         Vanilla2PlusRelease.FormerOptimizedArtifactSha512, Vanilla2PlusRelease.FormerCurrentArtifactSha512,
         Vanilla2PlusRelease.PreviousCurrentArtifactSha512,
         Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
@@ -49,7 +51,7 @@ public static class InitialConfiguration
 
     private static readonly HashSet<string> GuardAnimationArchiveHashes = new(StringComparer.OrdinalIgnoreCase)
     {
-        Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.FormerOptimizedArtifactSha512,
+        Vanilla2PlusRelease.PreviousReleaseArtifactSha512, Vanilla2PlusRelease.ArtifactSha512, Vanilla2PlusRelease.FormerOptimizedArtifactSha512,
         Vanilla2PlusRelease.FormerCurrentArtifactSha512,
         Vanilla2PlusRelease.PreviousCandidateArtifactSha512,
         Vanilla2PlusRelease.DoorsArtifactSha512, Vanilla2PlusRelease.XalisArtifactSha512,
@@ -163,6 +165,7 @@ public static class InitialConfiguration
         var hash = pack.ArchiveSha512;
         if (!ResourceDefaultsArchiveHashes.Contains(hash)) return null;
         if (hash.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+            hash.Equals(Vanilla2PlusRelease.PreviousReleaseArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
             hash.Equals(Vanilla2PlusRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
             hash.Equals(Vanilla2PlusRelease.FormerCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase))
             return Vanilla2PlusRelease.InitialResourcePacks;
@@ -177,6 +180,8 @@ public static class InitialConfiguration
         if (GuardAnimationArchiveHashes.Contains(hash))
             return Vanilla2PlusRelease.PreviousResourcePacks[..^3];
         if (hash.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+            hash.Equals(TestPackRelease.MouseArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+            hash.Equals(TestPackRelease.PreviousReleaseArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
             hash.Equals(TestPackRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
             hash.Equals(TestPackRelease.FormerCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase))
             return TestPackRelease.InitialResourcePacks;
@@ -186,9 +191,12 @@ public static class InitialConfiguration
 
     private static bool IsGuardAndVoxyArchive(string hash) =>
         hash.Equals(TestPackRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        hash.Equals(TestPackRelease.MouseArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        hash.Equals(TestPackRelease.PreviousReleaseArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(TestPackRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(TestPackRelease.FormerCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(Vanilla2PlusRelease.ArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
+        hash.Equals(Vanilla2PlusRelease.PreviousReleaseArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(Vanilla2PlusRelease.FormerOptimizedArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(Vanilla2PlusRelease.FormerCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase) ||
         hash.Equals(Vanilla2PlusRelease.PreviousCurrentArtifactSha512, StringComparison.OrdinalIgnoreCase) ||

@@ -4,9 +4,13 @@ namespace MinePack.Core;
 
 public static class TestPackRelease
 {
-    public const string ArtifactFileName = "test-pack-0.18.4.mrpack";
+    public const string ArtifactFileName = "test-pack-0.18.6.mrpack";
     public const string ArtifactRelativePath = "releases/test-pack/" + ArtifactFileName;
-    public const string ArtifactSha512 = "789C9D3E0D712715A8E515F782657E373AF0E76605E46EB285F81C4883E7304BC23BCE2FC8C0860B44610F02D34405FF52096F22D189665019CADD55C14D303C";
+    public const string ArtifactSha512 = "DD06623174C1F69004811A7D8AD13A72EBF6C06D9D434B97B1655E5C72B37F9682BF27F960B7CAE7D377A2B9E647B708B2C6452BC7EFEF729758BFA2DBAD6B7F";
+    public const string MouseArtifactFileName = "test-pack-0.18.5.mrpack";
+    public const string MouseArtifactSha512 = "8AA366CE32654D7573F32ADC3C10F4C365719BA2B0520A9953A83A6E2D6381F5ED96851A9D743FE93AD3B8E0713D2C380D2537C7CE23CEE3F13EC6FCBF515D27";
+    public const string PreviousReleaseArtifactFileName = "test-pack-0.18.4.mrpack";
+    public const string PreviousReleaseArtifactSha512 = "789C9D3E0D712715A8E515F782657E373AF0E76605E46EB285F81C4883E7304BC23BCE2FC8C0860B44610F02D34405FF52096F22D189665019CADD55C14D303C";
     public const string FormerOptimizedArtifactFileName = "test-pack-0.18.3.mrpack";
     public const string FormerOptimizedArtifactSha512 = "FD1FAB8CAF26DA8F038743B2553A14923C57903FBB6911B583051D2B3BDEF0973E16B2E23F055ADD7BEA9B2D12274B377B1E01BDD82321BC8F85B8ED86216FAA";
     public const string FormerCurrentArtifactFileName = "test-pack-0.18.2.mrpack";
@@ -35,7 +39,7 @@ public static class TestPackRelease
     public const string PreviousArtifactSha512 = "76320C3EBB6B32D53EB0E58B8E4DD3FF721CEB2F718E2D18CB976A020DC2C4104F2E586277314DCC24227DC0DEA18CF6661835F01E04F61AEB51D22F88A8FF83";
     public const string LegacyArtifactFileName = "test-pack-0.1.0.mrpack";
     public const string LegacyArtifactSha512 = "453fc54446e6d7b379c7c07ca6f995998d6cba01791b0749d6929fce98bce59561aaa598b255344b342396251877a0e7aceccc3100ea179484d0a967ceba0ff5";
-    public const string PackVersion = "0.18.4";
+    public const string PackVersion = "0.18.6";
     public const string LowFireArtifactFileName = "test-pack-0.18.0.mrpack";
     public const string LowFireArtifactSha512 = "C7469A3820A4B9BF75132BD016FB99F5B18F3E6FF66CDF0DCFBCE937E5BA8309AD4062C813457B8F95401F6D2F3326ABDBCDBA067B911795B6C574CD9D525776";
     public const string MinecraftVersion = "26.2";

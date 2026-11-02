@@ -6,33 +6,37 @@ MinePack installs a ready-to-play pack for **Minecraft: Java Edition 26.2**, wit
 
 Works on **Windows x64** with the **official Minecraft Launcher** and **Prism Launcher**. Installation needs an internet connection; playing needs an account with access to Minecraft: Java Edition. No separate .NET installation is required.
 
-**[Download MinePack](https://github.com/yarinka-yyy/minepack-installer/releases/tag/v1.7.0)**
+**[Download the Windows installer ZIP](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.8.0/MinePack-Installer-1.8.0-win-x64.zip)**
 
-Installer `1.7.0` includes the three additional optimization mods and updated defaults described below. It also improves interrupted-operation recovery and repeated-action handling: Repair can enter pending-operation recovery, and launcher selection no longer leaves a previous request waiting. This release contains Vanilla Plus `0.18.4` and Frontier `0.19.10`.
+Installer `1.8.0` fixes ZIP extraction in Windows Explorer by keeping the optional YUNG source kit compressed. Download the named installer asset; GitHub's **Source code (zip)** contains developer sources and has no ready-to-run EXE.
+
+Installer `1.8.0` includes the three additional optimization mods and updated defaults described below. It also improves interrupted-operation recovery and repeated-action handling: Repair can enter pending-operation recovery, and launcher selection no longer leaves a previous request waiting. This release contains Vanilla Plus `0.18.6` and Frontier `0.19.11`.
+
+Release `1.8.0` adds Spatial GUI, Smooth Loading Screen, Last World Panorama, Better Smoke, Fancy World Animations, and required YACL to both packs. Spatial GUI includes the author's panorama-completion fix as `1.9.1+minepack.1`. Do a Barrel Roll and CICADA are excluded. Mouse Tweaks remains exclusive to Vanilla Plus.
 
 ## Which pack should you choose?
 
 ### Vanilla Plus
 
-The main pack for exploring the world and everyday play. Version `0.18.4` includes **65 mods, 13 resource packs, and one shader**.
+The main pack for exploring the world and everyday play. Version `0.18.6` includes **72 mods, 13 resource packs, and one shader**.
 
 - **More places to discover:** improved villages, ruins, towers, pillager camps, and new Nether structures. Temples, mineshafts, dungeons, strongholds, and fortresses become more varied.
 - **Richer visuals:** lighting, water, and clouds with Complementary Reimagined, refreshed textures, 3D details, and more expressive creature animations.
 - **Distant views and optimization:** Voxy displays explored terrain beyond the normal render distance. [BadOptimizations](https://modrinth.com/mod/badoptimizations), [More Culling](https://modrinth.com/mod/moreculling), and [Lithium](https://modrinth.com/mod/lithium) add targeted client and game-logic optimizations.
-- **Convenience:** a world map, inventory sorting, item hints, detailed statistics, play time for each world, and easier tree harvesting.
+- **Convenience:** a world map, inventory sorting, Mouse Tweaks mouse controls, item hints, detailed statistics, play time for each world, and easier tree harvesting.
 - **More atmosphere:** richer spatial sound, rain and particle effects, village guards, and spiders that climb walls and ceilings.
 
 New structures appear in unexplored areas. Create a new world or explore somewhere you have not visited before to see the changes.
 
 ### Frontier
 
-**Everything in Vanilla Plus plus five Macaw's building mods:** new windows, fences and walls, bridges, doors, and stair designs. Choose Frontier if you want more details for your builds.
+**The shared Vanilla Plus base plus five Macaw's building mods:** new windows, fences and walls, bridges, doors, and stair designs. Choose Frontier if you want more details for your builds.
 
-Frontier `0.19.10` has **70 mods, 13 resource packs, and one shader**. All other content is shared with Vanilla Plus.
+Frontier `0.19.11` has **76 mods, 13 resource packs, and one shader**. It shares the base content with Vanilla Plus `0.18.6`, excludes Mouse Tweaks, and adds the five Macaw mods described below.
 
 ## How to install
 
-1. Download [MinePack-Installer-1.7.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.7.0/MinePack-Installer-1.7.0-win-x64.zip) and **extract the entire archive** into a folder. Keep all package files together.
+1. Download [MinePack-Installer-1.8.0-win-x64.zip](https://github.com/yarinka-yyy/minepack-installer/releases/download/v1.8.0/MinePack-Installer-1.8.0-win-x64.zip) and **extract the entire archive** into a folder. Keep all package files together. Leave `third-party/yungs-sources.zip` compressed; it is not needed to run the installer.
 2. Run **MinePack.Installer.exe**, choose **Vanilla Plus** or **Frontier**, and click **Install pack**.
 3. If one supported launcher is found, MinePack selects it automatically. If both are found, choose the one you want. Wait for **Pack installed**.
 4. Open the selected launcher, choose **MinePack for 26.2**, and start the game. Prism gets a separate instance; the official launcher gets a separate profile.
@@ -56,7 +60,7 @@ Packs are installed in separate folders. The default location is `%LOCALAPPDATA%
 
 Repair and normal pack removal keep worlds, screenshots, and other personal files. Removing leftover data is a separate action with confirmation. Worlds are not moved between packs automatically; use **Import worlds** for that. Back up a world before switching packs or Minecraft versions.
 
-Installer `1.7.0` creates new Vanilla Plus `0.18.4` and Frontier `0.19.10` instances with the Custom graphics preset, 9-chunk render distance, 200% entity distance, and an 8 GiB maximum Java heap. It leaves simulation distance at Minecraft's default and disables VSync. Repair and reinstall keep existing game settings, launcher memory values, and JVM arguments. You can adjust or disable shaders in the game; performance depends on your computer and chosen settings.
+Installer `1.8.0` creates new Vanilla Plus `0.18.6` and Frontier `0.19.11` instances with the Custom graphics preset, 9-chunk render distance, 200% entity distance, and an 8 GiB maximum Java heap. It leaves simulation distance at Minecraft's default and disables VSync. Repair and reinstall keep existing game settings, launcher memory values, and JVM arguments. You can adjust or disable shaders in the game; performance depends on your computer and chosen settings.
 
 For an external multiplayer server, mods that add structures, creatures, or building blocks also need to be installed on the server.
 

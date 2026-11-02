@@ -11,10 +11,9 @@
     <Content Include="..\..\LICENSE" Link="LICENSE" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\vanilla-2-plus\README.md" Link="releases\vanilla-2-plus\README.md" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\third-party\README.md" Link="third-party\README.md" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
-    <Content Include="..\..\third-party\yungs-sources\**\*"
-             Exclude="..\..\third-party\yungs-sources\**\.git\**;..\..\third-party\yungs-sources\**\.gradle\**;..\..\third-party\yungs-sources\**\build\**;..\..\third-party\yungs-sources\**\bin\**;..\..\third-party\yungs-sources\**\obj\**;..\..\third-party\yungs-sources\**\cache\**;..\..\third-party\yungs-sources\**\caches\**;..\..\third-party\yungs-sources\**\*.pdf"
-             Link="third-party\yungs-sources\%(RecursiveDir)%(Filename)%(Extension)"
-             CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\third-party\spatial-gui-panorama-fix\*" Link="third-party\spatial-gui-panorama-fix\%(Filename)%(Extension)" CopyToOutputDirectory="Always" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.18.6.mrpack" Link="releases\test-pack\test-pack-0.18.6.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.19.11.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.19.11.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\test-pack-0.1.0.mrpack" Link="releases\test-pack\test-pack-0.1.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\test-pack-0.2.0.mrpack" Link="releases\test-pack\test-pack-0.2.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\test-pack-0.3.0.mrpack" Link="releases\test-pack\test-pack-0.3.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
@@ -31,6 +30,7 @@
     <Content Include="..\..\releases\test-pack\test-pack-0.18.2.mrpack" Link="releases\test-pack\test-pack-0.18.2.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\test-pack-0.18.3.mrpack" Link="releases\test-pack\test-pack-0.18.3.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\test-pack\test-pack-0.18.4.mrpack" Link="releases\test-pack\test-pack-0.18.4.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
+    <Content Include="..\..\releases\test-pack\test-pack-0.18.5.mrpack" Link="releases\test-pack\test-pack-0.18.5.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.11.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.12.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
     <Content Include="..\..\releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" Link="releases\vanilla-2-plus\vanilla-2-plus-0.13.0.mrpack" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Always" ExcludeFromSingleFile="true" />
@@ -55,7 +55,7 @@
     <OutputType>WinExe</OutputType>
     <ApplicationIcon>Assets\MinePackIcon.ico</ApplicationIcon>
     <TargetFramework>net10.0-windows</TargetFramework>
-    <Version>1.7.0</Version>
+    <Version>1.8.0</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

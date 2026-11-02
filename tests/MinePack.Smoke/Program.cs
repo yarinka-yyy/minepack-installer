@@ -45,12 +45,42 @@ internal static class Smoke
     private static readonly string[] NewForkJarNames =
     [
         "nyfsspiders-fabric-26.2-3.0.0-minepack.1.jar",
-        "worldplaytime-1.2.5-minepack.1-26.2-FABRIC.jar"
+        "worldplaytime-1.2.5-minepack.1-26.2-FABRIC.jar",
+        "spatial-gui-1.9.1+minepack.1+26.2-fabric.jar"
     ];
 
     public static async Task RunAsync(string[] args)
     {
         ValidateLivePackArguments(args);
+        if (args.Contains("--pack-only", StringComparer.Ordinal))
+        {
+            PackRebalanceChecks.Run(True);
+            VerifyPinnedRelease();
+            VerifyLocalization();
+            var packCacheIndex = Array.IndexOf(args, "--cached-packs");
+            if (packCacheIndex >= 0)
+            {
+                if (packCacheIndex + 1 >= args.Length) throw new ArgumentException("--cached-packs requires a game directory.");
+                var packTempRoot = Path.Combine(Path.GetTempPath(), "minepack-smoke-" + Guid.NewGuid().ToString("N"));
+                Directory.CreateDirectory(packTempRoot);
+                try
+                {
+                    using (InstanceUseGuard.UseProcessInspectionForTesting(
+                               Array.Empty<(int ProcessId, string ProcessName)>(), _ => string.Empty))
+                    {
+                        await VerifyInitialConfigurationAsync(packTempRoot);
+                        True(await VerifyActualReleaseAsync(packTempRoot, args[packCacheIndex + 1]), "Vanilla Plus installs from pinned local files");
+                        True(await VerifyActualVanilla2PlusAsync(packTempRoot, args[packCacheIndex + 1]), "Frontier installs from pinned local files");
+                    }
+                }
+                finally
+                {
+                    DeleteSmokeTempTree(packTempRoot);
+                }
+            }
+            Pass("pack-only checks completed without launcher lifecycle tests");
+            return;
+        }
         var requireLivePack = args.Contains("--require-live-pack", StringComparer.Ordinal);
         var livePackRequested = requireLivePack || args.Contains("--live-pack", StringComparer.Ordinal);
         var tempRoot = Path.Combine(Path.GetTempPath(), "minepack-smoke-" + Guid.NewGuid().ToString("N"));
@@ -857,7 +887,7 @@ internal static class Smoke
 
     private static void VerifyInstalledInstanceCatalogAndPreferences(string tempRoot)
     {
-        Equal(33, InstalledInstanceCatalog.KnownReleases.Count, "shared catalog retains all historical releases plus both new current releases");
+        Equal(36, InstalledInstanceCatalog.KnownReleases.Count, "shared catalog retains all historical releases plus both new current releases");
         True(InstalledInstanceCatalog.UsesCurrentPerformanceDefaults(TestPackRelease.PackVersion,
                  TestPackRelease.MinecraftVersion, TestPackRelease.FabricLoaderVersion, TestPackRelease.ArtifactSha512) &&
              InstalledInstanceCatalog.UsesCurrentPerformanceDefaults("0.18.3",
@@ -882,7 +912,7 @@ internal static class Smoke
         var frontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == Vanilla2PlusRelease.PackVersion);
         var formerOptimizedFrontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == "0.19.9");
         var previousFrontierRelease = InstalledInstanceCatalog.KnownReleases.Single(item => item.PackVersion == "0.19.6");
-        Equal("MinePack-26.2-VanillaPlus-0.18.4", InstanceDirectoryNaming.CreateBaseName(plusRelease),
+        Equal("MinePack-26.2-VanillaPlus-0.18.6", InstanceDirectoryNaming.CreateBaseName(plusRelease),
             "new VanillaPlus folder name includes pinned Minecraft and pack versions");
         var formerFrontierInstance = WriteCatalogManifest(instancesRoot, formerOptimizedFrontierRelease, AppContext.BaseDirectory,
             InstanceDirectoryNaming.CreateBaseName(formerOptimizedFrontierRelease));
@@ -894,7 +924,7 @@ internal static class Smoke
         Directory.CreateDirectory(Path.GetDirectoryName(formerWorldPath)!);
         File.WriteAllBytes(formerWorldPath, formerWorld);
         var newFrontierInstanceName = InstanceDirectoryNaming.Allocate(instancesRoot, frontierRelease);
-        Equal("MinePack-26.2-Frontier-0.19.10", newFrontierInstanceName,
+        Equal("MinePack-26.2-Frontier-0.19.11", newFrontierInstanceName,
             "new Frontier folder name is preferred when available");
         True(!Path.GetFullPath(Path.Combine(instancesRoot, newFrontierInstanceName))
                 .Equals(Path.GetFullPath(formerFrontierInstance), StringComparison.OrdinalIgnoreCase) &&
@@ -902,13 +932,13 @@ internal static class Smoke
              File.ReadAllBytes(formerWorldPath).SequenceEqual(formerWorld),
             "installing the new Frontier version allocates alongside the 0.19.9 fixture and preserves its options and world bytes");
         Directory.CreateDirectory(Path.Combine(instancesRoot, InstanceDirectoryNaming.CreateBaseName(frontierRelease)));
-        Equal("MinePack-26.2-Frontier-0.19.10-02", InstanceDirectoryNaming.Allocate(instancesRoot, frontierRelease),
+        Equal("MinePack-26.2-Frontier-0.19.11-02", InstanceDirectoryNaming.Allocate(instancesRoot, frontierRelease),
             "new instance collision receives the first stable ordinal suffix");
-        True(InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.10", frontierRelease) &&
-             InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.10-02", frontierRelease) &&
-             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.10-01", frontierRelease) &&
+        True(InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.11", frontierRelease) &&
+             InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.11-02", frontierRelease) &&
+             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.11-01", frontierRelease) &&
              !InstanceDirectoryNaming.IsExpected("MinePack-26.2-Frontier-0.19.9", frontierRelease) &&
-             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-VanillaPlus-0.19.10", frontierRelease),
+             !InstanceDirectoryNaming.IsExpected("MinePack-26.2-VanillaPlus-0.19.11", frontierRelease),
             "new folder parsing accepts only the exact pinned pack name/version and valid suffixes");
         var frontierNewName = WriteCatalogManifest(instancesRoot, frontierRelease, AppContext.BaseDirectory,
             InstanceDirectoryNaming.CreateBaseName(frontierRelease));
@@ -1046,7 +1076,7 @@ internal static class Smoke
             "moreculling-fabric-26.2-1.8.1.jar",
             "lithium-fabric-0.25.3+mc26.2.jar"
         };
-        True(pack.Files.Count == 68 && sharedNewMods.All(name => previousCurrent.Files.Any(file => file.Path == "mods/" + name)) &&
+        True(pack.Files.Count == 74 && sharedNewMods.All(name => previousCurrent.Files.Any(file => file.Path == "mods/" + name)) &&
              currentPerformanceMods.All(name => pack.Files.Any(file => file.Path == "mods/" + name)) &&
              pack.Files.Any(file => file.Path == "mods/betterstats-5.5.6+fn-26.2.jar") &&
              pack.Files.Any(file => file.Path == "mods/tcdcommons-5.5.6+fn-26.2.jar") &&
@@ -1179,7 +1209,7 @@ internal static class Smoke
         Equal("MinePack Vanilla 2 Plus", vanilla2Plus.Name, "Vanilla 2 Plus archive name");
         Equal(TestPackRelease.MinecraftVersion, vanilla2Plus.MinecraftVersion, "Vanilla 2 Plus Minecraft version");
         Equal(TestPackRelease.FabricLoaderVersion, vanilla2Plus.FabricLoaderVersion, "Vanilla 2 Plus Fabric Loader version");
-        True(vanilla2Plus.Files.Count == 73 &&
+        True(vanilla2Plus.Files.Count == 78 &&
              previousCurrentVanilla2Plus.Files.All(oldFile => vanilla2Plus.Files.Any(file => file.Path == oldFile.Path &&
                  file.Sha512 == oldFile.Sha512 && file.Downloads.SequenceEqual(oldFile.Downloads))) &&
              worldgenVanilla2Plus.Files.Where(file => !file.Path.Contains("smoothswapping", StringComparison.OrdinalIgnoreCase) &&
@@ -1225,16 +1255,16 @@ internal static class Smoke
                 "pinned Voxy WorldGen config keeps radius 128 and limits active tasks to three");
 
         var catalog = PackCatalog.VanillaPlusGroups.SelectMany(group => group.Items).ToArray();
-        var vanilla2PlusCatalog = PackCatalog.Items;
+        var vanilla2PlusCatalog = PackCatalog.Vanilla2PlusGroups.SelectMany(group => group.Items).ToList();
         var localCatalogPaths = YungsJarNames.Concat(NewForkJarNames).Select(name => "mods/" + name)
             .Concat(["resourcepacks/xalis-enhanced-vanilla-26.2-minepack.2.zip", "resourcepacks/Remodeled-Doors-26.2-xalis-blockstates.2.zip"]);
         var testPackPath = Path.Combine(AppContext.BaseDirectory, TestPackRelease.ArtifactRelativePath.Replace('/', Path.DirectorySeparatorChar));
         var testPackForCatalog = PackArchive.Open(testPackPath, TestPackRelease.ArtifactSha512);
-        True(catalog.Length == 79 && catalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 65 &&
+        True(catalog.Length == 86 && catalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 72 &&
              catalog.Count(item => item.Kind == "resourcepack") == 13 && catalog.Count(item => item.Kind == "shader") == 1 &&
              catalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal)
                  .SetEquals(testPackForCatalog.Files.Select(file => file.Path).Concat(localCatalogPaths)) &&
-             vanilla2PlusCatalog.Count == 84 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 70 &&
+             vanilla2PlusCatalog.Count == 90 && vanilla2PlusCatalog.Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 76 &&
              vanilla2PlusCatalog.Count(item => item.Kind == "resourcepack") == 13 &&
              vanilla2PlusCatalog.Count(item => item.Kind == "datapack") == 1 &&
              vanilla2PlusCatalog.Select(item => item.FilePath).ToHashSet(StringComparer.Ordinal)
@@ -1334,7 +1364,7 @@ internal static class Smoke
             True(InitialConfiguration.IsInitialUserConfig(pack, irisPath), "every pinned archive with Iris has hash-bound initial config ownership");
             irisArchives++;
         }
-        Equal(32, irisArchives, "all pinned Iris archive hashes are classified");
+        Equal(35, irisArchives, "all pinned Iris archive hashes are classified");
 
         var unknownArchivePath = Path.Combine(tempRoot, "unknown-iris.mrpack");
         CreatePack(unknownArchivePath, "0.1.0", [], [new TestOverride(irisPath, Bytes("unknown archive"))]);
@@ -1650,13 +1680,13 @@ internal static class Smoke
             Equal("Performance & Render Distance", LocalizedText.Get("CatalogPerformance"), "English catalog text");
             Equal("Building Blocks — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "English Vanilla 2 Plus building category");
             Equal("World & Structures — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "English Vanilla 2 Plus worldgen category");
-            Equal("Technical Foundation — 15", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Frontier dependencies");
+            Equal("Technical Foundation — 16", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "English Frontier dependencies");
             Equal("Resource Packs — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "English Frontier resource packs");
-            Equal("Pack version 0.19.10", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
+            Equal("Pack version 0.19.11", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "English selected pack version");
             Equal("Installer version 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "English installer version");
-            Equal("70 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
-            Equal("65 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
-            Equal("Performance & Render Distance — 12|Graphics & Animations — 12|Tools & Quality of Life — 12|Sound — 2|Technical Foundation — 15|Resource Packs — 13|Shader — 1|World & Structures — 12",
+            Equal("76 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanilla2Plus"), "English selected pack counts");
+            Equal("72 mods · 13 resource packs · 1 shader", LocalizedText.Get("UiPackCountsVanillaPlus"), "English Vanilla Plus counts");
+            Equal("Performance & Render Distance — 12|Graphics & Animations — 17|Tools & Quality of Life — 13|Sound — 2|Technical Foundation — 16|Resource Packs — 13|Shader — 1|World & Structures — 12",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "English catalog headings and counts");
             Equal("Copied worlds: 2. Skipped existing names: 1; missing session.lock: 2; locked or unverified session.lock: 3.",
                 LocalizedText.Get("WorldImportSummary", 2, 1, 2, 3), "English formatted world import summary");
@@ -1668,10 +1698,10 @@ internal static class Smoke
             Equal("整合包文件已安装。", LocalizedText.Get("PackFilesInstalled"), "Chinese success text");
             Equal("未找到整合包文件。", LocalizedText.Get("PackFileMissing"), "Chinese error text");
             Equal("性能与区块渲染距离", LocalizedText.Get("CatalogPerformance"), "Chinese catalog text");
-            Equal("整合包版本 0.19.10", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
+            Equal("整合包版本 0.19.11", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Chinese selected pack version");
             Equal("安装程序版本 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Chinese installer version");
-            Equal("70 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
-            Equal("65 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
+            Equal("76 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Chinese selected pack counts");
+            Equal("72 个模组 · 13 个资源包 · 1 个光影包", LocalizedText.Get("UiPackCountsVanillaPlus"), "Chinese Vanilla Plus counts");
             Equal("已复制存档：2。因名称已存在而跳过：1；缺少 session.lock：2；session.lock 已锁定或无法验证：3。",
                 LocalizedText.Get("WorldImportSummary", 2, 1, 2, 3), "Chinese formatted world import summary");
             Equal("建筑方块 — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Chinese Vanilla 2 Plus building category");
@@ -1687,13 +1717,13 @@ internal static class Smoke
             Equal("Производительность и дальность", LocalizedText.Get("CatalogPerformance"), "Russian catalog text");
             Equal("Строительные блоки — 5", PackCatalog.Vanilla2PlusGroups[^2].Heading, "Russian Vanilla 2 Plus building category");
             Equal("Мир и структуры — 12", PackCatalog.Vanilla2PlusGroups[^1].Heading, "Russian Vanilla 2 Plus worldgen category");
-            Equal("Техническая основа — 15", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Frontier dependencies");
+            Equal("Техническая основа — 16", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogTechnical").Heading, "Russian Frontier dependencies");
             Equal("Ресурспаки — 13", PackCatalog.Vanilla2PlusGroups.Single(group => group.Key == "CatalogResourcePacks").Heading, "Russian Frontier resource packs");
-            Equal("Версия сборки 0.19.10", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
+            Equal("Версия сборки 0.19.11", LocalizedText.Get("UiPackVersion", Vanilla2PlusRelease.PackVersion), "Russian selected pack version");
             Equal("Версия установщика 0.18.0", LocalizedText.Get("UiInstallerVersion", "0.18.0"), "Russian installer version");
-            Equal("70 модов · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
-            Equal("65 модов · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
-            Equal("Производительность и дальность — 12|Графика и анимации — 12|Инструменты и удобство — 12|Звук — 2|Техническая основа — 15|Ресурспаки — 13|Шейдер — 1|Мир и структуры — 12",
+            Equal("76 модов · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanilla2Plus"), "Russian selected pack counts");
+            Equal("72 мода · 13 ресурспаков · 1 шейдер", LocalizedText.Get("UiPackCountsVanillaPlus"), "Russian Vanilla Plus counts");
+            Equal("Производительность и дальность — 12|Графика и анимации — 17|Инструменты и удобство — 13|Звук — 2|Техническая основа — 16|Ресурспаки — 13|Шейдер — 1|Мир и структуры — 12",
                 string.Join('|', PackCatalog.Groups.Select(group => group.Heading)), "Russian catalog headings and counts");
             Equal("Скопировано миров: 2. Пропущено совпадений имён: 1; нет session.lock: 2; session.lock занят или не проверен: 3.",
                 LocalizedText.Get("WorldImportSummary", 2, 1, 2, 3), "Russian formatted world import summary");
@@ -4090,10 +4120,10 @@ internal static class Smoke
             var newInstance = newInstall.GameDirectory ?? throw new InvalidOperationException("Current install did not return its isolated instance.");
             True(!newInstance.Equals(oldInstance, StringComparison.OrdinalIgnoreCase),
                 "new release does not route through the existing 0.18.3 instance");
-            Equal("MinePack-26.2-VanillaPlus-0.18.4", Path.GetFileName(newInstance),
+            Equal("MinePack-26.2-VanillaPlus-0.18.6", Path.GetFileName(newInstance),
                 "current release gets its own versioned instance name");
             AssertOptimizedGraphicsOptions(File.ReadAllText(Path.Combine(newInstance, "options.txt")),
-                "InstallService-created 0.18.4 options");
+                "InstallService-created 0.18.6 options");
             CreateOptionsStartupProbeInput(newPackPath, newInstance);
             Equal(oldOptionsHash, HashFile(oldOptionsPath), "existing 0.18.3 options remain byte-identical after current install");
             Equal(oldWorldHash, HashFile(oldWorldPath), "existing 0.18.3 world remains byte-identical after current install");

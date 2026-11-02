@@ -25,7 +25,7 @@ internal static partial class Program
             SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(dispatcher));
             _application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             var repositoryRoot = FindRepositoryRoot();
-            var output = Path.Combine(repositoryRoot, "artifacts", "build-1.7.0", "ui-smoke");
+            var output = Path.Combine(repositoryRoot, "artifacts", "build-1.8.0", "ui-smoke");
             Directory.CreateDirectory(output);
 
             VerifyPackCatalogUi(output);
@@ -65,7 +65,7 @@ internal static partial class Program
                         $"{cultureName} shows the current Vanilla Plus count");
                     var vanillaGroups = ReadCatalogGroups(window);
                     Require(vanillaGroups.Length == 8 &&
-                            vanillaGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 65 &&
+                            vanillaGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 72 &&
                             vanillaGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("resourcepacks/", StringComparison.Ordinal)) == 13 &&
                             vanillaGroups.Single(group => group.Key == "CatalogWorldgen").Items.Count == 12 &&
                             vanillaGroups.Single(group => group.Key == "CatalogTools").Items.Any(item => item.ProjectId == "n6PXGAoM") &&
@@ -86,7 +86,7 @@ internal static partial class Program
                         $"{cultureName} shows the current Frontier count");
                     var frontierGroups = ReadCatalogGroups(window);
                     Require(frontierGroups.Length == 9 &&
-                            frontierGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 70 &&
+                            frontierGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("mods/", StringComparison.Ordinal)) == 76 &&
                             frontierGroups.SelectMany(group => group.Items).Count(item => item.FilePath.StartsWith("resourcepacks/", StringComparison.Ordinal)) == 13 &&
                             frontierGroups.Single(group => group.Key == "CatalogBuilding").Items.Count == 5 &&
                             frontierGroups.Single(group => group.Key == "CatalogWorldgen").Items.Count == 12,

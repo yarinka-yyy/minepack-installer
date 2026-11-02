@@ -1,6 +1,14 @@
 # Local third-party source kit
 
-Prepared 2026-10-02 for the Frontier 0.19.7 candidate. This directory provides corresponding source/build snapshots for seven MinePack YUNG's forks and eight versioned source snapshots: the seven historical `.minepack.1` inputs plus the Desert Temples `.minepack.2` candidate. The source kit is included in this repository and the local audit-candidate bundle; this is not a statement of completed legal review.
+## Spatial GUI panorama fix
+
+Both current packs include Spatial GUI `1.9.1+minepack.1`, a narrow backport of the author's fix for Spatial GUI remaining disabled after panorama capture with Last World Panorama. The three short-path files in `spatial-gui-panorama-fix/` provide the MIT license, exact-input-checked build code, and upstream issue/commit references. These files are included directly in the installer ZIP. No ASM runtime library is added to either pack; ASM is used only to prepare the fixed JAR.
+
+## YUNG's source kit
+
+Prepared 2026-10-02 for the Frontier 0.19.7 candidate. This directory provides corresponding source/build snapshots for seven MinePack YUNG's forks and eight versioned source snapshots: the seven historical `.minepack.1` inputs plus the Desert Temples `.minepack.2` candidate. The source kit is included in this repository; installer bundles provide the identical files in `third-party/yungs-sources.zip` to keep ordinary Windows extraction paths short. This is not a statement of completed legal review.
+
+The installer does not read or extract `yungs-sources.zip`. Leave it compressed for installation. To inspect or rebuild these optional sources, extract that archive separately into a short directory such as `C:\MinePackSources`; its internal paths and license files are unchanged.
 
 ## Source to artifact mapping
 
